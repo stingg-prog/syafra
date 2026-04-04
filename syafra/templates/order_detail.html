@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}ORDER #{{ order.id }} - SYAFRA{% endblock %}
+
+{% block content %}
+<section class="pt-32 pb-16 px-6 bg-black text-white">
+    <div class="max-w-7xl mx-auto">
+        <a href="{% url 'orders:order_history' %}" class="text-syafra-beige text-sm tracking-wider hover:text-white transition-colors mb-4 inline-block">
+            ← BACK TO ORDERS
+        </a>
+        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">ORDER #{{ order.id }}</h1>
+        <p class="text-syafra-beige tracking-wider text-sm">Placed on {{ order.created_at|date:"F j, Y" }}</p>
+    </div>
+</section>
+
+<section class="py-16 px-6 bg-white min-h-screen">
+    <div class="max-w-3xl mx-auto">
+        <div class="bg-gray-100 p-8 mb-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                <div>
+                    <p class="text-gray-500 tracking-wider text-xs mb-2">STATUS</p>
+                    <p class="font-semibold uppercase">{{ order.status }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 tracking-wider text-xs mb-2">EMAIL</p>
+                    <p class="font-medium text-sm">{{ order.email }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 tracking-wider text-xs mb-2">PHONE</p>
+                    <p class="font-medium">{{ order.phone_number }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 tracking-wider text-xs mb-2">TOTAL</p>
+                    <p class="font-bold text-lg">{{ currency }}{{ order.total_price|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 p-8 mb-8">
+            <h2 class="text-xl font-bold tracking-tight mb-6">ORDER ITEMS</h2>
+            <div class="space-y-4">
+                {% for item in items %}
+                <div class="flex justify-between items-center py-4 border-b border-gray-100 last:border-0">
+                    <div class="flex items-center gap-4">
+                        {% if item.product.image %}
+                        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" 
+                             class="w-16 h-20 object-cover bg-gray-100">
+                        {% else %}
+                        <div class="w-16 h-20 bg-gray-200 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <p class="font-medium">{{ item.product.name }}</p>
+                            <p class="text-gray-500 text-sm">{{ item.product.brand }}</p>
+                            {% if item.size %}<p class="text-gray-500 text-sm">Size: {{ item.size|upper }}</p>{% endif %}
+                            <p class="text-gray-500 text-sm">Qty: {{ item.quantity }} × {{ currency }}{{ item.price|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                    <p class="font-semibold">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="bg-gray-100 p-8">
+            <h2 class="text-xl font-bold tracking-tight mb-6">SHIPPING ADDRESS</h2>
+            <p class="text-gray-600 whitespace-pre-line">{{ order.shipping_address }}</p>
+        </div>
+
+        <div class="mt-8 text-center">
+            <a href="{% url 'products:shop' %}" 
+               class="inline-block bg-black text-white px-10 py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
+                CONTINUE SHOPPING
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

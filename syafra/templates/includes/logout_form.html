@@ -1,0 +1,5 @@
+{# POST + CSRF prevents third-party sites from logging users out via GET (logout CSRF). #}
+<form method="post" action="{% url 'accounts:logout' %}" class="{{ form_class|default:'inline' }}">
+    {% csrf_token %}
+    <button type="submit" class="{{ button_class }}">{{ label|default:'LOGOUT' }}</button>
+</form>

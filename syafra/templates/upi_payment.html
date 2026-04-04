@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Pay via UPI - SYAFRA{% endblock %}
+
+{% block content %}
+<section class="pt-32 pb-16 px-6 bg-black text-white">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">UPI PAYMENT</h1>
+        <p class="text-syafra-beige tracking-wider text-sm">Complete your payment using UPI</p>
+    </div>
+</section>
+
+<section class="py-16 px-6 bg-white min-h-screen">
+    <div class="max-w-2xl mx-auto">
+        <div class="bg-gray-100 p-8">
+            <h2 class="text-xl font-bold tracking-tight mb-6">ORDER SUMMARY</h2>
+            
+            <div class="space-y-4 pb-6 border-b border-gray-300">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Order ID</span>
+                    <span class="font-semibold">#{{ order.id }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Customer</span>
+                    <span class="font-semibold">{{ order.customer_name }}</span>
+                </div>
+            </div>
+            
+            <div class="flex justify-between py-6">
+                <span class="font-semibold text-lg">Total Amount</span>
+                <span class="text-2xl font-bold">{{ currency_symbol }}{{ amount|floatformat:2 }}</span>
+            </div>
+            
+            <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Pay to UPI ID</h3>
+                <div class="text-center">
+                    <p class="text-gray-600 mb-2">Scan QR Code or transfer to:</p>
+                    <p class="text-2xl font-mono font-bold text-black">{{ upi_id }}</p>
+                </div>
+                
+                {% if upi_qr_code %}
+                <div class="mt-6 text-center">
+                    <img src="{{ upi_qr_code }}" alt="UPI QR Code" class="mx-auto w-48 h-48">
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <h4 class="font-semibold text-yellow-800 mb-2">How to Pay:</h4>
+                <ol class="list-decimal list-inside text-sm text-yellow-700 space-y-1">
+                    <li>Open your UPI app (GPay, PhonePe, Paytm, etc.)</li>
+                    <li>Scan the QR code or enter UPI ID: <strong>{{ upi_id }}</strong></li>
+                    <li>Enter amount: <strong>{{ currency_symbol }}{{ amount|floatformat:2 }}</strong></li>
+                    <li>Complete the payment and note the transaction ID</li>
+                    <li>Click "I've Paid" button below and enter transaction details</li>
+                </ol>
+            </div>
+            
+            <form method="POST" action="{% url 'orders:upi_payment_verify' %}" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="order_id" value="{{ order.id }}">
+                
+                <div>
+                    <label class="block text-sm tracking-wider text-gray-500 mb-2">UPI TRANSACTION ID</label>
+                    <input type="text" name="transaction_id" required
+                           class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
+                           placeholder="Enter your UPI transaction reference">
+                </div>
+                
+                <button type="submit"
+                        class="w-full bg-black text-white py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
+                    I'VE PAID
+                </button>
+            </form>
+        </div>
+        
+        <a href="{% url 'cart:cart_view' %}" class="block text-center py-4 text-sm tracking-wider text-gray-500 hover:text-black transition-colors mt-4">
+            Cancel Payment
+        </a>
+    </div>
+</section>
+{% endblock %}

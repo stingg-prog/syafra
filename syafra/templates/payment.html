@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment - SYAFRA{% endblock %}
+
+{% block content %}
+<section class="pt-32 pb-16 px-6 bg-black text-white">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">PAYMENT</h1>
+        <p class="text-syafra-beige tracking-wider text-sm">Complete your order</p>
+    </div>
+</section>
+
+<section class="py-16 px-6 bg-white min-h-screen">
+    <div class="max-w-2xl mx-auto">
+        <div class="bg-gray-100 p-8">
+            <h2 class="text-xl font-bold tracking-tight mb-6">ORDER SUMMARY</h2>
+            
+            <div class="space-y-4 pb-6 border-b border-gray-300">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Order ID</span>
+                    <span class="font-semibold">#{{ order.id }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Customer</span>
+                    <span class="font-semibold">{{ order.customer_name }}</span>
+                </div>
+            </div>
+            
+            <div class="flex justify-between py-6">
+                <span class="font-semibold text-lg">Total Amount</span>
+                <span class="text-2xl font-bold">{{ currency_symbol }}{{ order.total_price|floatformat:2 }}</span>
+            </div>
+            
+            <button id="pay-btn" class="w-full bg-black text-white py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                </svg>
+                PAY NOW
+            </button>
+            
+            <p class="text-center text-gray-500 text-xs mt-4">
+                Secured by Razorpay. Your payment details are encrypted.
+            </p>
+        </div>
+        
+        <a href="{% url 'cart:cart_view' %}" class="block text-center py-4 text-sm tracking-wider text-gray-500 hover:text-black transition-colors mt-4">
+            Cancel Payment
+        </a>
+    </div>
+</section>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+var options = {
+    "key": "{{ razorpay_key }}",
+    "amount": "{{ amount }}",
+    "currency": "{{ currency_code|escapejs }}",
+    "order_id": "{{ razorpay_order_id }}",
+    "name": "SYAFRA",
+    "description": "Order #{{ order.id }}",
+    "image": "/static/images/syafra_logo.png",
+    "handler": function (response) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "orders:payment_success" %}';
+        
+        var fields = {
+            'razorpay_order_id': response.razorpay_order_id,
+            'razorpay_payment_id': response.razorpay_payment_id,
+            'razorpay_signature': response.razorpay_signature,
+            'csrfmiddlewaretoken': '{{ csrf_token }}'
+        };
+        
+        for (var key in fields) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key];
+            form.appendChild(input);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    },
+    "prefill": {
+        "name": "{{ order.customer_name }}",
+        "email": "{{ order.email }}",
+        "contact": "{{ order.phone_number }}"
+    },
+    "notes": {
+        "order_id": "{{ order.id }}"
+    },
+    "modal": {
+        "ondismiss": function() {
+            window.location.href = '{% url "orders:payment_failed" %}?order_id={{ order.id }}';
+        }
+    },
+    "theme": {
+        "color": "#000000"
+    }
+};
+
+var rzp = new Razorpay(options);
+
+document.getElementById('pay-btn').onclick = function(e) {
+    rzp.open();
+    e.preventDefault();
+};
+</script>
+{% endblock %}

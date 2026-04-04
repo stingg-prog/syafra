@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+
+{% block title %}CHECKOUT - SYAFRA{% endblock %}
+
+{% block content %}
+<section class="pt-32 pb-16 px-6 bg-black text-white">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">CHECKOUT</h1>
+        <p class="text-syafra-beige tracking-wider text-sm">Complete your order</p>
+    </div>
+</section>
+
+<section class="py-16 px-6 bg-white min-h-screen">
+    <div class="max-w-7xl mx-auto">
+        {% if messages %}
+        <div class="mb-8">
+            {% for message in messages %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-2">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <!-- Order Form -->
+            <div class="lg:col-span-2">
+                <form id="checkout-form" method="POST" action="{% url 'orders:checkout' %}" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="space-y-8">
+                        <div>
+                            <h2 class="text-xl font-bold tracking-tight mb-6">CONTACT INFORMATION</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">FULL NAME *</label>
+                                    <input type="text" name="customer_name" required 
+                                           class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
+                                           placeholder="Enter your full name"
+                                           value="{{ form.customer_name.value|default_if_none:'' }}">
+                                    {% if form.customer_name.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.customer_name.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">EMAIL *</label>
+                                    <input type="email" name="email" required 
+                                           class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
+                                           placeholder="your@email.com"
+                                           value="{{ form.email.value|default_if_none:'' }}">
+                                    {% if form.email.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.email.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">PHONE NUMBER *</label>
+                                    <input type="tel" name="phone_number" required 
+                                           class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
+                                           placeholder="+1 234 567 8900"
+                                           value="{{ form.phone_number.value|default_if_none:'' }}">
+                                    {% if form.phone_number.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.phone_number.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">PINCODE *</label>
+                                    <input type="text" name="pincode" required pattern="\d{6}"
+                                           class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
+                                           placeholder="560001"
+                                           value="{{ form.pincode.value|default_if_none:'' }}">
+                                    {% if form.pincode.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.pincode.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h2 class="text-xl font-bold tracking-tight mb-6">SHIPPING ADDRESS</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">STREET ADDRESS *</label>
+                                    <textarea name="shipping_address" required rows="4"
+                                              class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors resize-none"
+                                              placeholder="Enter your full shipping address">{{ form.shipping_address.value|default_if_none:'' }}</textarea>
+                                    {% if form.shipping_address.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.shipping_address.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h2 class="text-xl font-bold tracking-tight mb-6">PAYMENT METHOD</h2>
+                            {% if payment_notice %}
+                            <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p class="text-amber-800 text-sm">{{ payment_notice }}</p>
+                            </div>
+                            {% elif not available_methods %}
+                            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                <p class="text-red-800 text-sm">No payment methods available. Please contact support.</p>
+                            </div>
+                            {% endif %}
+                            <div class="space-y-3">
+                                {% if 'razorpay' in available_methods %}
+                                <label class="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors">
+                                    <input type="radio" name="payment_method" value="razorpay" class="w-4 h-4 text-black" checked>
+                                    <div class="ml-3">
+                                        <span class="block text-sm font-medium">Pay Online (Card/UPI/Bank)</span>
+                                        <span class="block text-xs text-gray-500">Secure payment via Razorpay</span>
+                                    </div>
+                                </label>
+                                {% endif %}
+                                
+                                {% if upi_enabled and 'upi' in available_methods %}
+                                <label class="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors">
+                                    <input type="radio" name="payment_method" value="upi" class="w-4 h-4 text-black">
+                                    <div class="ml-3">
+                                        <span class="block text-sm font-medium">Pay via UPI</span>
+                                        <span class="block text-xs text-gray-500">Google Pay, PhonePe, Paytm & more</span>
+                                    </div>
+                                </label>
+                                {% endif %}
+                            </div>
+                        </div>
+                            
+                        <button type="submit" 
+                                class="w-full bg-black text-white py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
+                            PROCEED TO PAYMENT
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="lg:col-span-1">
+                <div class="bg-gray-100 p-8 sticky top-32">
+                    <h2 class="text-xl font-bold tracking-tight mb-6">ORDER SUMMARY</h2>
+                    
+                    <div class="space-y-4 pb-6 border-b border-gray-300 max-h-64 overflow-y-auto">
+                        {% for item in items %}
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">{{ item.product.name }} × {{ item.quantity }}</span>
+                            <span>{{ currency }}{{ item.subtotal|floatformat:2 }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="space-y-4 py-6 border-b border-gray-300">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500">Subtotal</span>
+                            <span>{{ currency }}{{ total|floatformat:2 }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500">Shipping</span>
+                            <span>Free</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between py-6">
+                        <span class="font-semibold">Total</span>
+                        <span class="text-xl font-bold">{{ currency }}{{ total|floatformat:2 }}</span>
+                    </div>
+                    
+                    <a href="{% url 'cart:cart_view' %}" 
+                       class="block w-full text-center py-4 text-sm tracking-wider text-gray-500 hover:text-black transition-colors">
+                        ← BACK TO CART
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<script>
+    document.getElementById('checkout-form')?.addEventListener('submit', function(event) {
+        const name = this.querySelector('[name="customer_name"]').value.trim();
+        const phone = this.querySelector('[name="phone_number"]').value.trim();
+        const address = this.querySelector('[name="shipping_address"]').value.trim();
+        const pincode = this.querySelector('[name="pincode"]').value.trim();
+
+        const phoneDigits = phone.replace(/\D/g, '');
+        const phoneValid = phoneDigits.length >= 10;
+        const pincodeValid = /^\d{6}$/.test(pincode);
+
+        if (!name || !address || !phoneValid || !pincodeValid) {
+            event.preventDefault();
+            if (!name) showToast('Please enter your full name.', 'error');
+            else if (!phoneValid) showToast('Please enter a valid phone number.', 'error');
+            else if (!pincodeValid) showToast('Please enter a valid 6-digit pincode.', 'error');
+            else if (!address) showToast('Please enter your shipping address.', 'error');
+        }
+    });
+</script>
+{% endblock %}

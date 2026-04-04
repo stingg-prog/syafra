@@ -1,0 +1,31 @@
+# Django Framework
+Django>=5.0,<6.1
+
+# Database
+psycopg2-binary>=2.9.9
+mysqlclient>=2.2.0
+
+# Production Server
+gunicorn>=21.0.0
+
+# Static Files
+whitenoise>=6.6.0
+
+# Database URL Parser
+dj-database-url>=2.1.0
+
+# Image Processing
+Pillow>=10.0.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Payment Gateway
+razorpay>=1.3.0
+
+# SMS/WhatsApp (optional - uncomment if needed)
+# twilio>=9.0.0
+
+# Celery (optional - uncomment if needed for async tasks)
+# celery>=5.4.0
+# redis>=5.0.0

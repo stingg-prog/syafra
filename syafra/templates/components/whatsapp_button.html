@@ -1,0 +1,169 @@
+{% comment %}
+Reusable WhatsApp Button Component
+
+Usage:
+    {% include 'components/whatsapp_button.html' with button_type="floating" %}
+    {% include 'components/whatsapp_button.html' with button_type="enquiry" product=product %}
+{% endcomment %}
+
+{% if button_type == "floating" %}
+<style>
+.whatsapp-float {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    background-color: #25D366;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+    z-index: 9999;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    text-decoration: none;
+}
+
+.whatsapp-float:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+}
+
+.whatsapp-float i {
+    color: #fff;
+    font-size: 28px;
+}
+
+.whatsapp-float::after {
+    content: "Chat with us";
+    position: absolute;
+    right: 68px;
+    background: #333;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.whatsapp-float:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.whatsapp-float::before {
+    content: "";
+    position: absolute;
+    right: 52px;
+    border: 6px solid transparent;
+    border-left-color: #333;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.whatsapp-float:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+@media (max-width: 640px) {
+    .whatsapp-float {
+        bottom: 16px;
+        right: 16px;
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+    }
+    
+    .whatsapp-float i {
+        font-size: 24px;
+    }
+    
+    .whatsapp-float::after,
+    .whatsapp-float::before {
+        display: none;
+    }
+}
+</style>
+
+<a href="https://wa.me/919037626684?text=Hi%2C%20I%20am%20interested%20in%20your%20products.%20Please%20share%20more%20details." 
+   class="whatsapp-float" 
+   target="_blank" 
+   rel="noopener noreferrer"
+   aria-label="Chat on WhatsApp">
+    <i class="fab fa-whatsapp"></i>
+</a>
+
+{% elif button_type == "enquiry" %}
+<style>
+.whatsapp-enquiry-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 16px;
+    background: #25D366;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+}
+
+.whatsapp-enquiry-btn:hover {
+    background: #20BD5A;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+}
+
+.whatsapp-enquiry-btn:active {
+    transform: translateY(0);
+}
+
+.whatsapp-enquiry-btn i {
+    font-size: 18px;
+}
+
+.whatsapp-enquiry-btn span {
+    flex: 1;
+    text-align: center;
+}
+
+@media (max-width: 640px) {
+    .whatsapp-enquiry-btn {
+        padding: 10px 14px;
+        font-size: 12px;
+    }
+    
+    .whatsapp-enquiry-btn i {
+        font-size: 16px;
+    }
+}
+</style>
+
+<a href="https://wa.me/919037626684?text=Hi%2C%20I%20am%20interested%20in%20{{ product.name|urlencode }}.%20Can%20you%20share%20more%20details%3F" 
+   class="whatsapp-enquiry-btn" 
+   target="_blank" 
+   rel="noopener noreferrer">
+    <i class="fab fa-whatsapp"></i>
+    <span>ENQUIRE ON WHATSAPP</span>
+</a>
+
+{% endif %}

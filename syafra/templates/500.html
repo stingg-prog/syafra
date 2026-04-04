@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}500 - Server Error - SYAFRA{% endblock %}
+
+{% block content %}
+<section class="pt-32 pb-16 px-6 bg-black text-white min-h-[60vh] flex items-center">
+    <div class="max-w-7xl mx-auto text-center">
+        <h1 class="text-9xl font-bold tracking-tight mb-4">500</h1>
+        <p class="text-2xl tracking-wider mb-6">SERVER ERROR</p>
+        <p class="text-gray-400 mb-10">Something went wrong on our end. Please try again later.</p>
+        <a href="{% url 'products:home' %}" class="inline-block bg-white text-black px-10 py-4 text-sm tracking-wider font-semibold hover:bg-syafra-beige transition-colors">
+            BACK TO HOME
+        </a>
+    </div>
+</section>
+{% endblock %}

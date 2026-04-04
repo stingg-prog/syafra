@@ -1,0 +1,7 @@
+{% autoescape off %}
+<p>Hello {{ user.first_name|default:user.username }},</p>
+<p>Thank you for registering at SYAFRA. Please activate your account by clicking the link below:</p>
+<p><a href="{{ protocol }}://{{ domain }}{% url 'accounts:activate' uidb64=uid token=token %}">Activate your account</a></p>
+<p>If you did not create an account, you can safely ignore this email.</p>
+<p>Welcome aboard,<br>SYAFRA Team</p>
+{% endautoescape %}
