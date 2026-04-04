@@ -4,8 +4,5 @@
 # Run migrations on deployment
 release: python manage.py migrate --noinput
 
-# Start Gunicorn web server
-web: gunicorn syafra.wsgi:application --workers 2 --threads 4 --timeout 120
-
-# Optional: Run Celery worker for async tasks (uncomment if needed)
-# worker: celery -A syafra worker --loglevel=info
+# Start Gunicorn web server (Bind to $PORT for Render)
+web: gunicorn syafra.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
