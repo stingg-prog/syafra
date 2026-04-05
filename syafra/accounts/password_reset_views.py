@@ -39,13 +39,13 @@ class CustomPasswordResetView(BasePasswordResetView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['domain'] = settings.DOMAIN
-        context['protocol'] = 'https' if not settings.DEBUG else 'http'
+        context['protocol'] = 'https' if settings.USE_HTTPS else 'http'
         return context
     
     def get_extra_email_context(self):
         return {
             'domain': settings.DOMAIN,
-            'protocol': 'https' if not settings.DEBUG else 'http',
+            'protocol': 'https' if settings.USE_HTTPS else 'http',
         }
     
     def send_mail(self, *args, **kwargs):

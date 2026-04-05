@@ -406,8 +406,8 @@ class OrderFlowTest(TestCase):
             email='jane@example.com',
             phone_number='9876543210',
             shipping_address='123 Flow Lane',
-            status='confirmed',
-            payment_status='paid',
+            status='pending',
+            payment_status='pending',
         )
         OrderItem.objects.create(
             order=order,
@@ -463,8 +463,8 @@ class OrderFlowTest(TestCase):
             email='jane@example.com',
             phone_number='9876543210',
             shipping_address='123 Flow Lane',
-            status='confirmed',
-            payment_status='paid',
+            status='pending',
+            payment_status='pending',
         )
         OrderItem.objects.create(
             order=order,
@@ -493,8 +493,8 @@ class OrderFlowTest(TestCase):
             email='jane@example.com',
             phone_number='9876543210',
             shipping_address='123 Flow Lane',
-            status='confirmed',
-            payment_status='paid',
+            status='pending',
+            payment_status='pending',
             confirmation_email_claimed_at=timezone.now(),
         )
         OrderItem.objects.create(
@@ -523,8 +523,8 @@ class OrderFlowTest(TestCase):
             email='jane@example.com',
             phone_number='9876543210',
             shipping_address='123 Flow Lane',
-            status='confirmed',
-            payment_status='paid',
+            status='pending',
+            payment_status='pending',
             confirmation_email_claimed_at=timezone.now() - timedelta(minutes=5),
         )
         OrderItem.objects.create(

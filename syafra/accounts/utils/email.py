@@ -65,7 +65,7 @@ def send_password_reset_email(user, request=None):
             protocol = 'https' if request.is_secure() else 'http'
             domain = request.get_host()
         else:
-            protocol = 'https' if not settings.DEBUG else 'http'
+            protocol = 'https' if settings.USE_HTTPS else 'http'
             allowed_hosts = settings.ALLOWED_HOSTS
             if isinstance(allowed_hosts, list) and allowed_hosts:
                 domain = allowed_hosts[0]

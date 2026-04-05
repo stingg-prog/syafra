@@ -102,7 +102,7 @@ class PasswordResetForm(BasePasswordResetForm):
             token = default_token_generator.make_token(user)
             
             # Get protocol and domain
-            protocol = 'https' if not settings.DEBUG else 'http'
+            protocol = 'https' if settings.USE_HTTPS else 'http'
             domain = getattr(settings, 'DOMAIN', '127.0.0.1:8000')
             
             # Update context with URL components

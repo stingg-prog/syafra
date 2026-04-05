@@ -1,443 +1,569 @@
 """
-Django settings for syafra project.
+Django settings for the Syafra project.
 
-Production-ready settings with environment variable support.
+Single module: development defaults, production enforced via environment variables.
+See `.env.example` for Render / production variables.
 """
 
+import logging
 import os
+import sys
+import warnings
 from pathlib import Path
+
+import dj_database_url
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
 
 from django.core.exceptions import ImproperlyConfigured
 
+# -----------------------------------------------------------------------------
+# Paths & env helpers
+# -----------------------------------------------------------------------------
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Dev-only default; production must override via environment (validated below when DEBUG=False).
-_INSECURE_DEV_SECRET_KEY = 'django-insecure-dev-key-change-in-production'
-SECRET_KEY = os.getenv('SECRET_KEY', _INSECURE_DEV_SECRET_KEY)
 
-DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
+def _env_bool(name: str, *, default: bool = False) -> bool:
+    """Parse a truthy env var. Keyword-only *default* avoids mixing up (name, default) argument order."""
+    val = os.environ.get(name)
+    if val is None:
+        return default
+    s = str(val).strip().lower()
+    if not s:
+        return default
+    return s in ("1", "true", "yes", "on")
+
+
+def _env_int(name: str, default: int) -> int:
+    val = os.getenv(name)
+    if val is None or not str(val).strip():
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        return default
+
+
+def _csv(name: str, default: str) -> list[str]:
+    return [x.strip() for x in os.getenv(name, default).split(",") if x.strip()]
+
+
+# -----------------------------------------------------------------------------
+# Core security
+# -----------------------------------------------------------------------------
+
+_DEV_SECRET_KEY = "django-insecure-dev-key-change-in-production"
+# Production: set SECRET_KEY in env (avoids security.W009 — long, random, not django-insecure-*).
+# Generate: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+SECRET_KEY = os.getenv("SECRET_KEY", _DEV_SECRET_KEY)
+DEBUG = _env_bool("DEBUG", default=True)
 
 if not DEBUG:
-    if not os.getenv('SECRET_KEY') or SECRET_KEY == _INSECURE_DEV_SECRET_KEY:
+    if not os.getenv("SECRET_KEY") or SECRET_KEY == _DEV_SECRET_KEY:
         raise ImproperlyConfigured(
-            'Set a unique SECRET_KEY in the environment when DEBUG=False.'
+            "Set SECRET_KEY in the environment when DEBUG=False. Generate one with: "
+            'python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"'
         )
 
-ALLOWED_HOSTS = [
-    h.strip() for h in os.getenv(
-        'ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver,.railway.app,.render.com'
-    ).split(',') if h.strip()
+# Default host list when ALLOWED_HOSTS env is unset (set comma-separated hosts on Render).
+# Matches: ALLOWED_HOSTS = ["your-app.onrender.com"] in production without env.
+_DEFAULT_ALLOWED_HOSTS = [
+    "syafra.onrender.com",
+]
+_DEV_ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "testserver",
+    ".railway.app",
+    ".onrender.com",
+    ".render.com",
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()
+_env_allowed = _csv("ALLOWED_HOSTS", "")
+if _env_allowed:
+    ALLOWED_HOSTS = _env_allowed
+elif DEBUG:
+    ALLOWED_HOSTS = _DEFAULT_ALLOWED_HOSTS + _DEV_ALLOWED_HOSTS
+else:
+    ALLOWED_HOSTS = list(_DEFAULT_ALLOWED_HOSTS)
+
+# Login, checkout, and payment flows POST with CSRF; wrong/missing origins → 403.
+# On Render set CSRF_TRUSTED_ORIGINS (comma-separated). Code default matches:
+#   CSRF_TRUSTED_ORIGINS = ["https://your-app.onrender.com"]
+_DEFAULT_CSRF_ORIGINS = [
+    "https://syafra.onrender.com",
+]
+_DEV_CSRF_ORIGINS = [
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://127.0.0.1",
+    "http://localhost",
 ]
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'false' if DEBUG else 'true').lower() in ('1', 'true', 'yes')
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
-SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0' if DEBUG else '31536000'))
-SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
-SECURE_HSTS_PRELOAD = not DEBUG
-SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = 'DENY'
+_env_csrf = _csv("CSRF_TRUSTED_ORIGINS", "")
+if _env_csrf:
+    CSRF_TRUSTED_ORIGINS = _env_csrf
+elif DEBUG:
+    CSRF_TRUSTED_ORIGINS = _DEFAULT_CSRF_ORIGINS + _DEV_CSRF_ORIGINS
+else:
+    CSRF_TRUSTED_ORIGINS = list(_DEFAULT_CSRF_ORIGINS)
+
+# Email / absolute URLs: https when not in local HTTP mode (overridable via env)
+USE_HTTPS = _env_bool("USE_HTTPS", default=not DEBUG)
+
+# -----------------------------------------------------------------------------
+# Applications & middleware
+# -----------------------------------------------------------------------------
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'products',
-    'cart',
-    'orders',
-    'accounts',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "products",
+    "cart",
+    "orders",
+    "accounts",
 ]
 
+# WhiteNoise must sit directly after SecurityMiddleware — https://whitenoise.readthedocs.io/
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'syafra.middleware.RequestCorrelationIdMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "syafra.middleware.RequestCorrelationIdMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-if not DEBUG:
-    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
-
-ROOT_URLCONF = 'syafra.urls'
+ROOT_URLCONF = "syafra.urls"
+WSGI_APPLICATION = "syafra.wsgi.application"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.template.context_processors.csrf',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-                'cart.context_processors.cart_context',
-                'syafra.context_processors.global_context',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.template.context_processors.csrf",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "cart.context_processors.cart_context",
+                "syafra.context_processors.global_context",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'syafra.wsgi.application'
+# -----------------------------------------------------------------------------
+# Database
+# -----------------------------------------------------------------------------
+# Pick the engine from DATABASE_URL only. Do not infer "Render" from RENDER / RENDER_EXTERNAL_URL here:
+# those are often copied into a local .env and cause false positives.
+# On Render, link PostgreSQL so DATABASE_URL is set; local dev usually omits it and uses SQLite.
+#
+# Optional: SYAFRA_LOG_DB_CONFIG=true prints a safe one-line summary to stderr (engine + whether DATABASE_URL is set).
 
-# Database Configuration
-# Priority: DATABASE_URL (Render/Railway) > DB_ENGINE > SQLite (development)
+_db_logger = logging.getLogger(__name__)
+_database_url = (os.environ.get("DATABASE_URL") or "").strip()
 
-DATABASE_URL = os.getenv('DATABASE_URL', '')
-
-if DATABASE_URL:
-    # Use dj-database-url for Render/Railway PostgreSQL
-    import dj_database_url
+if _database_url:
+    _db_ssl = _env_bool("DATABASE_SSL_REQUIRE", default=not DEBUG)
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        "default": dj_database_url.config(
+            default=_database_url,
+            conn_max_age=600,
+            ssl_require=_db_ssl,
+        )
     }
+    _db_logger.debug("Database: from DATABASE_URL (ssl_require=%s).", _db_ssl)
 else:
-    db_engine = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
-    if db_engine == 'django.db.backends.postgresql':
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': os.getenv('DB_NAME', 'syafra'),
-                'USER': os.getenv('DB_USER', 'postgres'),
-                'PASSWORD': os.getenv('DB_PASSWORD', ''),
-                'HOST': os.getenv('DB_HOST', 'localhost'),
-                'PORT': os.getenv('DB_PORT', '5432'),
-            }
+    if not DEBUG:
+        warnings.warn(
+            "DATABASE_URL is not set and DEBUG is False; using SQLite. "
+            "Prefer DEBUG=True locally without DATABASE_URL, or set DATABASE_URL for Postgres.",
+            UserWarning,
+            stacklevel=2,
+        )
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+            "OPTIONS": {"timeout": 60, "check_same_thread": False},
         }
-    elif db_engine == 'django.db.backends.mysql':
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.mysql',
-                'NAME': os.getenv('DB_NAME', 'syafra'),
-                'USER': os.getenv('DB_USER', 'root'),
-                'PASSWORD': os.getenv('DB_PASSWORD', ''),
-                'HOST': os.getenv('DB_HOST', 'localhost'),
-                'PORT': os.getenv('DB_PORT', '3306'),
-            }
-        }
-    else:
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': BASE_DIR / 'db.sqlite3',
-                'OPTIONS': {
-                    'timeout': 30,
-                },
-            }
-        }
+    }
+    _db_logger.debug("Database: SQLite (DATABASE_URL not set).")
+
+if _env_bool("SYAFRA_LOG_DB_CONFIG", default=False):
+    _engine = DATABASES["default"].get("ENGINE", "?")
+    _db_logger.info(
+        "Syafra DB: ENGINE=%s DATABASE_URL=%s",
+        _engine,
+        "set" if _database_url else "not set",
+    )
+    print(
+        f"[syafra settings] ENGINE={_engine} DATABASE_URL={'set' if _database_url else 'not set'}",
+        file=sys.stderr,
+    )
+
+# -----------------------------------------------------------------------------
+# Auth & i18n
+# -----------------------------------------------------------------------------
 
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage' if not DEBUG else 'django.contrib.staticfiles.storage.StaticFilesStorage'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# -----------------------------------------------------------------------------
+# Static & media
+# -----------------------------------------------------------------------------
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 
+if DEBUG:
+    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+else:
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# File logging is optional: many PaaS disks are ephemeral or read-only. Default file logs on DEBUG only.
-_LOG_TO_FILE = os.getenv('LOG_TO_FILE', 'true' if DEBUG else 'false').lower() in ('1', 'true', 'yes')
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+SERVE_MEDIA_VIA_DJANGO = _env_bool("SERVE_MEDIA_VIA_DJANGO", default=False)
 
-_log_handlers = {
-    'console': {
-        'class': 'logging.StreamHandler',
-        'formatter': 'verbose',
+# -----------------------------------------------------------------------------
+# HTTPS & browser security (single branch — no duplicate assignments later)
+# -----------------------------------------------------------------------------
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+if DEBUG:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+    SECURE_REFERRER_POLICY = None
+    PERMISSIONS_POLICY = None
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = None
+else:
+    # runserver only speaks HTTP. With DEBUG=False, SECURE_SSL_REDIRECT used to default True and
+    # browsers were sent to https://127.0.0.1:8000 → ERR_SSL_PROTOCOL_ERROR. Gunicorn on Render is unaffected.
+    _manage_py_runserver = len(sys.argv) >= 2 and sys.argv[1] == "runserver"
+    SECURE_SSL_REDIRECT = _env_bool(
+        "SECURE_SSL_REDIRECT",
+        default=not _manage_py_runserver,
+    )
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = _env_int("SECURE_HSTS_SECONDS", 31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+    PERMISSIONS_POLICY = {
+        "geolocation": [],
+        "microphone": [],
+        "camera": [],
+    }
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+
+# -----------------------------------------------------------------------------
+# Cache (Redis in production when REDIS_URL is set; else LocMem)
+# -----------------------------------------------------------------------------
+
+_REDIS_URL = os.getenv("REDIS_URL", "").strip()
+if _REDIS_URL and not DEBUG:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _REDIS_URL,
+            "KEY_PREFIX": "syafra",
+            "TIMEOUT": _env_int("CACHE_TIMEOUT", 300),
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "syafra-cache",
+            "TIMEOUT": 300,
+            "OPTIONS": {"MAX_ENTRIES": 1000},
+        }
+    }
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+
+_LOG_TO_FILE = _env_bool("LOG_TO_FILE", default=DEBUG)
+
+_log_handlers: dict = {
+    "console": {
+        "class": "logging.StreamHandler",
+        "formatter": "verbose",
     },
 }
-_orders_handlers = ['console']
-_email_handlers = ['console']
+_orders_handlers = ["console"]
+_email_handlers = ["console"]
 
 
-def _try_add_file_handler(handler_name, relative_path, formatter, level=None):
-    """Attach a FileHandler only if the path is writable (skip silently on failure)."""
+def _try_add_file_handler(handler_name: str, relative_path: str, formatter: str, level=None):
     path = BASE_DIR / relative_path
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'a', encoding='utf-8'):
+        with open(path, "a", encoding="utf-8"):
             pass
     except OSError:
         return
     cfg = {
-        'class': 'logging.FileHandler',
-        'filename': str(path),
-        'formatter': formatter,
+        "class": "logging.FileHandler",
+        "filename": str(path),
+        "formatter": formatter,
     }
     if level is not None:
-        cfg['level'] = level
+        cfg["level"] = level
     _log_handlers[handler_name] = cfg
 
 
 if _LOG_TO_FILE:
-    _try_add_file_handler('file', 'logs.log', 'verbose')
-    _try_add_file_handler('email_file', 'email_errors.log', 'email', level='ERROR')
-    if 'file' in _log_handlers:
-        _orders_handlers.append('file')
-    if 'email_file' in _log_handlers:
-        _email_handlers.insert(0, 'email_file')
+    _try_add_file_handler("file", "logs.log", "verbose")
+    _try_add_file_handler("email_file", "email_errors.log", "email", level="ERROR")
+    if "file" in _log_handlers:
+        _orders_handlers.append("file")
+    if "email_file" in _log_handlers:
+        _email_handlers.insert(0, "email_file")
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'filters': {
-        'correlation_id': {
-            '()': 'syafra.logging_context.CorrelationIdFilter',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "correlation_id": {
+            "()": "syafra.logging_context.CorrelationIdFilter",
         },
     },
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {name} {module} | correlation_id={correlation_id} | {message}',
-            'style': '{',
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {name} {module} | correlation_id={correlation_id} | {message}",
+            "style": "{",
         },
-        'email': {
-            'format': '{levelname} {asctime} {module} | correlation_id={correlation_id} | Email Error: {message}',
-            'style': '{',
-        },
-        # 🔒 SECURITY FIX: Add security logging formatter
-        'security': {
-            'format': '[SECURITY] {levelname} {asctime} {name} | correlation_id={correlation_id} | {message}',
-            'style': '{',
+        "email": {
+            "format": "{levelname} {asctime} {module} | correlation_id={correlation_id} | Email Error: {message}",
+            "style": "{",
         },
     },
-    'handlers': _log_handlers,
-    'loggers': {
-        'orders': {
-            'handlers': _orders_handlers,
-            'level': 'INFO',
-            'propagate': True,
+    "handlers": _log_handlers,
+    "loggers": {
+        "orders": {
+            "handlers": _orders_handlers,
+            "level": "INFO",
+            "propagate": True,
         },
-        'django': {
-            'handlers': ['console'],
-            'level': 'WARNING',
-            'propagate': False,
+        "django": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
         },
-        'django.security': {
-            # 🔒 SECURITY FIX: Enhanced logging for security events
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
+        "django.security": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
         },
-        'syafra.email': {
-            'handlers': _email_handlers,
-            'level': 'INFO',
-            'propagate': False,
+        "django.core.mail": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
         },
+        "syafra.email": {
+            "handlers": _email_handlers,
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO" if not DEBUG else "DEBUG",
     },
 }
 
-for _handler in LOGGING['handlers'].values():
-    _handler.setdefault('filters', []).append('correlation_id')
+for _handler in LOGGING["handlers"].values():
+    _handler.setdefault("filters", []).append("correlation_id")
 
-LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'products:home'
-LOGOUT_REDIRECT_URL = 'products:home'
+# -----------------------------------------------------------------------------
+# Auth redirects
+# -----------------------------------------------------------------------------
 
-# ===================================================================
-# EMAIL CONFIGURATION - PRODUCTION READY
-# ===================================================================
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "products:home"
+LOGOUT_REDIRECT_URL = "products:home"
 
-# Email Service: 'sendgrid', 'gmail', or 'console'
-EMAIL_SERVICE = os.getenv('EMAIL_SERVICE', 'console')
+# -----------------------------------------------------------------------------
+# Email
+# -----------------------------------------------------------------------------
 
-# Domain for password reset links
-DOMAIN = os.getenv('DOMAIN', '127.0.0.1:8000')
+EMAIL_SERVICE = os.getenv("EMAIL_SERVICE", "console")
+# Public host only (no scheme), e.g. your-app.onrender.com — used in password-reset / auth emails and link context.
+# Payment flows use request URLs where applicable; keep DOMAIN aligned with your live hostname.
+DOMAIN = os.environ.get("DOMAIN", "127.0.0.1:8000")
 
-# ===================================================================
-# SENDGRID SMTP CONFIGURATION (RECOMMENDED FOR PRODUCTION)
-# ===================================================================
-# SendGrid uses SMTP for reliable, fast email delivery
-# Required environment variables:
-#   EMAIL_SERVICE=sendgrid
-#   SENDGRID_API_KEY=SG.your_api_key_here
-#   SENDGRID_SENDER_EMAIL=your_verified_sender@yourdomain.com
-#
-# SendGrid SMTP details:
-#   Host: smtp.sendgrid.net
-#   Port: 587 (TLS)
-#   Username: apikey (always this, not your SendGrid username)
-#   Password: Your SendGrid API key (starts with SG.)
-
-if EMAIL_SERVICE == 'sendgrid':
-    SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
-    SENDGRID_SENDER_EMAIL = os.getenv('SENDGRID_SENDER_EMAIL', 'noreply@yourdomain.com')
-    
+if EMAIL_SERVICE == "sendgrid":
+    SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+    SENDGRID_SENDER_EMAIL = os.getenv("SENDGRID_SENDER_EMAIL", "noreply@yourdomain.com")
     if SENDGRID_API_KEY:
-        EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-        EMAIL_HOST = 'smtp.sendgrid.net'
+        EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+        EMAIL_HOST = "smtp.sendgrid.net"
         EMAIL_PORT = 587
         EMAIL_USE_TLS = True
-        EMAIL_HOST_USER = 'apikey'
+        EMAIL_HOST_USER = "apikey"
         EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
-        DEFAULT_FROM_EMAIL = f'SYAFRA <{SENDGRID_SENDER_EMAIL}>'
-        EMAIL_FAIL_SILENTLY = False
+        DEFAULT_FROM_EMAIL = os.getenv(
+            "DEFAULT_FROM_EMAIL",
+            f"SYAFRA <{SENDGRID_SENDER_EMAIL}>",
+        )
     else:
-        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-        DEFAULT_FROM_EMAIL = 'SYAFRA <noreply@localhost>'
+        EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+        DEFAULT_FROM_EMAIL = "SYAFRA <noreply@localhost>"
 
-# ===================================================================
-# GMAIL SMTP CONFIGURATION (DEVELOPMENT ONLY)
-# ===================================================================
-# For development/testing with Gmail SMTP
-elif EMAIL_SERVICE == 'gmail':
-    EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-    EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('1', 'true', 'yes')
-    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-    
+elif EMAIL_SERVICE == "gmail":
+    EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    EMAIL_PORT = _env_int("EMAIL_PORT", 587)
+    EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", default=True)
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
     if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
-        EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-        DEFAULT_FROM_EMAIL = f'SYAFRA <{EMAIL_HOST_USER}>'
-        EMAIL_FAIL_SILENTLY = False
+        EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+        DEFAULT_FROM_EMAIL = os.getenv(
+            "DEFAULT_FROM_EMAIL",
+            f"SYAFRA <{EMAIL_HOST_USER}>",
+        )
     else:
-        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-        DEFAULT_FROM_EMAIL = 'SYAFRA <noreply@localhost>'
+        EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+        DEFAULT_FROM_EMAIL = "SYAFRA <noreply@localhost>"
 
-# ===================================================================
-# CONSOLE BACKEND (DEFAULT/DEVELOPMENT)
-# ===================================================================
 else:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = 'SYAFRA <noreply@localhost>'
-    EMAIL_FAIL_SILENTLY = False
-
-# ===================================================================
-# EMAIL DELIVERY SETTINGS - INSTANT DELIVERY (NO DELAYS)
-# ===================================================================
-# IMPORTANT: These settings ensure emails are sent IMMEDIATELY without Celery delays
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "SYAFRA <noreply@localhost>")
 
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 EMAIL_TIMEOUT = 30
-EMAIL_FAIL_SILENTLY = False  # Always fail loudly for debugging
+EMAIL_FAIL_SILENTLY = False
 
-# Claim timeout for email deduplication (seconds)
-ORDER_EMAIL_CLAIM_TIMEOUT_SECONDS = int(os.getenv('ORDER_EMAIL_CLAIM_TIMEOUT_SECONDS', '900'))
-ORDER_PAYMENT_RETRY_TIMEOUT_SECONDS = int(os.getenv('ORDER_PAYMENT_RETRY_TIMEOUT_SECONDS', '900'))
+if _env_bool("SYAFRA_LOG_EMAIL_CONFIG", default=False):
+    print(
+        f"[email config] backend={EMAIL_BACKEND} host={EMAIL_HOST} port={EMAIL_PORT} "
+        f"from={DEFAULT_FROM_EMAIL} service={EMAIL_SERVICE}",
+        file=sys.stderr,
+    )
 
-# Force retry for stuck email claims
-FORCE_EMAIL_RETRY = os.getenv('FORCE_EMAIL_RETRY', 'true').lower() in ('1', 'true', 'yes')
+ORDER_EMAIL_CLAIM_TIMEOUT_SECONDS = _env_int("ORDER_EMAIL_CLAIM_TIMEOUT_SECONDS", 900)
+ORDER_PAYMENT_RETRY_TIMEOUT_SECONDS = _env_int("ORDER_PAYMENT_RETRY_TIMEOUT_SECONDS", 900)
+FORCE_EMAIL_RETRY = _env_bool("FORCE_EMAIL_RETRY", default=True)
+ORDER_NOTIFICATION_SYNC_RETRY_ATTEMPTS = _env_int("ORDER_NOTIFICATION_SYNC_RETRY_ATTEMPTS", 2)
+ORDER_ASYNC_NOTIFICATIONS_ENABLED = _env_bool(
+    "ORDER_ASYNC_NOTIFICATIONS_ENABLED", default=False
+)
+ORDER_INSTANT_EMAIL_ENABLED = _env_bool("ORDER_INSTANT_EMAIL_ENABLED", default=True)
 
-# Sync retry attempts for transient failures
-ORDER_NOTIFICATION_SYNC_RETRY_ATTEMPTS = int(os.getenv('ORDER_NOTIFICATION_SYNC_RETRY_ATTEMPTS', '2'))
+# -----------------------------------------------------------------------------
+# Celery (optional async)
+# -----------------------------------------------------------------------------
 
-# DISABLED: Async notifications via Celery (emails are now synchronous)
-ORDER_ASYNC_NOTIFICATIONS_ENABLED = os.getenv('ORDER_ASYNC_NOTIFICATIONS_ENABLED', 'false').lower() in ('1', 'true', 'yes')
-
-# ENABLED: Instant email delivery (no transaction.on_commit delay)
-ORDER_INSTANT_EMAIL_ENABLED = os.getenv('ORDER_INSTANT_EMAIL_ENABLED', 'true').lower() in ('1', 'true', 'yes')
-
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', os.getenv('REDIS_URL', 'memory://'))
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', os.getenv('REDIS_URL', 'cache+memory://'))
-CELERY_TASK_ALWAYS_EAGER = os.getenv('CELERY_TASK_ALWAYS_EAGER', 'false').lower() in ('1', 'true', 'yes')
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "memory://"))
+CELERY_RESULT_BACKEND = os.getenv(
+    "CELERY_RESULT_BACKEND",
+    os.getenv("REDIS_URL", "cache+memory://"),
+)
+CELERY_TASK_ALWAYS_EAGER = _env_bool("CELERY_TASK_ALWAYS_EAGER", default=True)
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_TASK_TRACK_STARTED = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-CELERY_TASK_SOFT_TIME_LIMIT = int(os.getenv('CELERY_TASK_SOFT_TIME_LIMIT', '240'))
-CELERY_TASK_TIME_LIMIT = int(os.getenv('CELERY_TASK_TIME_LIMIT', '300'))
-CELERY_TASK_DEFAULT_QUEUE = os.getenv('CELERY_TASK_DEFAULT_QUEUE', 'default')
-CELERY_NOTIFICATION_QUEUE = os.getenv('CELERY_NOTIFICATION_QUEUE', 'notifications')
+CELERY_TASK_SOFT_TIME_LIMIT = _env_int("CELERY_TASK_SOFT_TIME_LIMIT", 240)
+CELERY_TASK_TIME_LIMIT = _env_int("CELERY_TASK_TIME_LIMIT", 300)
+CELERY_TASK_DEFAULT_QUEUE = os.getenv("CELERY_TASK_DEFAULT_QUEUE", "default")
+CELERY_NOTIFICATION_QUEUE = os.getenv("CELERY_NOTIFICATION_QUEUE", "notifications")
 CELERY_TASK_ROUTES = {
-    'orders.tasks.send_email_notification': {'queue': CELERY_NOTIFICATION_QUEUE},
-    'orders.tasks.send_whatsapp_notification': {'queue': CELERY_NOTIFICATION_QUEUE},
+    "orders.tasks.send_email_notification": {"queue": CELERY_NOTIFICATION_QUEUE},
+    "orders.tasks.send_whatsapp_notification": {"queue": CELERY_NOTIFICATION_QUEUE},
 }
 
-LOGGING['loggers']['django.core.mail'] = {
-    'handlers': ['console'],
-    'level': 'DEBUG',
-    'propagate': False,
-}
+# -----------------------------------------------------------------------------
+# Payments & integrations
+# -----------------------------------------------------------------------------
 
-# Razorpay keys are loaded from PaymentSettings in the database (admin). Env vars here are unused
-# but kept for documentation / future sync scripts.
-RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
-RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
 
-# Production validation: Ensure required keys are configured
+WHATSAPP_NUMBER = os.getenv("WHATSAPP_NUMBER", "919037626684")
+WHATSAPP_DEFAULT_MESSAGE = os.getenv(
+    "WHATSAPP_DEFAULT_MESSAGE",
+    "Hi, I am interested in your products. Please share more details.",
+)
+
+# -----------------------------------------------------------------------------
+# Production validation (after DATABASES and EMAIL_BACKEND exist)
+# -----------------------------------------------------------------------------
+
 if not DEBUG:
-    missing_keys = []
-    if not RAZORPAY_KEY_ID or RAZORPAY_KEY_ID in ('', 'your_razorpay_key_id', 'your_razorpay_key_secret'):
-        missing_keys.append('RAZORPAY_KEY_ID')
-    if not RAZORPAY_KEY_SECRET or RAZORPAY_KEY_SECRET in ('', 'your_razorpay_key_id', 'your_razorpay_key_secret'):
-        missing_keys.append('RAZORPAY_KEY_SECRET')
-    
-    if missing_keys:
+    _missing = []
+    if not RAZORPAY_KEY_ID or RAZORPAY_KEY_ID in ("", "your_razorpay_key_id"):
+        _missing.append("RAZORPAY_KEY_ID")
+    if not RAZORPAY_KEY_SECRET or RAZORPAY_KEY_SECRET in ("", "your_razorpay_key_secret"):
+        _missing.append("RAZORPAY_KEY_SECRET")
+    if _missing:
         raise ImproperlyConfigured(
-            f'Production requires: {", ".join(missing_keys)}. '
-            'Set these in environment variables or .env file.'
+            f"Production requires: {', '.join(_missing)}. "
+            "Set these in the environment or .env file."
         )
 
-# WhatsApp Configuration
-WHATSAPP_NUMBER = os.getenv('WHATSAPP_NUMBER', '919037626684')
-WHATSAPP_DEFAULT_MESSAGE = os.getenv('WHATSAPP_DEFAULT_MESSAGE', 'Hi, I am interested in your products. Please share more details.')
+    if "console" in EMAIL_BACKEND and not _env_bool(
+        "ALLOW_CONSOLE_EMAIL_IN_PRODUCTION", default=False
+    ):
+        raise ImproperlyConfigured(
+            "Production is using the console email backend (no delivery). "
+            "Configure SendGrid or Gmail SMTP. (ALLOW_CONSOLE_EMAIL_IN_PRODUCTION=true is staging-only — remove for real launch.)"
+        )
 
-if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    # 🔒 SECURITY FIX: Enforce HTTPS in production (set to True by default)
-    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('true', '1', 'yes')
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    # 🔒 SECURITY FIX: Additional security headers
-    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
-    PERMISSIONS_POLICY = {
-        'geolocation': '()',
-        'microphone': '()',
-        'camera': '()',
-    }
-else:
-    SECURE_SSL_REDIRECT = False
+    if DOMAIN in ("127.0.0.1:8000", "127.0.0.1", "localhost:8000", "localhost"):
+        warnings.warn(
+            "DOMAIN is still a development default. Set DOMAIN in the environment to your public host "
+            "(e.g. your-app.onrender.com) so password-reset and other email links point at the real site.",
+            UserWarning,
+            stacklevel=2,
+        )
 
-# ===================================================================
-# CACHING CONFIGURATION
-# ===================================================================
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'syafra-cache',
-        'TIMEOUT': 300,
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,
-        }
-    }
-}
+    if SECURE_SSL_REDIRECT and not CSRF_TRUSTED_ORIGINS:
+        warnings.warn(
+            "CSRF_TRUSTED_ORIGINS is empty while SECURE_SSL_REDIRECT is enabled — "
+            "logins, forms, and payments will fail CSRF checks. "
+            "Set CSRF_TRUSTED_ORIGINS (e.g. https://your-app.onrender.com).",
+            UserWarning,
+            stacklevel=2,
+        )

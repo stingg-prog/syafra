@@ -85,27 +85,28 @@ def queue_whatsapp_notification(order, status):
 
 
 def queue_email_notification(order, email_type, status_override=None):
+    """Send email IMMEDIATELY - no transaction.on_commit delay."""
     try:
         correlation_id = get_correlation_id()
         
-        use_instant = getattr(settings, 'ORDER_INSTANT_EMAIL_ENABLED', True)
+        from .services.email_service import _get_notification_fields, send_notification_email
         
-        if use_instant:
-            _send_email_instant(
-                order.pk,
-                email_type,
-                status_override,
-                correlation_id=correlation_id,
-            )
-        else:
-            _send_email_notification_with_fallback(
-                order.pk,
-                email_type,
-                status_override,
-                correlation_id=correlation_id,
-            )
+        # Status emails can be sent multiple times (once per status change)
+        # Only check sent_field for confirmation/payment emails
+        if email_type in ('confirmation', 'payment'):
+            sent_field, _, _ = _get_notification_fields(email_type)
+            if Order.objects.filter(pk=order.pk).values_list(sent_field, flat=True).first():
+                logger.info(f"EMAIL ALREADY SENT | type={email_type} | order={order.pk} | skipping")
+                return
+        
+        _send_email_instant(
+            order.pk,
+            email_type,
+            status_override,
+            correlation_id=correlation_id,
+        )
     except Exception as exc:
-        logger.error("Failed to queue email notification for order %s: %s", order.id, exc)
+        logger.error("Failed to send instant email for order %s: %s", order.id, exc)
 
 
 def _send_email_notification_with_fallback(order_pk, email_type, status_override=None, correlation_id=None):

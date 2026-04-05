@@ -181,17 +181,27 @@ def _claim_notification_email(order_id, email_type):
         .filter(claim_filter)
         .update(**{claim_field: claim_started_at})
     )
+    if not claimed and FORCE_EMAIL_RETRY:
+        order_obj = Order.objects.filter(pk=order_id).first()
+        if order_obj:
+            existing_claimed_at = getattr(order_obj, claim_field, None)
+            if existing_claimed_at is not None:
+                claim_age = claim_started_at - existing_claimed_at
+                if claim_age >= _get_email_claim_timeout():
+                    logger.warning(f"FORCE RESET: Stale claim detected for order {order_id}, {email_type} email (age: {claim_age})")
+                    Order.objects.filter(pk=order_id).update(**{claim_field: None})
+                    expires_before = timezone.now() - _get_email_claim_timeout()
+                    claim_filter = (
+                        Q(**{f'{claim_field}__isnull': True})
+                        | Q(**{f'{claim_field}__lt': expires_before})
+                    )
+                    claimed = (
+                        Order.objects.filter(pk=order_id, **{sent_field: False})
+                        .filter(claim_filter)
+                        .update(**{claim_field: claim_started_at})
+                    )
     if not claimed:
-        if FORCE_EMAIL_RETRY:
-            logger.warning(f"FORCE RESET: Stuck claim detected for order {order_id}, {email_type} email")
-            Order.objects.filter(pk=order_id).update(**{claim_field: None})
-            claimed = (
-                Order.objects.filter(pk=order_id, **{sent_field: False})
-                .filter(claim_filter)
-                .update(**{claim_field: claim_started_at})
-            )
-        if not claimed:
-            return None, None
+        return None, None
 
     order = (
         Order.objects.select_related('user')
@@ -275,18 +285,22 @@ def send_notification_email(order_id, email_type, status=None, raise_on_failure=
         if not order:
             logger.warning(f"EMAIL CLAIM BLOCKED for order {order_id}, {email_type}")
             
-            order_obj = Order.objects.filter(pk=order_id).first()
-            
-            if order_obj and not getattr(order_obj, _sent_field):
-                logger.warning(f"RESETTING STUCK EMAIL CLAIM for order {order_id}, {email_type}")
-                Order.objects.filter(pk=order_id).update(**{_claim_field: None})
-                
-                try:
-                    order, claim_started_at = _claim_notification_email(order_id, email_type)
-                    logger.info(f"RETRY AFTER CLAIM RESET SUCCESS | order={order_id}, {email_type}")
-                except Order.DoesNotExist:
-                    logger.warning("Skipping %s email for missing order %s after reset", email_type, order_id)
-                    return False
+            if FORCE_EMAIL_RETRY:
+                order_obj = Order.objects.filter(pk=order_id).first()
+                if order_obj:
+                    existing_claimed_at = getattr(order_obj, _claim_field, None)
+                    if existing_claimed_at is not None:
+                        claim_age = timezone.now() - existing_claimed_at
+                        if claim_age >= _get_email_claim_timeout():
+                            logger.warning(f"RESETTING STALE EMAIL CLAIM for order {order_id}, {email_type} (age: {claim_age})")
+                            Order.objects.filter(pk=order_id).update(**{_claim_field: None})
+                            
+                            try:
+                                order, claim_started_at = _claim_notification_email(order_id, email_type)
+                                logger.info(f"RETRY AFTER STALE CLAIM RESET SUCCESS | order={order_id}, {email_type}")
+                            except Order.DoesNotExist:
+                                logger.warning("Skipping %s email for missing order %s after reset", email_type, order_id)
+                                return False
             
             if not order:
                 if Order.objects.filter(pk=order_id).exists():

@@ -1,0 +1,26 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Connect this repo in Render → New → Blueprint (or add these fields manually on a Web Service).
+#
+# Before clicking Deploy, confirm:
+#   - PostgreSQL linked in Render
+#   - DATABASE_URL exists (from linked DB)
+#   - DATABASE_SSL_REQUIRE=true on Render (or omit; default true when DEBUG=False — never use false on Render)
+#   - Pre-deploy: python manage.py migrate --noinput
+#   - After deploy: logs show migration apply / "Applying ... OK" (verify a real DB run on Render)
+#   - Build: pip install -r requirements.txt && python manage.py collectstatic --noinput
+#   - Start: gunicorn syafra.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+#   - SECRET_KEY strong (env)
+#   - ALLOWED_HOSTS correct (env)
+#   - CSRF_TRUSTED_ORIGINS set (env, https://...)
+#   - DOMAIN=your-app.onrender.com (password reset & email links)
+#   - SendGrid/SMTP configured; do NOT set ALLOW_CONSOLE_EMAIL_IN_PRODUCTION for real production
+#   - Web service Root Directory: syafra (if repo root is parent of this folder)
+
+services:
+    type: web
+    name: syafra
+    runtime: python
+    rootDir: syafra
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: gunicorn syafra.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    preDeployCommand: python manage.py migrate --noinput

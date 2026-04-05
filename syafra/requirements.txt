@@ -1,9 +1,8 @@
 # Django Framework
 Django>=5.0,<6.1
 
-# Database
+# Database (PostgreSQL on Render: DATABASE_URL + psycopg2-binary)
 psycopg2-binary>=2.9.9
-mysqlclient>=2.2.0
 
 # Production Server
 gunicorn>=21.0.0
@@ -11,8 +10,11 @@ gunicorn>=21.0.0
 # Static Files
 whitenoise>=6.6.0
 
-# Database URL Parser
+# Parse DATABASE_URL for Django DATABASES
 dj-database-url>=2.1.0
+
+# Redis (optional: production cache when REDIS_URL is set)
+redis>=5.0.0
 
 # Image Processing
 Pillow>=10.0.0
