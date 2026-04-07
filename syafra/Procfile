@@ -1,8 +1,8 @@
 # SYAFRA Production Deployment
 # ================================
 
-# Run migrations on deployment
-release: python manage.py migrate --noinput
+# Run migrations and optional one-time admin password sync on deployment
+release: python manage.py migrate --noinput && python manage.py sync_admin_password
 
 # Start Gunicorn web server (Bind to $PORT for Render)
 web: gunicorn syafra.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
