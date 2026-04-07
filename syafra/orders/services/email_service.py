@@ -32,11 +32,67 @@ def _get_email_claim_timeout():
     return timedelta(seconds=max(getattr(settings, 'ORDER_EMAIL_CLAIM_TIMEOUT_SECONDS', 900), 1))
 
 
+def _build_order_email_context(order, **extra_context):
+    currency = get_currency_symbol()
+    context = {
+        'order': order,
+        'items': order.items.select_related('product').all(),
+        'currency': currency,
+        'customer_name': order.customer_name,
+        'order_date': order.created_at,
+        'payment': order.latest_payment,
+        'store_email': settings.DEFAULT_FROM_EMAIL,
+    }
+    context.update(extra_context)
+    return context
+
+
+def _send_html_email(*, subject, template_name, context, recipient_list):
+    if not recipient_list:
+        logger.warning("Skipping email because no recipients were provided | subject=%s", subject)
+        return False
+
+    html_message = render_to_string(template_name, context)
+    plain_message = strip_tags(html_message)
+
+    try:
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=recipient_list,
+            html_message=html_message,
+            fail_silently=False,
+        )
+        return True
+    except Exception as exc:
+        logger.error(
+            "Email delivery failed | subject=%s | recipients=%s | error=%s",
+            subject,
+            ",".join(recipient_list),
+            exc,
+        )
+        if settings.DEBUG:
+            raise
+        return False
+
+
+def _get_admin_notification_recipients():
+    recipients = list(getattr(settings, 'ORDER_ALERT_EMAILS', []))
+    if recipients:
+        return recipients
+
+    admins = getattr(settings, 'ADMINS', [])
+    return [email for _name, email in admins if email]
+
+
 def _get_notification_fields(email_type):
     if email_type == 'confirmation':
         return 'confirmation_email_sent', 'confirmation_email_claimed_at', send_order_confirmation_email
     if email_type == 'payment':
         return 'payment_email_sent', 'payment_email_claimed_at', send_payment_confirmation_email
+    if email_type == 'admin':
+        return 'admin_notification_sent', 'admin_notification_claimed_at', send_admin_new_order_alert_email
     raise ValueError(f'Unsupported notification type: {email_type}')
 
 
@@ -47,26 +103,14 @@ def send_order_confirmation_email(order):
             logger.warning("Cannot send confirmation email | order_id=%s | no email address", order.id)
             return False
 
-        currency = get_currency_symbol()
-        context = {
-            'order': order,
-            'items': order.items.select_related('product').all(),
-            'currency': currency,
-            'customer_name': order.customer_name,
-            'order_date': order.created_at,
-        }
-
-        html_message = render_to_string('emails/order_confirmation.html', context)
-        plain_message = strip_tags(html_message)
-
-        send_mail(
+        sent = _send_html_email(
             subject=f'Order Confirmation - Order #{order.id}',
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            template_name='emails/order_confirmation.html',
+            context=_build_order_email_context(order),
             recipient_list=[order.email],
-            html_message=html_message,
-            fail_silently=False,
         )
+        if not sent:
+            return False
 
         logger.info("Order confirmation email sent | order_id=%s | user_id=%s", order.id, order.user_id)
         return True
@@ -83,27 +127,18 @@ def send_payment_confirmation_email(order):
             logger.warning("Cannot send payment email | order_id=%s | no email address", order.id)
             return False
 
-        currency = get_currency_symbol()
-        context = {
-            'order': order,
-            'items': order.items.select_related('product').all(),
-            'currency': currency,
-            'customer_name': order.customer_name,
-            'razorpay_payment_id': order.razorpay_payment_id,
-            'total_price': order.total_price,
-        }
-
-        html_message = render_to_string('emails/payment_confirmation.html', context)
-        plain_message = strip_tags(html_message)
-
-        send_mail(
+        sent = _send_html_email(
             subject=f'Payment Confirmed - Order #{order.id}',
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            template_name='emails/payment_confirmation.html',
+            context=_build_order_email_context(
+                order,
+                razorpay_payment_id=order.razorpay_payment_id,
+                total_price=order.total_price,
+            ),
             recipient_list=[order.email],
-            html_message=html_message,
-            fail_silently=False,
         )
+        if not sent:
+            return False
 
         logger.info("Payment confirmation email sent | order_id=%s | user_id=%s", order.id, order.user_id)
         return True
@@ -120,33 +155,27 @@ def send_order_status_update_email(order, status):
             logger.warning("Cannot send status email | order_id=%s | no email address", order.id)
             return False
 
-        currency = get_currency_symbol()
         status_messages = {
+            'paid': 'Your payment has been received and your order is now marked as paid.',
+            'packed': 'Your order has been packed and is getting ready for shipment.',
             'confirmed': 'Your order has been confirmed and is being prepared.',
             'processing': 'Your order is being processed and will be shipped soon.',
             'shipped': 'Your order has been shipped and is on its way.',
             'delivered': 'Your order has been delivered successfully.',
             'cancelled': 'Your order has been cancelled.',
         }
-        context = {
-            'order': order,
-            'status_message': status_messages.get(status, f'Status updated to {order.get_status_display()}.'),
-            'status': status,
-            'currency': currency,
-            'customer_name': order.customer_name,
-        }
-
-        html_message = render_to_string('emails/order_status_update.html', context)
-        plain_message = strip_tags(html_message)
-
-        send_mail(
+        sent = _send_html_email(
             subject=f'Order Update - Order #{order.id} is {order.get_status_display()}',
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            template_name='emails/order_status_update.html',
+            context=_build_order_email_context(
+                order,
+                status_message=status_messages.get(status, f'Status updated to {order.get_status_display()}.'),
+                status=status,
+            ),
             recipient_list=[order.email],
-            html_message=html_message,
-            fail_silently=False,
         )
+        if not sent:
+            return False
 
         logger.info(
             "Order status update email sent | order_id=%s | user_id=%s | status=%s",
@@ -163,6 +192,30 @@ def send_order_status_update_email(order, status):
             status,
             exc,
         )
+        return False
+
+
+def send_admin_new_order_alert_email(order):
+    """Send the new paid-order alert email to store admins."""
+    recipients = _get_admin_notification_recipients()
+    if not recipients:
+        logger.warning("Skipping admin order alert because ORDER_ALERT_EMAILS/ADMINS is empty | order_id=%s", order.id)
+        return False
+
+    try:
+        sent = _send_html_email(
+            subject=f'New Paid Order - #{order.id} - SYAFRA',
+            template_name='emails/admin_new_order_alert.html',
+            context=_build_order_email_context(order),
+            recipient_list=recipients,
+        )
+        if not sent:
+            return False
+
+        logger.info("Admin order alert email sent | order_id=%s | recipients=%s", order.id, ",".join(recipients))
+        return True
+    except Exception as exc:
+        logger.error("Failed to send admin order alert email | order_id=%s | error=%s", order.id, exc)
         return False
 
 
@@ -273,7 +326,7 @@ def send_notification_email(order_id, email_type, status=None, raise_on_failure=
                 raise
             return False
 
-    if email_type in {'confirmation', 'payment'}:
+    if email_type in {'confirmation', 'payment', 'admin'}:
         _sent_field, _claim_field, sender = _get_notification_fields(email_type)
 
         try:

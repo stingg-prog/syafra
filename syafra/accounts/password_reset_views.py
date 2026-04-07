@@ -7,9 +7,9 @@ from django.contrib.auth.views import PasswordResetView as BasePasswordResetView
 from django.contrib.auth.views import PasswordResetDoneView as BasePasswordResetDoneView
 from django.contrib.auth.views import PasswordResetCompleteView as BasePasswordResetCompleteView
 from django.contrib.auth.views import PasswordResetConfirmView as BasePasswordResetConfirmView
+from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.conf import settings
-from django.http import HttpResponse
 from .forms import PasswordResetForm
 
 logger = logging.getLogger(__name__)
@@ -32,32 +32,26 @@ class CustomPasswordResetView(BasePasswordResetView):
     success_url = reverse_lazy('accounts:password_reset_done')
     html_email_template_name = 'registration/password_reset_email.html'
     fail_silently = False
-    
-    def get_from_email(self):
-        return settings.DEFAULT_FROM_EMAIL
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['domain'] = settings.DOMAIN
-        context['protocol'] = 'https' if settings.USE_HTTPS else 'http'
-        return context
-    
-    def get_extra_email_context(self):
-        return {
-            'domain': settings.DOMAIN,
-            'protocol': 'https' if settings.USE_HTTPS else 'http',
-        }
-    
-    def send_mail(self, *args, **kwargs):
-        subject = args[0] if args else kwargs.get('subject', 'Password Reset')
-        to_email = args[1] if len(args) > 1 else kwargs.get('to_email', 'Unknown')
-        logger.info(f"PASSWORD RESET EMAIL SENT INSTANTLY | to={to_email} | subject={subject}")
-        try:
-            super().send_mail(*args, **kwargs)
-            logger.info(f"PASSWORD RESET EMAIL DELIVERED | to={to_email}")
-        except Exception as e:
-            logger.error(f"PASSWORD RESET EMAIL FAILED | to={to_email} | error={e}")
-            raise
+
+    def form_valid(self, form):
+        recipient = form.cleaned_data.get('email', '')
+        logger.info("PASSWORD RESET REQUEST RECEIVED | to=%s", recipient)
+        form.save(
+            use_https=settings.USE_HTTPS,
+            token_generator=self.token_generator,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            email_template_name=self.email_template_name,
+            subject_template_name=self.subject_template_name,
+            request=self.request,
+            html_email_template_name=self.html_email_template_name,
+            extra_email_context={
+                'domain': settings.DOMAIN,
+                'protocol': 'https' if settings.USE_HTTPS else 'http',
+            },
+            domain_override=settings.DOMAIN,
+        )
+        logger.info("PASSWORD RESET EMAIL QUEUED | to=%s", recipient)
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class NoCachePasswordResetConfirmView(BasePasswordResetConfirmView):

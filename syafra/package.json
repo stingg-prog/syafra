@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build:css": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./static/css/input.css -o ./static/css/output.css",
-    "build:css:minify": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./static/css/input.css -o ./static/css/output.css --minify",
-    "watch:css": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./static/css/input.css -o ./static/css/output.css --watch"
+    "build:css": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./assets/css/input.css -o ./static/css/output.css",
+    "build:css:minify": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./assets/css/input.css -o ./static/css/output.css --minify",
+    "watch:css": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./assets/css/input.css -o ./static/css/output.css --watch"
   },
   "keywords": [],
   "author": "",

@@ -1,6 +1,5 @@
 import logging
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import DecimalField, F, Sum, Value
 from django.db.models.functions import Coalesce
@@ -9,9 +8,13 @@ from django.dispatch import receiver
 
 from syafra.logging_context import get_correlation_id
 
-from .models import Order, OrderItem
+from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES
 
 logger = logging.getLogger(__name__)
+
+
+def _is_paid_fulfillment_stage(status, payment_status):
+    return payment_status == "paid" and status in PAID_FULFILLMENT_STATUSES
 
 
 def _dispatch_whatsapp_notification(order_pk, status, correlation_id=None):
@@ -45,9 +48,9 @@ def _schedule_on_commit_once(kind, identifier, callback):
     connection = transaction.get_connection()
 
     key = (kind, identifier)
-    for queued_callback in getattr(connection, 'run_on_commit', []):
+    for queued_callback in getattr(connection, "run_on_commit", []):
         queued_func = queued_callback[1]
-        if getattr(queued_func, '_orders_on_commit_key', None) == key:
+        if getattr(queued_func, "_orders_on_commit_key", None) == key:
             logger.debug("Skipping duplicate on-commit registration for %s", key)
             return False
 
@@ -67,7 +70,7 @@ def queue_whatsapp_notification(order, status):
     try:
         correlation_id = get_correlation_id()
         _schedule_on_commit_once(
-            'whatsapp',
+            "whatsapp",
             (order.pk, status),
             lambda order_pk=order.pk, status=status, correlation_id=correlation_id: _dispatch_whatsapp_notification(
                 order_pk,
@@ -85,20 +88,18 @@ def queue_whatsapp_notification(order, status):
 
 
 def queue_email_notification(order, email_type, status_override=None):
-    """Send email IMMEDIATELY - no transaction.on_commit delay."""
+    """Send email immediately without waiting for transaction.on_commit."""
     try:
         correlation_id = get_correlation_id()
-        
-        from .services.email_service import _get_notification_fields, send_notification_email
-        
-        # Status emails can be sent multiple times (once per status change)
-        # Only check sent_field for confirmation/payment emails
-        if email_type in ('confirmation', 'payment'):
+
+        from .services.email_service import _get_notification_fields
+
+        if email_type in ("confirmation", "payment", "admin"):
             sent_field, _, _ = _get_notification_fields(email_type)
             if Order.objects.filter(pk=order.pk).values_list(sent_field, flat=True).first():
-                logger.info(f"EMAIL ALREADY SENT | type={email_type} | order={order.pk} | skipping")
+                logger.info("Email already sent | type=%s | order=%s | skipping", email_type, order.pk)
                 return
-        
+
         _send_email_instant(
             order.pk,
             email_type,
@@ -111,33 +112,53 @@ def queue_email_notification(order, email_type, status_override=None):
 
 def _send_email_notification_with_fallback(order_pk, email_type, status_override=None, correlation_id=None):
     try:
-        sent_async = _enqueue_async_email_notification(order_pk, email_type, status_override, correlation_id=correlation_id)
-        logger.info(f"Email async queued: {sent_async} for order {order_pk}")
-        
+        sent_async = _enqueue_async_email_notification(
+            order_pk,
+            email_type,
+            status_override,
+            correlation_id=correlation_id,
+        )
+        logger.info("Email async queued: %s for order %s", sent_async, order_pk)
+
         if not sent_async:
             try:
-                _dispatch_email_notification(order_pk, email_type, status_override, correlation_id=correlation_id)
+                _dispatch_email_notification(
+                    order_pk,
+                    email_type,
+                    status_override,
+                    correlation_id=correlation_id,
+                )
             except Exception:
-                logger.exception(f"Fallback email send failed for order {order_pk}")
+                logger.exception("Fallback email send failed for order %s", order_pk)
     except Exception:
-        logger.exception(f"Email notification failed completely for order {order_pk}, attempting sync fallback")
+        logger.exception("Email notification failed completely for order %s, attempting sync fallback", order_pk)
         try:
-            _dispatch_email_notification(order_pk, email_type, status_override, correlation_id=correlation_id)
+            _dispatch_email_notification(
+                order_pk,
+                email_type,
+                status_override,
+                correlation_id=correlation_id,
+            )
         except Exception:
-            logger.exception(f"Emergency fallback email send failed for order {order_pk}")
+            logger.exception("Emergency fallback email send failed for order %s", order_pk)
 
 
 def _send_email_instant(order_pk, email_type, status_override=None, correlation_id=None):
-    """Send email INSTANTLY via sync dispatch - no async delay, no retries for speed."""
+    """Send email via the synchronous path for checkout-critical notifications."""
     from syafra.logging_context import correlation_id_context
     from .services.email_service import EmailDeliveryError, send_notification_email
-    
+
     with correlation_id_context(correlation_id):
-        logger.info(f"EMAIL SENT INSTANTLY | type={email_type} | order={order_pk} | correlation_id={correlation_id}")
-        
-        if email_type in ['confirmation', 'status']:
-            logger.info(f"CRITICAL EMAIL - FORCE SYNC | type={email_type} | order={order_pk}")
-        
+        logger.info(
+            "Email send started | type=%s | order=%s | correlation_id=%s",
+            email_type,
+            order_pk,
+            correlation_id,
+        )
+
+        if email_type in ["confirmation", "status"]:
+            logger.info("Critical email forced to sync path | type=%s | order=%s", email_type, order_pk)
+
         try:
             sent = send_notification_email(
                 order_pk,
@@ -145,12 +166,10 @@ def _send_email_instant(order_pk, email_type, status_override=None, correlation_
                 status=status_override,
                 raise_on_failure=True,
             )
-            
-            logger.info(f"EMAIL SENT SUCCESS | type={email_type} | order={order_pk} | sent={sent}")
-            
+            logger.info("Email send success | type=%s | order=%s | sent=%s", email_type, order_pk, sent)
         except EmailDeliveryError as exc:
-            logger.warning(f"Email delivery failed for order {order_pk}: {exc}")
-            logger.info(f"RETRYING SYNC | type={email_type} | order={order_pk}")
+            logger.warning("Email delivery failed for order %s: %s", order_pk, exc)
+            logger.info("Retrying sync email send | type=%s | order=%s", email_type, order_pk)
             try:
                 sent = send_notification_email(
                     order_pk,
@@ -158,12 +177,12 @@ def _send_email_instant(order_pk, email_type, status_override=None, correlation_
                     status=status_override,
                     raise_on_failure=True,
                 )
-                logger.info(f"EMAIL RETRY SUCCESS | type={email_type} | order={order_pk} | sent={sent}")
+                logger.info("Email retry success | type=%s | order=%s | sent=%s", email_type, order_pk, sent)
             except Exception as retry_exc:
-                logger.error(f"EMAIL RETRY FAILED | type={email_type} | order={order_pk}: {retry_exc}")
+                logger.error("Email retry failed | type=%s | order=%s | error=%s", email_type, order_pk, retry_exc)
                 raise
         except Exception as exc:
-            logger.exception(f"Failed to send instant email for order {order_pk}: {exc}")
+            logger.exception("Failed to send instant email for order %s: %s", order_pk, exc)
             raise
 
 
@@ -190,10 +209,16 @@ def handle_order_notifications(sender, instance, created, **kwargs):
     if created:
         logger.info("New order created | Order #%s | User: %s", instance.id, instance.user.id)
 
-        if instance.status == 'confirmed' and instance.payment_status == 'paid':
-            logger.info(f"🔥 PAYMENT DETECTED (created) → order={instance.id}, status={instance.status}, payment={instance.payment_status}")
+        if _is_paid_fulfillment_stage(instance.status, instance.payment_status):
+            logger.info(
+                "Paid order detected on create | order=%s | status=%s | payment=%s",
+                instance.id,
+                instance.status,
+                instance.payment_status,
+            )
             try:
                 from .services.order_service import ensure_paid_order_stock_reduced
+
                 if not instance.stock_reduced:
                     ensure_paid_order_stock_reduced(instance)
             except Exception as exc:
@@ -202,24 +227,25 @@ def handle_order_notifications(sender, instance, created, **kwargs):
                     instance.id,
                     exc,
                 )
-            queue_email_notification(instance, 'confirmation')
-            queue_email_notification(instance, 'payment')
-            queue_whatsapp_notification(instance, 'created')
-            logger.info("🔥 EMAILS TRIGGERED for new paid order #%s", instance.id)
+            queue_email_notification(instance, "confirmation")
+            queue_email_notification(instance, "payment")
+            queue_email_notification(instance, "admin")
+            queue_whatsapp_notification(instance, "created")
+            logger.info("Notifications triggered for new paid order #%s", instance.id)
         return
 
-    if not hasattr(instance, '_previous_status'):
+    if not hasattr(instance, "_previous_status"):
         instance._previous_status = None
         instance._previous_payment_status = None
 
     old_status = instance._previous_status
     new_status = instance.status
-    prev_pay = getattr(instance, '_previous_payment_status', None)
+    prev_pay = getattr(instance, "_previous_payment_status", None)
 
     if old_status is None:
-        if hasattr(instance, '_admin_old_status'):
+        if hasattr(instance, "_admin_old_status"):
             old_status = instance._admin_old_status
-            prev_pay = getattr(instance, '_admin_old_payment_status', None)
+            prev_pay = getattr(instance, "_admin_old_payment_status", None)
         else:
             try:
                 old_order = Order.objects.get(pk=instance.pk)
@@ -229,20 +255,38 @@ def handle_order_notifications(sender, instance, created, **kwargs):
                 old_status = None
                 prev_pay = None
 
-    logger.info("Status check | Order #%s | old_status=%s, new_status=%s | old_pay=%s, new_pay=%s", 
-                 instance.id, old_status, new_status, prev_pay, instance.payment_status)
+    logger.info(
+        "Status check | Order #%s | old_status=%s, new_status=%s | old_pay=%s, new_pay=%s",
+        instance.id,
+        old_status,
+        new_status,
+        prev_pay,
+        instance.payment_status,
+    )
 
     if old_status == new_status and prev_pay == instance.payment_status:
         logger.info("No status change for order #%s, skipping notifications", instance.id)
         return
 
-    logger.info("🔥 STATUS CHANGE DETECTED | Order #%s | %s→%s, pay:%s→%s", 
-                 instance.id, old_status, new_status, prev_pay, instance.payment_status)
+    logger.info(
+        "Status change detected | Order #%s | %s -> %s | pay:%s -> %s",
+        instance.id,
+        old_status,
+        new_status,
+        prev_pay,
+        instance.payment_status,
+    )
 
-    if instance.status == 'confirmed' and instance.payment_status == 'paid':
-        logger.info(f"🔥 PAYMENT CONFIRMED TRIGGER → order={instance.id}")
+    entered_paid_fulfillment = not _is_paid_fulfillment_stage(old_status, prev_pay) and _is_paid_fulfillment_stage(
+        instance.status,
+        instance.payment_status,
+    )
+
+    if entered_paid_fulfillment:
+        logger.info("Paid confirmation trigger | order=%s", instance.id)
         try:
             from .services.order_service import ensure_paid_order_stock_reduced
+
             if not instance.stock_reduced:
                 ensure_paid_order_stock_reduced(instance)
         except Exception as exc:
@@ -251,27 +295,24 @@ def handle_order_notifications(sender, instance, created, **kwargs):
                 instance.id,
                 exc,
             )
-        queue_email_notification(instance, 'confirmation')
-        queue_email_notification(instance, 'payment')
-        queue_whatsapp_notification(instance, 'created')
-        logger.info("🔥 EMAILS TRIGGERED for paid order #%s", instance.id)
+        queue_email_notification(instance, "confirmation")
+        queue_email_notification(instance, "payment")
+        queue_email_notification(instance, "admin")
+        queue_whatsapp_notification(instance, "created")
+        logger.info("Notifications triggered for paid order #%s", instance.id)
         return
 
-    if new_status == 'confirmed':
-        queue_email_notification(instance, 'status', status_override='confirmed')
-        queue_whatsapp_notification(instance, 'processing')
-        logger.info("Confirmed notifications queued for order #%s", instance.id)
-    elif new_status == 'processing':
-        queue_email_notification(instance, 'status', status_override='processing')
-        queue_whatsapp_notification(instance, 'processing')
-        logger.info("Processing notifications queued for order #%s", instance.id)
-    elif new_status == 'shipped':
-        queue_email_notification(instance, 'status', status_override='shipped')
-        queue_whatsapp_notification(instance, 'shipped')
+    if new_status == "packed":
+        queue_email_notification(instance, "status", status_override="packed")
+        queue_whatsapp_notification(instance, "packed")
+        logger.info("Packed notifications queued for order #%s", instance.id)
+    elif new_status == "shipped":
+        queue_email_notification(instance, "status", status_override="shipped")
+        queue_whatsapp_notification(instance, "shipped")
         logger.info("Shipped notifications queued for order #%s", instance.id)
-    elif new_status == 'delivered':
-        queue_email_notification(instance, 'status', status_override='delivered')
-        queue_whatsapp_notification(instance, 'delivered')
+    elif new_status == "delivered":
+        queue_email_notification(instance, "status", status_override="delivered")
+        queue_whatsapp_notification(instance, "delivered")
         logger.info("Delivered notifications queued for order #%s", instance.id)
 
 
@@ -282,13 +323,13 @@ def update_order_total(sender, instance, **kwargs):
         total = order.items.aggregate(
             total=Coalesce(
                 Sum(
-                    F('price') * F('quantity'),
+                    F("price") * F("quantity"),
                     output_field=DecimalField(max_digits=10, decimal_places=2),
                 ),
                 Value(0),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             )
-        )['total']
+        )["total"]
         Order.objects.filter(pk=order.pk).update(total_price=total)
         logger.debug("Order total updated | Order #%s | New total: %s", order.id, total)
     except Exception as exc:

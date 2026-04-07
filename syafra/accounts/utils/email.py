@@ -62,17 +62,11 @@ def send_password_reset_email(user, request=None):
     
     try:
         if request:
-            protocol = 'https' if request.is_secure() else 'http'
-            domain = request.get_host()
+            protocol = 'https' if getattr(settings, 'USE_HTTPS', request.is_secure()) else 'http'
+            domain = getattr(settings, 'DOMAIN', '').strip() or request.get_host()
         else:
             protocol = 'https' if settings.USE_HTTPS else 'http'
-            allowed_hosts = settings.ALLOWED_HOSTS
-            if isinstance(allowed_hosts, list) and allowed_hosts:
-                domain = allowed_hosts[0]
-            elif isinstance(allowed_hosts, str):
-                domain = allowed_hosts.split(',')[0]
-            else:
-                domain = 'localhost'
+            domain = getattr(settings, 'DOMAIN', '').strip() or 'localhost'
         
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)

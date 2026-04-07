@@ -1,11 +1,13 @@
 import logging
 import re
 from datetime import timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from uuid import uuid4
 
 import razorpay
 from razorpay import errors as razorpay_errors
 from django.conf import settings
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import DatabaseError, IntegrityError, transaction
@@ -17,7 +19,8 @@ from django.views.decorators.http import require_POST, require_http_methods
 from cart.models import Cart
 
 from .forms import CheckoutForm
-from .models import Order, OrderItem, PaymentSettings
+from .models import Order, OrderItem, Payment, PaymentSettings
+from .services.analytics_service import get_analytics_dashboard_data
 from .services.order_service import confirm_order_payment, lock_inventory_rows
 
 logger = logging.getLogger(__name__)
@@ -104,6 +107,99 @@ def _checkout_context(*, cart, items, total, currency, payment_settings, payment
         'available_methods': available_methods,
         'upi_enabled': upi_enabled,
     }
+
+
+def _amount_to_subunits(amount):
+    return int((Decimal(str(amount)) * Decimal('100')).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+
+
+def _build_payment_context(*, order, razorpay_order_id, razorpay_key, currency_code, currency_symbol):
+    return {
+        'order': order,
+        'razorpay_order_id': razorpay_order_id,
+        'razorpay_key': razorpay_key,
+        'amount': _amount_to_subunits(order.total_price),
+        'currency_code': currency_code,
+        'currency_symbol': currency_symbol,
+    }
+
+
+def _upsert_payment_record(order, *, provider, status, amount, currency, receipt='', razorpay_order_id='', razorpay_payment_id='', razorpay_signature='', failure_reason=''):
+    defaults = {
+        'order': order,
+        'provider': provider,
+        'status': status,
+        'amount': amount,
+        'currency': currency,
+        'receipt': receipt,
+        'razorpay_payment_id': razorpay_payment_id,
+        'razorpay_signature': razorpay_signature,
+        'failure_reason': failure_reason[:255],
+    }
+
+    if razorpay_order_id:
+        payment, created = Payment.objects.get_or_create(
+            razorpay_order_id=razorpay_order_id,
+            defaults={**defaults, 'razorpay_order_id': razorpay_order_id},
+        )
+        if payment.order_id != order.id:
+            raise ValueError(f"Payment gateway order {razorpay_order_id} is already linked to another order.")
+
+        update_fields = []
+        for field, value in defaults.items():
+            if getattr(payment, field) != value and value not in ('', None):
+                setattr(payment, field, value)
+                update_fields.append(field)
+        if not payment.razorpay_order_id:
+            payment.razorpay_order_id = razorpay_order_id
+            update_fields.append('razorpay_order_id')
+        if update_fields:
+            update_fields.append('updated_at')
+            payment.save(update_fields=update_fields)
+        return payment, created
+
+    payment = Payment.objects.create(
+        order=order,
+        provider=provider,
+        status=status,
+        amount=amount,
+        currency=currency,
+        receipt=receipt,
+        razorpay_payment_id=razorpay_payment_id,
+        razorpay_signature=razorpay_signature,
+        failure_reason=failure_reason[:255],
+    )
+    return payment, True
+
+
+def _mark_payment_failed(order, *, razorpay_order_id='', failure_reason=''):
+    sanitized_reason = (failure_reason or 'Payment was not completed.')[:255]
+    payment = (
+        Payment.objects.filter(order=order, razorpay_order_id=razorpay_order_id or order.razorpay_order_id)
+        .order_by('-created_at')
+        .first()
+    )
+
+    if payment and payment.status != 'paid':
+        payment.status = 'failed'
+        payment.failure_reason = sanitized_reason
+        payment.save(update_fields=['status', 'failure_reason', 'updated_at'])
+
+    update_fields = {}
+    if order.payment_status != 'paid':
+        update_fields['payment_status'] = 'failed'
+    if order.payment_retry_reserved_at is not None:
+        update_fields['payment_retry_reserved_at'] = None
+    if update_fields:
+        Order.objects.filter(pk=order.pk).update(**update_fields)
+
+
+@staff_member_required(login_url='admin:login')
+def analytics_dashboard(request):
+    context = get_analytics_dashboard_data(request.GET)
+    if context["filters"]["filter_error"]:
+        messages.warning(request, context["filters"]["filter_error"])
+    return render(request, "admin/analytics_dashboard.html", context)
 
 
 @login_required
@@ -294,13 +390,17 @@ def checkout(request):
 
         if payment_method == 'razorpay' and can_pay_online:
             logger.info(_format_log_message("Processing Razorpay payment", request, order_id=order.id))
+            receipt = f'order_{order.id}'
             try:
                 client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
                 razorpay_order = client.order.create({
-                    'amount': int(float(order.total_price) * 100),
+                    'amount': _amount_to_subunits(order.total_price),
                     'currency': currency_code,
-                    'receipt': f'order_{order.id}',
-                    'payment_capture': '1',
+                    'receipt': receipt,
+                    'notes': {
+                        'order_id': str(order.id),
+                        'user_id': str(request.user.id),
+                    },
                 })
             except (razorpay_errors.BadRequestError, razorpay_errors.ServerError, razorpay_errors.GatewayError) as exc:
                 logger.error(
@@ -315,8 +415,17 @@ def checkout(request):
                 messages.error(request, 'An unexpected payment error occurred. Please try again.')
                 return redirect(reverse('orders:payment_failed') + f'?order_id={order.id}')
 
-            Order.objects.filter(pk=order.pk).update(razorpay_order_id=razorpay_order['id'])
+            Order.objects.filter(pk=order.pk).update(razorpay_order_id=razorpay_order['id'], payment_status='pending')
             order.razorpay_order_id = razorpay_order['id']
+            _upsert_payment_record(
+                order,
+                provider='razorpay',
+                status='created',
+                amount=order.total_price,
+                currency=currency_code,
+                receipt=receipt,
+                razorpay_order_id=razorpay_order['id'],
+            )
             logger.info(
                 _format_log_message(
                     "Rendering Razorpay payment page",
@@ -326,14 +435,17 @@ def checkout(request):
                 )
             )
 
-            return render(request, 'payment.html', {
-                'order': order,
-                'razorpay_order_id': razorpay_order['id'],
-                'razorpay_key': razorpay_key_id,
-                'amount': int(float(order.total_price) * 100),
-                'currency_code': currency_code,
-                'currency_symbol': currency,
-            })
+            return render(
+                request,
+                'payment.html',
+                _build_payment_context(
+                    order=order,
+                    razorpay_order_id=razorpay_order['id'],
+                    razorpay_key=razorpay_key_id,
+                    currency_code=currency_code,
+                    currency_symbol=currency,
+                ),
+            )
 
         if payment_method == 'upi' and upi_enabled:
             logger.info(_format_log_message("Rendering UPI payment page", request, order_id=order.id))
@@ -366,7 +478,7 @@ def checkout(request):
 
 
 @login_required
-def payment_success(request):
+def verify_payment(request):
     """
     Handle Razorpay payment callback.
     Requires authentication and validates order ownership before processing.
@@ -409,10 +521,6 @@ def payment_success(request):
         messages.error(request, 'Unauthorized access to this order.')
         return redirect('cart:cart_view')
 
-    if order.payment_status == 'paid':
-        logger.info(_format_log_message("Duplicate paid callback ignored", request, order_id=order.id))
-        return redirect('orders:order_success', order_id=order.id)
-
     payment_settings = PaymentSettings.get_settings()
     if not payment_settings:
         logger.error(_format_log_message("Payment settings not configured", request, order_id=order.id))
@@ -445,11 +553,82 @@ def payment_success(request):
                 error=exc,
             )
         )
-        Order.objects.filter(pk=order.pk).update(payment_status='failed')
+        _mark_payment_failed(order, razorpay_order_id=razorpay_order_id, failure_reason='Signature verification failed.')
         messages.error(request, 'Payment verification failed. Please try again.')
-        return redirect('cart:cart_view')
+        return redirect(reverse('orders:payment_failed') + f'?order_id={order.id}')
+
+    if order.payment_status == 'paid':
+        logger.info(_format_log_message("Duplicate paid callback ignored", request, order_id=order.id))
+        return redirect('orders:order_success', order_id=order.id)
 
     try:
+        expected_amount = _amount_to_subunits(order.total_price)
+        payment_entity = client.payment.fetch(razorpay_payment_id)
+        gateway_order_id = payment_entity.get('order_id')
+        gateway_amount = int(payment_entity.get('amount', 0) or 0)
+        gateway_currency = payment_entity.get('currency') or payment_settings.currency
+        gateway_status = (payment_entity.get('status') or '').lower()
+        is_captured = bool(payment_entity.get('captured')) or gateway_status == 'captured'
+
+        if gateway_order_id != razorpay_order_id:
+            raise ValueError('Gateway order mismatch detected during payment verification.')
+        if gateway_amount != expected_amount:
+            raise ValueError('Gateway amount mismatch detected during payment verification.')
+        if gateway_currency != payment_settings.currency:
+            raise ValueError('Gateway currency mismatch detected during payment verification.')
+
+        if not is_captured and gateway_status == 'authorized':
+            payment_entity = client.payment.capture(
+                razorpay_payment_id,
+                expected_amount,
+                {'currency': gateway_currency},
+            )
+            gateway_status = (payment_entity.get('status') or '').lower()
+            is_captured = bool(payment_entity.get('captured')) or gateway_status == 'captured'
+
+        if not is_captured and gateway_status not in {'captured', 'authorized'}:
+            raise ValueError(f'Unexpected Razorpay payment status: {gateway_status or "unknown"}')
+    except Exception as exc:
+        logger.exception(
+            _format_log_message(
+                "Payment fetch or capture failed",
+                request,
+                order_id=order.id,
+                payment_reference=_redact_reference(razorpay_payment_id),
+                error=exc,
+            )
+        )
+        _mark_payment_failed(order, razorpay_order_id=razorpay_order_id, failure_reason=str(exc))
+        messages.error(request, 'Payment could not be confirmed. Please try again or contact support.')
+        return redirect(reverse('orders:payment_failed') + f'?order_id={order.id}')
+
+    try:
+        payment, _created = _upsert_payment_record(
+            order,
+            provider='razorpay',
+            status='paid',
+            amount=order.total_price,
+            currency=payment_settings.currency,
+            receipt=f'order_{order.id}',
+            razorpay_order_id=razorpay_order_id,
+            razorpay_payment_id=razorpay_payment_id,
+            razorpay_signature=razorpay_signature,
+        )
+        payment.status = 'paid'
+        payment.razorpay_payment_id = razorpay_payment_id
+        payment.razorpay_signature = razorpay_signature
+        payment.failure_reason = ''
+        payment.verified_at = timezone.now()
+        payment.save(
+            update_fields=[
+                'status',
+                'razorpay_payment_id',
+                'razorpay_signature',
+                'failure_reason',
+                'verified_at',
+                'updated_at',
+            ]
+        )
         order, _processed = confirm_order_payment(order, payment_reference=razorpay_payment_id)
         logger.info(
             _format_log_message(
@@ -461,11 +640,14 @@ def payment_success(request):
         )
     except Exception as exc:
         logger.exception(_format_log_message("Error processing order confirmation", request, order_id=order.id, error=exc))
-        messages.error(request, 'Payment successful but order processing failed. Please contact support.')
+        messages.error(request, 'Payment was received but order finalization failed. Please contact support.')
         return redirect('cart:cart_view')
 
-    messages.success(request, 'Payment successful! Your order has been confirmed.')
+    messages.success(request, 'Payment successful! Your order is now marked as paid.')
     return redirect('orders:order_success', order_id=order.id)
+
+
+payment_success = verify_payment
 
 
 @login_required
@@ -527,6 +709,48 @@ def order_detail(request, order_id):
 def payment_failed(request):
     order_id = request.GET.get('order_id')
     return render(request, 'payment_failed.html', {'order_id': order_id})
+
+
+@login_required
+@require_POST
+def payment_failure_callback(request):
+    order_id = request.POST.get('order_id', '')
+    razorpay_order_id = request.POST.get('razorpay_order_id', '')
+    failure_reason = request.POST.get('failure_reason', '') or 'Payment was not completed.'
+
+    try:
+        if order_id:
+            order = Order.objects.get(id=order_id, user=request.user)
+        elif razorpay_order_id:
+            order = Order.objects.get(razorpay_order_id=razorpay_order_id, user=request.user)
+        else:
+            raise Order.DoesNotExist
+    except Order.DoesNotExist:
+        logger.warning(
+            _format_log_message(
+                "Payment failure callback received for missing order",
+                request,
+                order_id=order_id,
+                razorpay_order_id=razorpay_order_id,
+            )
+        )
+        messages.error(request, 'Order not found for failed payment attempt.')
+        return redirect('cart:cart_view')
+
+    if order.payment_status != 'paid':
+        _mark_payment_failed(order, razorpay_order_id=razorpay_order_id, failure_reason=failure_reason)
+        logger.info(
+            _format_log_message(
+                "Recorded failed payment attempt",
+                request,
+                order_id=order.id,
+                razorpay_order_id=razorpay_order_id,
+                reason=failure_reason,
+            )
+        )
+
+    messages.error(request, 'Payment was not completed. You can retry the payment below.')
+    return redirect(reverse('orders:payment_failed') + f'?order_id={order.id}')
 
 
 @login_required
@@ -619,6 +843,15 @@ def retry_payment(request, order_id):
 
     if existing_gateway_order_id:
         order.razorpay_order_id = existing_gateway_order_id
+        _upsert_payment_record(
+            order,
+            provider='razorpay',
+            status='created',
+            amount=order.total_price,
+            currency=payment_settings.currency,
+            receipt=f'order_{order.id}_retry',
+            razorpay_order_id=existing_gateway_order_id,
+        )
         logger.info(
             _format_log_message(
                 "Reusing existing gateway order for retry payment",
@@ -627,22 +860,30 @@ def retry_payment(request, order_id):
                 razorpay_order_id=existing_gateway_order_id,
             )
         )
-        return render(request, 'retry_payment.html', {
-            'order': order,
-            'razorpay_order_id': existing_gateway_order_id,
-            'razorpay_key': razorpay_key_id,
-            'amount': int(float(order.total_price) * 100),
-            'currency_code': payment_settings.currency,
-            'currency_symbol': payment_settings.currency_symbol,
-        })
+        return render(
+            request,
+            'retry_payment.html',
+            _build_payment_context(
+                order=order,
+                razorpay_order_id=existing_gateway_order_id,
+                razorpay_key=razorpay_key_id,
+                currency_code=payment_settings.currency,
+                currency_symbol=payment_settings.currency_symbol,
+            ),
+        )
 
     try:
         client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+        receipt = f'order_{order.id}_retry'
         razorpay_order = client.order.create({
-            'amount': int(float(order.total_price) * 100),
+            'amount': _amount_to_subunits(order.total_price),
             'currency': payment_settings.currency,
-            'receipt': f'order_{order.id}_retry',
-            'payment_capture': '1',
+            'receipt': receipt,
+            'notes': {
+                'order_id': str(order.id),
+                'user_id': str(request.user.id),
+                'retry': 'true',
+            },
         })
     except (razorpay_errors.BadRequestError, razorpay_errors.ServerError, razorpay_errors.GatewayError) as exc:
         Order.objects.filter(pk=order.pk, razorpay_order_id=reservation_id).update(
@@ -650,6 +891,7 @@ def retry_payment(request, order_id):
             payment_status='failed',
             payment_retry_reserved_at=None,
         )
+        _mark_payment_failed(order, razorpay_order_id=reservation_id, failure_reason=str(exc))
         logger.error(_format_log_message("Razorpay API error during retry checkout", request, order_id=order.id, error=exc))
         messages.error(request, 'Payment service error. Please try again in a moment.')
         return redirect(reverse('orders:payment_failed') + f'?order_id={order.id}')
@@ -659,6 +901,7 @@ def retry_payment(request, order_id):
             payment_status='failed',
             payment_retry_reserved_at=None,
         )
+        _mark_payment_failed(order, razorpay_order_id=reservation_id, failure_reason=str(exc))
         logger.exception(_format_log_message("Unexpected error while retrying payment", request, order_id=order.id, error=exc))
         messages.error(request, 'An unexpected error occurred. Please try again.')
         return redirect(reverse('orders:payment_failed') + f'?order_id={order.id}')
@@ -688,6 +931,15 @@ def retry_payment(request, order_id):
     else:
         order.razorpay_order_id = razorpay_order['id']
         order.payment_retry_reserved_at = reservation_started_at
+        _upsert_payment_record(
+            order,
+            provider='razorpay',
+            status='created',
+            amount=order.total_price,
+            currency=payment_settings.currency,
+            receipt=receipt,
+            razorpay_order_id=razorpay_order['id'],
+        )
 
     logger.info(
         _format_log_message(
@@ -698,14 +950,17 @@ def retry_payment(request, order_id):
         )
     )
 
-    return render(request, 'retry_payment.html', {
-        'order': order,
-        'razorpay_order_id': order.razorpay_order_id,
-        'razorpay_key': razorpay_key_id,
-        'amount': int(float(order.total_price) * 100),
-        'currency_code': payment_settings.currency,
-        'currency_symbol': payment_settings.currency_symbol,
-    })
+    return render(
+        request,
+        'retry_payment.html',
+        _build_payment_context(
+            order=order,
+            razorpay_order_id=order.razorpay_order_id,
+            razorpay_key=razorpay_key_id,
+            currency_code=payment_settings.currency,
+            currency_symbol=payment_settings.currency_symbol,
+        ),
+    )
 
 
 @login_required
@@ -746,7 +1001,21 @@ def upi_payment_verify(request):
         messages.info(request, 'This order is already paid.')
         return redirect('orders:order_success', order_id=order.id)
 
+    payment_settings = PaymentSettings.get_settings()
     try:
+        payment, _created = _upsert_payment_record(
+            order,
+            provider='upi',
+            status='paid',
+            amount=order.total_price,
+            currency=payment_settings.currency if payment_settings else 'INR',
+            receipt=f'upi_order_{order.id}',
+            razorpay_payment_id=f'UPI-{transaction_id}',
+        )
+        payment.status = 'paid'
+        payment.verified_at = timezone.now()
+        payment.failure_reason = ''
+        payment.save(update_fields=['status', 'verified_at', 'failure_reason', 'updated_at'])
         order, _processed = confirm_order_payment(order, payment_reference=f'UPI-{transaction_id}')
         logger.info(
             _format_log_message(
@@ -758,8 +1027,8 @@ def upi_payment_verify(request):
         )
     except Exception as exc:
         logger.exception(_format_log_message("Error processing UPI order confirmation", request, order_id=order.id, error=exc))
-        messages.error(request, 'Payment verified but order processing failed. Please contact support.')
+        messages.error(request, 'Payment was verified but order finalization failed. Please contact support.')
         return redirect('cart:cart_view')
 
-    messages.success(request, 'Payment verified! Your order has been confirmed.')
+    messages.success(request, 'Payment verified! Your order is now marked as paid.')
     return redirect('orders:order_success', order_id=order.id)

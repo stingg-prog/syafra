@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Retry Payment - SYAFRA{% endblock %}
 
@@ -51,6 +52,39 @@
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
+var paymentHandled = false;
+
+function submitPaymentForm(action, fields) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = action;
+
+    fields.csrfmiddlewaretoken = '{{ csrf_token }}';
+
+    for (var key in fields) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = fields[key];
+        form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function submitFailure(failureReason) {
+    if (paymentHandled) {
+        return;
+    }
+    paymentHandled = true;
+    submitPaymentForm('{% url "orders:payment_failure_callback" %}', {
+        order_id: '{{ order.id }}',
+        razorpay_order_id: '{{ razorpay_order_id }}',
+        failure_reason: failureReason || 'Retry payment was not completed.'
+    });
+}
+
 var options = {
     "key": "{{ razorpay_key }}",
     "amount": "{{ amount }}",
@@ -58,33 +92,21 @@ var options = {
     "order_id": "{{ razorpay_order_id }}",
     "name": "SYAFRA",
     "description": "Order #{{ order.id }} - Retry Payment",
-    "image": "/static/images/syafra_logo.png",
+    "image": "{% static 'images/syafra_logo.png' %}",
     "handler": function (response) {
-        var form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{% url "orders:payment_success" %}';
-        
-        var fields = {
-            'razorpay_order_id': response.razorpay_order_id,
-            'razorpay_payment_id': response.razorpay_payment_id,
-            'razorpay_signature': response.razorpay_signature,
-            'csrfmiddlewaretoken': '{{ csrf_token }}'
-        };
-        
-        for (var key in fields) {
-            var input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = fields[key];
-            form.appendChild(input);
+        if (paymentHandled) {
+            return;
         }
-        
-        document.body.appendChild(form);
-        form.submit();
+        paymentHandled = true;
+        submitPaymentForm('{% url "orders:verify_payment" %}', {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature
+        });
     },
     "modal": {
         "ondismiss": function() {
-            window.location.href = '{% url "orders:payment_failed" %}?order_id={{ order.id }}';
+            submitFailure('Retry payment checkout was dismissed.');
         }
     },
     "prefill": {
@@ -102,6 +124,12 @@ var options = {
 };
 
 var rzp = new Razorpay(options);
+rzp.on('payment.failed', function (response) {
+    var errorDescription = response.error && response.error.description
+        ? response.error.description
+        : 'Retry payment failed at Razorpay checkout.';
+    submitFailure(errorDescription);
+});
 
 document.getElementById('pay-btn').onclick = function(e) {
     rzp.open();

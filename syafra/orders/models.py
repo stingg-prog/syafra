@@ -10,6 +10,7 @@ _RAZORPAY_PLACEHOLDER_VALUES = {
     'your_razorpay_key_id',
     'your_razorpay_key_secret',
 }
+PAID_FULFILLMENT_STATUSES = ('paid', 'packed', 'shipped', 'delivered')
 
 
 class PaymentSettings(models.Model):
@@ -121,12 +122,11 @@ class PaymentSettings(models.Model):
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
-        ('confirmed', 'Confirmed'),
-        ('processing', 'Processing'),
+        ('paid', 'Paid'),
+        ('packed', 'Packed'),
         ('shipped', 'Shipped'),
         ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
-        ('paid', 'Paid'),
     ]
 
     PAYMENT_STATUS_CHOICES = [
@@ -159,6 +159,15 @@ class Order(models.Model):
         null=True,
         blank=True,
         help_text='When the payment email send was claimed by a worker',
+    )
+    admin_notification_sent = models.BooleanField(
+        default=False,
+        help_text='Whether the admin new-order notification email has been sent',
+    )
+    admin_notification_claimed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the admin notification send was claimed by a worker',
     )
     payment_retry_reserved_at = models.DateTimeField(
         null=True,
@@ -206,6 +215,10 @@ class Order(models.Model):
                 name='orders_payment_email_claim_cleared',
             ),
             models.CheckConstraint(
+                condition=Q(admin_notification_sent=False) | Q(admin_notification_claimed_at__isnull=True),
+                name='orders_admin_email_claim_cleared',
+            ),
+            models.CheckConstraint(
                 condition=Q(payment_retry_reserved_at__isnull=True) | Q(payment_status='pending'),
                 name='orders_retry_reservation_pending_only',
             ),
@@ -213,6 +226,65 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
+
+    @property
+    def latest_payment(self):
+        return self.payments.order_by('-created_at').first()
+
+
+class Payment(models.Model):
+    PROVIDER_CHOICES = [
+        ('razorpay', 'Razorpay'),
+        ('upi', 'UPI'),
+    ]
+
+    STATUS_CHOICES = [
+        ('created', 'Created'),
+        ('authorized', 'Authorized'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payments')
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='razorpay', db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='created', db_index=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=10, default='INR')
+    receipt = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    razorpay_order_id = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    razorpay_payment_id = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    razorpay_signature = models.CharField(max_length=255, blank=True, default='')
+    failure_reason = models.CharField(max_length=255, blank=True, default='')
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(amount__gte=0),
+                name='payments_amount_gte_0',
+            ),
+            models.UniqueConstraint(
+                fields=['razorpay_order_id'],
+                condition=~Q(razorpay_order_id=''),
+                name='payments_unique_razorpay_order_id',
+            ),
+            models.UniqueConstraint(
+                fields=['razorpay_payment_id'],
+                condition=~Q(razorpay_payment_id=''),
+                name='payments_unique_razorpay_payment_id',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['order', '-created_at'], name='payments_order_created_idx'),
+            models.Index(fields=['provider', 'status', '-created_at'], name='payments_provider_status_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.get_provider_display()} payment for Order {self.order_id} ({self.status})"
 
 
 class OrderItem(models.Model):

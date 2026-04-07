@@ -1,13 +1,60 @@
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.cache import cache
-from django.db.models import Q
+from django.db.models import Q, Max, Count
 from .models import Product, Category, InstagramPost, Testimonial
 from orders.models import PaymentSettings
 
+INSTAGRAM_DEFAULT_LINK = 'https://www.instagram.com/syafra.thrift/'
+INSTAGRAM_STATIC_IMAGES = [
+    'images/insta1.jpg',
+    'images/insta2.jpg',
+    'images/insta3.jpg',
+    'images/insta4.jpg',
+    'images/insta5.jpg',
+    'images/insta6.jpg',
+]
+
+
+def build_instagram_tiles(posts, limit=6):
+    posts = list(posts[:limit])
+    tiles = []
+
+    for index, static_image in enumerate(INSTAGRAM_STATIC_IMAGES[:limit], start=1):
+        post = posts[index - 1] if index <= len(posts) else None
+        tiles.append({
+            'link': post.link if post and post.link else INSTAGRAM_DEFAULT_LINK,
+            'static_image': static_image,
+            'alt': f'Instagram post {index}',
+        })
+
+    return tiles
+
 
 def home(request):
-    cache_key = 'homepage_data'
+    featured_stats = Product.objects.filter(is_featured=True, stock__gt=0).aggregate(
+        count=Count('id'),
+        latest=Max('updated_at'),
+    )
+    instagram_stats = InstagramPost.objects.filter(is_active=True).aggregate(
+        count=Count('id'),
+        latest=Max('created_at'),
+    )
+    testimonial_stats = Testimonial.objects.filter(is_active=True).aggregate(
+        count=Count('id'),
+        latest=Max('created_at'),
+    )
+
+    featured_latest = int(featured_stats['latest'].timestamp()) if featured_stats['latest'] else 0
+    instagram_latest = int(instagram_stats['latest'].timestamp()) if instagram_stats['latest'] else 0
+    testimonial_latest = int(testimonial_stats['latest'].timestamp()) if testimonial_stats['latest'] else 0
+
+    cache_key = (
+        f"homepage_data_v3:"
+        f"fp{featured_stats['count']}-{featured_latest}:"
+        f"ig{instagram_stats['count']}-{instagram_latest}:"
+        f"ts{testimonial_stats['count']}-{testimonial_latest}"
+    )
     cached_data = cache.get(cache_key)
     
     if cached_data is None:
@@ -24,7 +71,7 @@ def home(request):
         
         cached_data = {
             'featured_products': list(featured_products),
-            'instagram_posts': list(instagram_posts),
+            'instagram_posts': build_instagram_tiles(instagram_posts),
             'testimonials': list(testimonials),
             'currency': currency,
         }

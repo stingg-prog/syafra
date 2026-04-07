@@ -2,12 +2,9 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordResetForm as BasePasswordResetForm
-from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
 from django.conf import settings
 import logging
 
@@ -53,13 +50,14 @@ class RegisterForm(forms.Form):
     )
 
     def clean_username(self):
-        username = self.cleaned_data['username']
-        if User.objects.filter(username=username).exists():
+        username = self.cleaned_data['username'].strip()
+        username_field = getattr(User, 'USERNAME_FIELD', 'username')
+        if User.objects.filter(**{f'{username_field}__iexact': username}).exists():
             raise ValidationError('Username already exists.')
         return username
 
     def clean_email(self):
-        email = self.cleaned_data['email']
+        email = User.objects.normalize_email(self.cleaned_data['email'].strip())
         if User.objects.filter(email__iexact=email).exists():
             raise ValidationError('Email already registered.')
         return email
@@ -76,6 +74,19 @@ class RegisterForm(forms.Form):
         if p1 and p2 and p1 != p2:
             raise ValidationError('Passwords do not match.')
         return data
+
+    def save(self):
+        username_field = getattr(User, 'USERNAME_FIELD', 'username')
+        user = User(
+            **{
+                username_field: self.cleaned_data['username'],
+                'email': self.cleaned_data['email'],
+                'is_active': True,
+            }
+        )
+        user.set_password(self.cleaned_data['password'])
+        user.save()
+        return user
 
 
 class PasswordResetForm(BasePasswordResetForm):
@@ -95,28 +106,12 @@ class PasswordResetForm(BasePasswordResetForm):
             # Render subject
             subject = render_to_string(subject_template_name, context)
             subject = ''.join(subject.splitlines())
-            
-            # Get user and generate token
-            user = context.get('user')
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
-            
-            # Get protocol and domain
-            protocol = 'https' if settings.USE_HTTPS else 'http'
-            domain = getattr(settings, 'DOMAIN', '127.0.0.1:8000')
-            
-            # Update context with URL components
-            context.update({
-                'protocol': protocol,
-                'domain': domain,
-                'uid': uid,
-                'token': token,
-            })
+            email_context = dict(context)
             
             # Send HTML email if template exists
             if html_email_template_name:
-                html_message = render_to_string(html_email_template_name, context)
-                plain_message = render_to_string(email_template_name, context)
+                html_message = render_to_string(html_email_template_name, email_context)
+                plain_message = render_to_string(email_template_name, email_context)
                 
                 try:
                     email = EmailMultiAlternatives(
@@ -147,7 +142,7 @@ class PasswordResetForm(BasePasswordResetForm):
                     )
             else:
                 # Plain text only
-                message = render_to_string(email_template_name, context)
+                message = render_to_string(email_template_name, email_context)
                 send_mail(
                     subject=subject,
                     message=message,

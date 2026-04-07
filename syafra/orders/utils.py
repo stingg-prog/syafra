@@ -51,6 +51,8 @@ def send_whatsapp_message(order, status):
     phone = f'+{phone_digits}'
 
     template_map = {
+        'paid': settings_obj.order_created_template,
+        'packed': settings_obj.processing_template,
         'created': settings_obj.order_created_template,
         'processing': settings_obj.processing_template,
         'shipped': settings_obj.shipped_template,
@@ -236,7 +238,7 @@ SYAFRA Team
 
     status_value = status or order.status
     if email_type == 'status':
-        if status_value == 'confirmed':
+        if status_value in {'paid', 'confirmed'}:
             subject = f'Order #{order.id} Confirmed - SYAFRA'
             message = f"""Hello {customer_name},
 
@@ -252,6 +254,26 @@ ITEMS:
 Total: Rs.{order.total_price:.2f}
 
 Thank you for shopping with SYAFRA!
+
+Best regards,
+SYAFRA Team
+"""
+        elif status_value in {'packed', 'processing'}:
+            subject = f'Your Order #{order.id} is Packed - SYAFRA'
+            message = f"""Hello {customer_name},
+
+Your order #{order.id} has been packed and is getting ready for shipment.
+
+ORDER DETAILS
+============
+Order ID: #{order.id}
+Date: {order_date}
+
+ITEMS:
+{items_text}
+Total: Rs.{order.total_price:.2f}
+
+We will notify you once your package has been shipped.
 
 Best regards,
 SYAFRA Team

@@ -1,8 +1,9 @@
 from django.contrib import admin
+from django.contrib import messages
 from django.utils.html import format_html
 
-from .models import Order, OrderItem, PaymentSettings, WhatsAppSettings
-from .services.order_service import ensure_paid_order_stock_reduced
+from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES, Payment, PaymentSettings, WhatsAppSettings
+from .services.order_service import confirm_order_payment, ensure_paid_order_stock_reduced
 
 
 @admin.register(WhatsAppSettings)
@@ -57,6 +58,26 @@ class OrderItemInline(admin.TabularInline):
     subtotal_display.short_description = 'Subtotal'
 
 
+class PaymentInline(admin.TabularInline):
+    model = Payment
+    extra = 0
+    can_delete = False
+    readonly_fields = (
+        'provider',
+        'status',
+        'amount',
+        'currency',
+        'receipt',
+        'razorpay_order_id',
+        'razorpay_payment_id',
+        'verified_at',
+        'created_at',
+        'updated_at',
+        'failure_reason',
+    )
+    fields = readonly_fields
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
@@ -86,10 +107,10 @@ class OrderAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     readonly_fields = ('created_at', 'razorpay_order_id', 'razorpay_payment_id', 'stock_reduced', 'payment_confirmed_at')
     raw_id_fields = ('user',)
-    actions = ('mark_as_confirmed', 'mark_as_shipped', 'mark_as_delivered')
+    actions = ('mark_as_paid', 'mark_as_packed', 'mark_as_shipped', 'mark_as_delivered')
     list_select_related = ('user',)
     
-    inlines = [OrderItemInline]
+    inlines = [OrderItemInline, PaymentInline]
     
     fieldsets = (
         ('Order Information', {
@@ -129,28 +150,27 @@ class OrderAdmin(admin.ModelAdmin):
         order.refresh_from_db()
 
         if (
-            order.status == 'confirmed'
+            order.status in PAID_FULFILLMENT_STATUSES
             and order.payment_status == 'paid'
             and order.items.exists()
             and not order.stock_reduced
         ):
             try:
                 if ensure_paid_order_stock_reduced(order):
-                    self.message_user(request, f"Stock reduced for order #{order.id}", level='success')
+                    self.message_user(request, f"Stock reduced for order #{order.id}", level=messages.SUCCESS)
             except Exception as e:
-                self.message_user(request, f"Warning: {str(e)}", level='warning')
+                self.message_user(request, f"Warning: {str(e)}", level=messages.WARNING)
 
     @admin.display(description='Status', ordering='status')
     def status_colored(self, obj):
         """Safe HTML via format_html."""
         status_colors = {
             'pending': '#FFC107',
-            'confirmed': '#2196F3',
-            'processing': '#3B82F6',
+            'paid': '#16A34A',
+            'packed': '#2563EB',
             'shipped': '#9C27B0',
             'delivered': '#4CAF50',
             'cancelled': '#F44336',
-            'paid': '#4CAF50',
         }
         color = status_colors.get(obj.status, '#9E9E9E')
         return format_html(
@@ -160,40 +180,83 @@ class OrderAdmin(admin.ModelAdmin):
             obj.get_status_display().upper(),
         )
 
-    def mark_as_confirmed(self, request, queryset):
+    def mark_as_paid(self, request, queryset):
         updated = 0
+        skipped = 0
         for order in queryset:
-            if order.status != 'confirmed':
-                order.status = 'confirmed'
-                order._admin_old_status = order.status
-                try:
+            if order.payment_status == 'paid' and order.status == 'paid':
+                skipped += 1
+                continue
+            try:
+                if order.payment_status == 'paid':
+                    order._admin_old_status = order.status
+                    order.status = 'paid'
                     order.save(update_fields=['status'])
-                    updated += 1
-                except ValueError as e:
-                    self.message_user(request, f"Warning for order {order.id}: {str(e)}", level='warning')
-        self.message_user(request, f"{updated} order(s) marked as confirmed. Notifications will be sent.")
-    mark_as_confirmed.short_description = 'Mark selected orders as Confirmed'
+                else:
+                    order._admin_old_status = order.status
+                    order._admin_old_payment_status = order.payment_status
+                    confirm_order_payment(order, payment_reference=order.razorpay_payment_id or '', save=True)
+                updated += 1
+            except Exception as exc:
+                self.message_user(request, f"Warning for order {order.id}: {exc}", level=messages.WARNING)
+        if updated:
+            self.message_user(request, f"{updated} order(s) marked as Paid.", level=messages.SUCCESS)
+        if skipped:
+            self.message_user(request, f"{skipped} order(s) were already Paid.", level=messages.INFO)
+    mark_as_paid.short_description = 'Mark selected orders as Paid'
+
+    def mark_as_packed(self, request, queryset):
+        updated = 0
+        skipped = 0
+        for order in queryset:
+            if order.payment_status != 'paid':
+                skipped += 1
+                continue
+            if order.status != 'packed':
+                order._admin_old_status = order.status
+                order.status = 'packed'
+                order.save(update_fields=['status'])
+                updated += 1
+        if updated:
+            self.message_user(request, f"{updated} order(s) marked as Packed. Notifications will be sent.", level=messages.SUCCESS)
+        if skipped:
+            self.message_user(request, f"{skipped} unpaid order(s) were skipped.", level=messages.WARNING)
+    mark_as_packed.short_description = 'Mark selected orders as Packed'
 
     def mark_as_shipped(self, request, queryset):
         updated = 0
+        skipped = 0
         for order in queryset:
+            if order.payment_status != 'paid':
+                skipped += 1
+                continue
             if order.status != 'shipped':
                 order._admin_old_status = order.status
                 order.status = 'shipped'
                 order.save(update_fields=['status'])
                 updated += 1
-        self.message_user(request, f"{updated} order(s) marked as Shipped. Notifications will be sent.")
+        if updated:
+            self.message_user(request, f"{updated} order(s) marked as Shipped. Notifications will be sent.", level=messages.SUCCESS)
+        if skipped:
+            self.message_user(request, f"{skipped} unpaid order(s) were skipped.", level=messages.WARNING)
     mark_as_shipped.short_description = 'Mark selected orders as Shipped'
 
     def mark_as_delivered(self, request, queryset):
         updated = 0
+        skipped = 0
         for order in queryset:
+            if order.payment_status != 'paid':
+                skipped += 1
+                continue
             if order.status != 'delivered':
                 order._admin_old_status = order.status
                 order.status = 'delivered'
                 order.save(update_fields=['status'])
                 updated += 1
-        self.message_user(request, f"{updated} order(s) marked as Delivered. Notifications will be sent.")
+        if updated:
+            self.message_user(request, f"{updated} order(s) marked as Delivered. Notifications will be sent.", level=messages.SUCCESS)
+        if skipped:
+            self.message_user(request, f"{skipped} unpaid order(s) were skipped.", level=messages.WARNING)
     mark_as_delivered.short_description = 'Mark selected orders as Delivered'
 
     def get_ordering(self, request):
@@ -214,3 +277,29 @@ class OrderItemAdmin(admin.ModelAdmin):
         currency = settings.currency_symbol if settings else '₹'
         return f"{currency}{value:.2f}"
     subtotal_display.short_description = 'Subtotal'
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'order',
+        'provider',
+        'status',
+        'amount',
+        'currency',
+        'razorpay_order_id',
+        'razorpay_payment_id',
+        'verified_at',
+        'created_at',
+    )
+    list_filter = ('provider', 'status', 'currency', 'created_at')
+    search_fields = (
+        'order__customer_name',
+        'order__email',
+        'receipt',
+        'razorpay_order_id',
+        'razorpay_payment_id',
+    )
+    list_select_related = ('order',)
+    readonly_fields = ('verified_at', 'created_at', 'updated_at')

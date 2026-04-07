@@ -7,7 +7,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from orders.models import Order, OrderItem
+from orders.models import Order, OrderItem, PAID_FULFILLMENT_STATUSES
 from products.models import Product, ProductSize
 
 logger = logging.getLogger(__name__)
@@ -219,13 +219,13 @@ def restore_stock(order, order_items=None):
 
 def ensure_paid_order_stock_reduced(order, save=True):
     """
-    Ensure stock is reduced exactly once for a confirmed + paid order.
+    Ensure stock is reduced exactly once for a paid fulfillment order.
     """
     try:
         with transaction.atomic(savepoint=False):
             locked_order = get_locked_order(order)
 
-            if locked_order.status != 'confirmed' or locked_order.payment_status != 'paid':
+            if locked_order.status not in PAID_FULFILLMENT_STATUSES or locked_order.payment_status != 'paid':
                 return False
 
             if locked_order.stock_reduced:
@@ -307,7 +307,7 @@ def confirm_order_payment(order, payment_reference='', save=True):
             now = timezone.now()
             update_fields = ['payment_status', 'status', 'payment_confirmed_at']
             locked_order.payment_status = 'paid'
-            locked_order.status = 'confirmed'
+            locked_order.status = 'paid'
             locked_order.payment_confirmed_at = now
 
             if payment_reference and not locked_order.razorpay_payment_id:

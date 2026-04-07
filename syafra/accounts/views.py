@@ -1,10 +1,12 @@
+import logging
+
 from django.contrib.auth import login, logout, authenticate, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import MultipleObjectsReturned
 from django.db import IntegrityError
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, resolve_url
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
@@ -24,6 +26,69 @@ from orders.models import Order, PaymentSettings
 from .forms import RegisterForm
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
+
+def _default_auth_backend():
+    backends = getattr(settings, 'AUTHENTICATION_BACKENDS', None) or [
+        'django.contrib.auth.backends.ModelBackend'
+    ]
+    return backends[0]
+
+
+def _allowed_redirect_hosts(request):
+    hosts = {request.get_host()}
+    hosts.update(
+        host for host in getattr(settings, 'ALLOWED_HOSTS', [])
+        if host and not host.startswith('.')
+    )
+    domain = getattr(settings, 'DOMAIN', '').strip()
+    if domain:
+        hosts.add(domain)
+    return hosts
+
+
+def _get_safe_redirect_url(request, next_url, fallback):
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts=_allowed_redirect_hosts(request),
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return resolve_url(fallback)
+
+
+def _find_user_by_identifier(identifier):
+    username_field = getattr(User, 'USERNAME_FIELD', 'username')
+
+    try:
+        return User._default_manager.get(**{f'{username_field}__iexact': identifier})
+    except User.DoesNotExist:
+        if '@' not in identifier:
+            return None
+    except MultipleObjectsReturned:
+        logger.warning('Multiple accounts found for username identifier.')
+        return None
+
+    try:
+        return User._default_manager.get(email__iexact=identifier)
+    except User.DoesNotExist:
+        return None
+    except MultipleObjectsReturned:
+        logger.warning('Multiple accounts found for email identifier.')
+        return None
+
+
+def _authenticate_by_identifier(request, identifier, password):
+    user = authenticate(request, username=identifier, password=password)
+    if user is not None:
+        return user
+
+    candidate = _find_user_by_identifier(identifier)
+    if candidate is None:
+        return None
+
+    return authenticate(request, username=candidate.get_username(), password=password)
 
 
 def _send_activation_email(user, request):
@@ -49,7 +114,7 @@ def _send_activation_email(user, request):
 @require_http_methods(['GET', 'POST', 'HEAD', 'OPTIONS'])
 def register_view(request):
     if request.user.is_authenticated:
-        return redirect('products:home')
+        return redirect(resolve_url(settings.LOGIN_REDIRECT_URL))
 
     next_url = request.POST.get('next') or request.GET.get('next') or ''
 
@@ -59,26 +124,16 @@ def register_view(request):
             return render(request, 'register.html', {'form': form, 'next': next_url})
 
         try:
-            user = User.objects.create_user(
-                username=form.cleaned_data['username'],
-                email=form.cleaned_data['email'],
-                password=form.cleaned_data['password'],
-                is_active=False,
-            )
-        except IntegrityError as exc:
+            user = form.save()
+        except IntegrityError:
             error_message = 'This username or email is already registered.'
             form.add_error('username', error_message)
             form.add_error('email', error_message)
             return render(request, 'register.html', {'form': form, 'next': next_url})
 
-        try:
-            _send_activation_email(user, request)
-            messages.success(request, 'Registration successful! Check your email to activate your account.')
-        except Exception:
-            messages.warning(request, 'Account created, but activation email could not be sent. Contact support.')
-
-        redirect_url = 'accounts:login'
-        return redirect(redirect_url)
+        login(request, user, backend=_default_auth_backend())
+        messages.success(request, 'Your account has been created and you are now signed in.')
+        return redirect(_get_safe_redirect_url(request, next_url, settings.LOGIN_REDIRECT_URL))
 
     return render(request, 'register.html', {'form': RegisterForm(), 'next': next_url})
 
@@ -86,33 +141,39 @@ def register_view(request):
 @require_http_methods(['GET', 'POST', 'HEAD', 'OPTIONS'])
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect('products:home')
+        return redirect(resolve_url(settings.LOGIN_REDIRECT_URL))
 
     next_url = request.POST.get('next') or request.GET.get('next') or ''
 
     if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
+        username = (request.POST.get('username') or request.POST.get('email') or '').strip()
         password = request.POST.get('password', '').strip()
 
         if not username or not password:
             messages.error(request, 'Please fill in all fields.')
             return render(request, 'login.html', {'next': next_url})
 
-        user = authenticate(request, username=username, password=password)
+        user = _authenticate_by_identifier(request, username, password)
 
         if user is not None:
-            if not user.is_active:
-                messages.error(request, 'Account not activated. Please check your email.')
-                return render(request, 'login.html', {'next': next_url})
-
             login(request, user)
-            messages.success(request, f'Welcome back, {user.username}!')
+            messages.success(request, f'Welcome back, {user.get_username()}!')
+            return redirect(_get_safe_redirect_url(request, next_url, settings.LOGIN_REDIRECT_URL))
 
-            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-                return redirect(next_url)
-            return redirect('products:home')
+        candidate = _find_user_by_identifier(username)
+        if (
+            candidate is not None
+            and not candidate.is_active
+            and candidate.last_login is None
+            and candidate.check_password(password)
+        ):
+            candidate.is_active = True
+            candidate.save(update_fields=['is_active'])
+            login(request, candidate, backend=_default_auth_backend())
+            messages.success(request, 'Your account has been activated and you are now signed in.')
+            return redirect(_get_safe_redirect_url(request, next_url, settings.LOGIN_REDIRECT_URL))
 
-        messages.error(request, 'Invalid username or password.')
+        messages.error(request, 'Invalid username/email or password.')
         return render(request, 'login.html', {'next': next_url})
 
     return render(request, 'login.html', {'next': next_url})
@@ -126,7 +187,7 @@ def logout_view(request):
     """
     logout(request)
     messages.success(request, 'You have been logged out.')
-    return redirect('products:home')
+    return redirect(resolve_url(settings.LOGOUT_REDIRECT_URL))
 
 
 @login_required

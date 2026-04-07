@@ -20,6 +20,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import redirect
+from django.views.generic.base import RedirectView
+from orders import views as order_views
 
 handler404 = 'syafra.views.custom_page_not_found'
 handler500 = 'syafra.views.custom_server_error'
@@ -36,7 +38,12 @@ def custom_method_not_allowed(request, exception=None):
 handler405 = custom_method_not_allowed
 
 urlpatterns = [
+    path('admin/analytics/', order_views.analytics_dashboard, name='analytics_dashboard'),
     path('admin/', admin.site.urls),
+    path('password_reset/', RedirectView.as_view(pattern_name='accounts:password_reset', permanent=False)),
+    path('password_reset_done/', RedirectView.as_view(pattern_name='accounts:password_reset_done', permanent=False)),
+    path('reset/<uidb64>/<token>/', RedirectView.as_view(pattern_name='accounts:password_reset_confirm', permanent=False)),
+    path('reset_done/', RedirectView.as_view(pattern_name='accounts:password_reset_complete', permanent=False)),
     path('', include('products.urls')),
     path('cart/', include('cart.urls')),
     path('orders/', include('orders.urls')),

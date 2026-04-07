@@ -10,6 +10,7 @@ import os
 import sys
 import warnings
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import dj_database_url
 
@@ -54,6 +55,15 @@ def _csv(name: str, default: str) -> list[str]:
     return [x.strip() for x in os.getenv(name, default).split(",") if x.strip()]
 
 
+def _clean_host(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return raw
+    if "://" in raw:
+        raw = urlsplit(raw).netloc or raw
+    return raw.strip().rstrip("/")
+
+
 # -----------------------------------------------------------------------------
 # Core security
 # -----------------------------------------------------------------------------
@@ -74,6 +84,8 @@ if not DEBUG:
 # Default host list when ALLOWED_HOSTS env is unset (set comma-separated hosts on Render).
 # Matches: ALLOWED_HOSTS = ["your-app.onrender.com"] in production without env.
 _DEFAULT_ALLOWED_HOSTS = [
+    "syafra.com",
+    "www.syafra.com",
     "syafra.onrender.com",
 ]
 _DEV_ALLOWED_HOSTS = [
@@ -97,6 +109,8 @@ else:
 # On Render set CSRF_TRUSTED_ORIGINS (comma-separated). Code default matches:
 #   CSRF_TRUSTED_ORIGINS = ["https://your-app.onrender.com"]
 _DEFAULT_CSRF_ORIGINS = [
+    "https://syafra.com",
+    "https://www.syafra.com",
     "https://syafra.onrender.com",
 ]
 _DEV_CSRF_ORIGINS = [
@@ -189,14 +203,17 @@ if _database_url:
             ssl_require=_db_ssl,
         )
     }
+    if not DEBUG and DATABASES["default"].get("ENGINE") != "django.db.backends.postgresql":
+        raise ImproperlyConfigured(
+            "Production requires PostgreSQL via DATABASE_URL. "
+            "Set DATABASE_URL to your Render Postgres connection string."
+        )
     _db_logger.debug("Database: from DATABASE_URL (ssl_require=%s).", _db_ssl)
 else:
     if not DEBUG:
-        warnings.warn(
-            "DATABASE_URL is not set and DEBUG is False; using SQLite. "
-            "Prefer DEBUG=True locally without DATABASE_URL, or set DATABASE_URL for Postgres.",
-            UserWarning,
-            stacklevel=2,
+        raise ImproperlyConfigured(
+            "Set DATABASE_URL in the environment when DEBUG=False. "
+            "Production must use PostgreSQL and must not fall back to SQLite."
         )
     DATABASES = {
         "default": {
@@ -236,20 +253,27 @@ USE_I18N = True
 USE_TZ = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 
 # -----------------------------------------------------------------------------
 # Static & media
 # -----------------------------------------------------------------------------
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static')
-]
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": STATICFILES_STORAGE,
+    },
+}
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / "media"
 SERVE_MEDIA_VIA_DJANGO = _env_bool("SERVE_MEDIA_VIA_DJANGO", default=False)
 
 # -----------------------------------------------------------------------------
@@ -417,17 +441,31 @@ for _handler in LOGGING["handlers"].values():
 # -----------------------------------------------------------------------------
 
 LOGIN_URL = "accounts:login"
-LOGIN_REDIRECT_URL = "products:home"
-LOGOUT_REDIRECT_URL = "products:home"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
 
 # -----------------------------------------------------------------------------
 # Email
 # -----------------------------------------------------------------------------
 
-EMAIL_SERVICE = os.getenv("EMAIL_SERVICE", "console")
+_configured_email_service = os.getenv("EMAIL_SERVICE", "").strip().lower()
+if _configured_email_service:
+    EMAIL_SERVICE = _configured_email_service
+elif os.getenv("SENDGRID_API_KEY", "").strip():
+    EMAIL_SERVICE = "sendgrid"
+elif os.getenv("EMAIL_HOST_USER", "").strip() and os.getenv("EMAIL_HOST_PASSWORD", "").strip():
+    EMAIL_SERVICE = "gmail"
+else:
+    EMAIL_SERVICE = "console"
+EMAIL_HOST = ""
+EMAIL_PORT = 0
+EMAIL_HOST_USER = ""
+EMAIL_HOST_PASSWORD = ""
+EMAIL_USE_TLS = False
 # Public host only (no scheme), e.g. your-app.onrender.com — used in password-reset / auth emails and link context.
 # Payment flows use request URLs where applicable; keep DOMAIN aligned with your live hostname.
-DOMAIN = os.environ.get("DOMAIN", "127.0.0.1:8000")
+DOMAIN = _clean_host(os.environ.get("DOMAIN", "127.0.0.1:8000" if DEBUG else "syafra.com"))
+ORDER_ALERT_EMAILS = _csv("ORDER_ALERT_EMAILS", "")
 
 if EMAIL_SERVICE == "sendgrid":
     SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
@@ -468,8 +506,8 @@ else:
     DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "SYAFRA <noreply@localhost>")
 
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
-EMAIL_TIMEOUT = 30
-EMAIL_FAIL_SILENTLY = False
+EMAIL_TIMEOUT = _env_int("EMAIL_TIMEOUT", 30)
+EMAIL_FAIL_SILENTLY = _env_bool("EMAIL_FAIL_SILENTLY", default=False)
 
 if _env_bool("SYAFRA_LOG_EMAIL_CONFIG", default=False):
     print(
