@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Analytics - SYAFRA{% endblock %}
+
+{% block navbar %}
+<header class="fixed top-0 left-0 right-0 z-50 bg-black text-white border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-6 py-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <p class="text-xs tracking-[0.3em] text-syafra-beige uppercase">SYAFRA Admin</p>
+            <h1 class="text-2xl font-bold tracking-tight">Analytics Dashboard</h1>
+        </div>
+        <div class="flex items-center gap-3 text-sm tracking-wider">
+            <a href="/admin/" class="px-4 py-2 border border-white/15 hover:border-syafra-beige hover:text-syafra-beige transition-colors">DJANGO ADMIN</a>
+            <a href="{% url 'products:home' %}" class="px-4 py-2 border border-white/15 hover:border-syafra-beige hover:text-syafra-beige transition-colors">VIEW STORE</a>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block content %}
+<section class="pt-32 pb-16 px-6 bg-[#f7f3ec] min-h-screen">
+    <div class="max-w-7xl mx-auto space-y-8">
+        <div class="bg-white border border-black/10 p-6">
+            <div class="flex flex-wrap items-end justify-between gap-6">
+                <div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Reporting Window</p>
+                    <h2 class="text-3xl font-bold tracking-tight mt-2">{{ filters.range_label }}</h2>
+                    <p class="text-sm text-gray-500 mt-2">Orders, revenue, user growth, top products, and recent activity.</p>
+                </div>
+                <form method="get" class="grid gap-3 md:grid-cols-4 items-end w-full md:w-auto">
+                    <div>
+                        <label for="range" class="block text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">Range</label>
+                        <select id="range" name="range" class="w-full border border-gray-300 px-4 py-3 text-sm bg-white">
+                            <option value="7" {% if filters.selected_range == "7" %}selected{% endif %}>Last 7 days</option>
+                            <option value="30" {% if filters.selected_range == "30" %}selected{% endif %}>Last 30 days</option>
+                            <option value="custom" {% if filters.selected_range == "custom" %}selected{% endif %}>Custom</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="start_date" class="block text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">Start date</label>
+                        <input id="start_date" name="start_date" type="date" value="{{ filters.start_date_value }}" class="w-full border border-gray-300 px-4 py-3 text-sm bg-white">
+                    </div>
+                    <div>
+                        <label for="end_date" class="block text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">End date</label>
+                        <input id="end_date" name="end_date" type="date" value="{{ filters.end_date_value }}" class="w-full border border-gray-300 px-4 py-3 text-sm bg-white">
+                    </div>
+                    <button type="submit" class="bg-black text-white px-5 py-3 text-sm tracking-[0.2em] uppercase hover:bg-gray-800 transition-colors">Apply</button>
+                </form>
+            </div>
+            {% if filters.filter_error %}
+            <div class="mt-4 border border-amber-300 bg-amber-50 text-amber-900 px-4 py-3 text-sm">
+                {{ filters.filter_error }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-3">
+            <article class="bg-white border border-black/10 p-6">
+                <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Total Orders</p>
+                <p class="text-4xl font-bold mt-4">{{ summary.total_orders }}</p>
+                <p class="text-sm text-gray-500 mt-3">{{ summary.orders_in_range }} orders in the selected range</p>
+            </article>
+            <article class="bg-white border border-black/10 p-6">
+                <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Total Revenue</p>
+                <p class="text-4xl font-bold mt-4">{{ summary.currency_symbol }}{{ summary.total_revenue|floatformat:2 }}</p>
+                <p class="text-sm text-gray-500 mt-3">{{ summary.paid_orders_in_range }} paid orders in the selected range</p>
+            </article>
+            <article class="bg-white border border-black/10 p-6">
+                <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Total Users</p>
+                <p class="text-4xl font-bold mt-4">{{ summary.total_users }}</p>
+                <p class="text-sm text-gray-500 mt-3">{{ summary.new_users_in_range }} new users in the selected range</p>
+            </article>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-3">
+            <article class="bg-white border border-black/10 p-5">
+                <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Average Order Value</p>
+                <p class="text-2xl font-semibold mt-3">{{ summary.currency_symbol }}{{ summary.average_order_value|floatformat:2 }}</p>
+            </article>
+            <article class="bg-white border border-black/10 p-5">
+                <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Active Users</p>
+                <p class="text-2xl font-semibold mt-3">{{ summary.active_users }}</p>
+                <p class="text-sm text-gray-500 mt-2">Recent orders or logins in the selected range</p>
+            </article>
+            <article class="bg-white border border-black/10 p-5">
+                <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Order Status Mix</p>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    {% for status, total in orders_by_status.items %}
+                    <div class="flex items-center justify-between border border-gray-200 px-3 py-2">
+                        <span>{{ status|title }}</span>
+                        <strong>{{ total }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </article>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-2">
+            <article class="bg-white border border-black/10 p-6">
+                <div class="flex items-center justify-between gap-4 mb-6">
+                    <div>
+                        <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Orders Per Day</p>
+                        <h3 class="text-2xl font-semibold mt-2">Order Volume Trend</h3>
+                    </div>
+                </div>
+                <div class="h-80">
+                    <canvas id="ordersChart"></canvas>
+                </div>
+            </article>
+
+            <article class="bg-white border border-black/10 p-6">
+                <div class="flex items-center justify-between gap-4 mb-6">
+                    <div>
+                        <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Revenue Per Day</p>
+                        <h3 class="text-2xl font-semibold mt-2">Paid Revenue Trend</h3>
+                    </div>
+                </div>
+                <div class="h-80">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </article>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
+            <article class="bg-white border border-black/10 p-6">
+                <div class="flex items-center justify-between gap-4 mb-6">
+                    <div>
+                        <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Top Selling Products</p>
+                        <h3 class="text-2xl font-semibold mt-2">Best Sellers In This Range</h3>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="text-left text-gray-500 uppercase tracking-[0.2em] text-xs">
+                            <tr>
+                                <th class="pb-3">Product</th>
+                                <th class="pb-3 text-right">Qty Sold</th>
+                                <th class="pb-3 text-right">Orders</th>
+                                <th class="pb-3 text-right">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for item in top_products %}
+                            <tr>
+                                <td class="py-4">
+                                    <div class="font-medium">{{ item.product__name }}</div>
+                                    <div class="text-gray-500 text-xs uppercase tracking-[0.15em] mt-1">{{ item.product__brand }}</div>
+                                </td>
+                                <td class="py-4 text-right">{{ item.quantity_sold }}</td>
+                                <td class="py-4 text-right">{{ item.order_count }}</td>
+                                <td class="py-4 text-right font-medium">{{ summary.currency_symbol }}{{ item.revenue|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="py-8 text-center text-gray-500">No paid product sales in this date range.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <div class="space-y-6">
+                <article class="bg-white border border-black/10 p-6">
+                    <div class="flex items-center justify-between gap-4 mb-6">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.25em] text-gray-500">User Growth</p>
+                            <h3 class="text-2xl font-semibold mt-2">New Users Per Day</h3>
+                        </div>
+                    </div>
+                    <div class="h-72">
+                        <canvas id="usersChart"></canvas>
+                    </div>
+                </article>
+
+                <article class="bg-white border border-black/10 p-6">
+                    <div class="flex items-center justify-between gap-4 mb-6">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Order Status Distribution</p>
+                            <h3 class="text-2xl font-semibold mt-2">Selected Range Mix</h3>
+                        </div>
+                    </div>
+                    <div class="h-80">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <article class="bg-white border border-black/10 p-6">
+            <div class="flex items-center justify-between gap-4 mb-6">
+                <div>
+                    <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Recent Orders</p>
+                    <h3 class="text-2xl font-semibold mt-2">Latest Order Activity</h3>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="text-left text-gray-500 uppercase tracking-[0.2em] text-xs">
+                        <tr>
+                            <th class="pb-3">Order</th>
+                            <th class="pb-3">Customer</th>
+                            <th class="pb-3">Status</th>
+                            <th class="pb-3">Payment</th>
+                            <th class="pb-3 text-right">Total</th>
+                            <th class="pb-3 text-right">Created</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for order in recent_orders %}
+                        <tr>
+                            <td class="py-4 font-medium">#{{ order.id }}</td>
+                            <td class="py-4">
+                                <div>{{ order.customer_name|default:order.user.username }}</div>
+                                <div class="text-gray-500 text-xs mt-1">{{ order.email }}</div>
+                            </td>
+                            <td class="py-4">{{ order.get_status_display }}</td>
+                            <td class="py-4">{{ order.get_payment_status_display }}</td>
+                            <td class="py-4 text-right font-medium">{{ summary.currency_symbol }}{{ order.total_price|floatformat:2 }}</td>
+                            <td class="py-4 text-right text-gray-500">{{ order.created_at|date:"M j, Y H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-gray-500">No orders available yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+</section>
+
+{{ order_chart|json_script:"order-chart-data" }}
+{{ revenue_chart|json_script:"revenue-chart-data" }}
+{{ status_chart|json_script:"status-chart-data" }}
+{{ user_chart|json_script:"user-chart-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const orderChartData = JSON.parse(document.getElementById("order-chart-data").textContent);
+const revenueChartData = JSON.parse(document.getElementById("revenue-chart-data").textContent);
+const statusChartData = JSON.parse(document.getElementById("status-chart-data").textContent);
+const userChartData = JSON.parse(document.getElementById("user-chart-data").textContent);
+
+const chartFont = { family: "Inter" };
+Chart.defaults.font.family = chartFont.family;
+Chart.defaults.color = "#4b5563";
+
+new Chart(document.getElementById("ordersChart"), {
+    type: "line",
+    data: {
+        labels: orderChartData.labels,
+        datasets: [{
+            label: "Orders",
+            data: orderChartData.values,
+            borderColor: "#111111",
+            backgroundColor: "rgba(17, 17, 17, 0.08)",
+            fill: true,
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 3,
+            pointHoverRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+new Chart(document.getElementById("revenueChart"), {
+    type: "line",
+    data: {
+        labels: revenueChartData.labels,
+        datasets: [{
+            label: "Revenue",
+            data: revenueChartData.values,
+            borderColor: "#8b5e3c",
+            backgroundColor: "rgba(139, 94, 60, 0.10)",
+            fill: true,
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 3,
+            pointHoverRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+new Chart(document.getElementById("usersChart"), {
+    type: "line",
+    data: {
+        labels: userChartData.labels,
+        datasets: [{
+            label: "New users",
+            data: userChartData.values,
+            borderColor: "#0f766e",
+            backgroundColor: "rgba(15, 118, 110, 0.10)",
+            fill: true,
+            borderWidth: 2,
+            tension: 0.35,
+            pointRadius: 3,
+            pointHoverRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+new Chart(document.getElementById("statusChart"), {
+    type: "pie",
+    data: {
+        labels: statusChartData.labels,
+        datasets: [{
+            data: statusChartData.values,
+            backgroundColor: ["#facc15", "#16a34a", "#2563eb", "#9333ea", "#059669", "#dc2626"],
+            borderColor: "#ffffff",
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: "bottom",
+                labels: { usePointStyle: true, boxWidth: 10, padding: 16 }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
