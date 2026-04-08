@@ -6,37 +6,27 @@ from .models import Product, Category, InstagramPost, Testimonial
 from orders.models import PaymentSettings
 
 INSTAGRAM_DEFAULT_LINK = 'https://www.instagram.com/syafra.thrift/'
-INSTAGRAM_STATIC_IMAGES = [
-    'images/insta1.jpg',
-    'images/insta2.jpg',
-    'images/insta3.jpg',
-    'images/insta4.jpg',
-    'images/insta5.jpg',
-    'images/insta6.jpg',
-]
 
 
 def build_instagram_tiles(posts, limit=6):
-    posts = list(posts[:limit])
-    tiles = []
-
-    for index, static_image in enumerate(INSTAGRAM_STATIC_IMAGES[:limit], start=1):
-        post = posts[index - 1] if index <= len(posts) else None
-        tiles.append({
-            'link': post.link if post and post.link else INSTAGRAM_DEFAULT_LINK,
-            'static_image': static_image,
+    return [
+        {
+            'link': post.link or INSTAGRAM_DEFAULT_LINK,
+            'image_url': post.image.url,
             'alt': f'Instagram post {index}',
-        })
-
-    return tiles
+        }
+        for index, post in enumerate(posts[:limit], start=1)
+        if post.image
+    ]
 
 
 def home(request):
+    instagram_queryset = InstagramPost.objects.filter(is_active=True).exclude(image='')
     featured_stats = Product.objects.filter(is_featured=True, stock__gt=0).aggregate(
         count=Count('id'),
         latest=Max('updated_at'),
     )
-    instagram_stats = InstagramPost.objects.filter(is_active=True).aggregate(
+    instagram_stats = instagram_queryset.aggregate(
         count=Count('id'),
         latest=Max('created_at'),
     )
@@ -50,7 +40,7 @@ def home(request):
     testimonial_latest = int(testimonial_stats['latest'].timestamp()) if testimonial_stats['latest'] else 0
 
     cache_key = (
-        f"homepage_data_v3:"
+        f"homepage_data_v4:"
         f"fp{featured_stats['count']}-{featured_latest}:"
         f"ig{instagram_stats['count']}-{instagram_latest}:"
         f"ts{testimonial_stats['count']}-{testimonial_latest}"
@@ -63,7 +53,7 @@ def home(request):
             .select_related('category')
             .prefetch_related('sizes', 'images')[:8]
         )
-        instagram_posts = InstagramPost.objects.filter(is_active=True)[:6]
+        instagram_posts = instagram_queryset[:6]
         testimonials = Testimonial.objects.filter(is_active=True)[:3]
         
         payment_settings = PaymentSettings.get_settings()

@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: syafra-web
+    runtime: python
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: python manage.py migrate --noinput && python manage.py sync_admin_password && gunicorn syafra.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    healthCheckPath: /
+    envVars:
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL_REQUIRE
+        value: "true"
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: DOMAIN
+        sync: false
+      - key: USE_HTTPS
+        value: "true"
+      - key: SERVE_MEDIA_VIA_DJANGO
+        value: "true"
+      - key: EMAIL_SERVICE
+        value: "sendgrid"
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_SENDER_EMAIL
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: ORDER_ALERT_EMAILS
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: WHATSAPP_NUMBER
+        value: "919037626684"
+      - key: WHATSAPP_DEFAULT_MESSAGE
+        value: "Hi, I am interested in your products. Please share more details."
+      - key: LOG_TO_FILE
+        value: "false"
