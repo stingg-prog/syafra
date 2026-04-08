@@ -5,21 +5,6 @@ from django.db.models import Q, Max, Count
 from .models import Product, Category, InstagramPost, Testimonial
 from orders.models import PaymentSettings
 
-INSTAGRAM_DEFAULT_LINK = 'https://www.instagram.com/syafra.thrift/'
-
-
-def build_instagram_tiles(posts, limit=6):
-    return [
-        {
-            'link': post.link or INSTAGRAM_DEFAULT_LINK,
-            'image_url': post.image.url,
-            'alt': f'Instagram post {index}',
-        }
-        for index, post in enumerate(posts[:limit], start=1)
-        if post.image
-    ]
-
-
 def home(request):
     instagram_queryset = InstagramPost.objects.filter(is_active=True).exclude(image='')
     featured_stats = Product.objects.filter(is_featured=True, stock__gt=0).aggregate(
@@ -61,7 +46,7 @@ def home(request):
         
         cached_data = {
             'featured_products': list(featured_products),
-            'instagram_posts': build_instagram_tiles(instagram_posts),
+            'instagram_posts': list(instagram_posts),
             'testimonials': list(testimonials),
             'currency': currency,
         }
