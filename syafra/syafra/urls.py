@@ -14,6 +14,8 @@ Examples:
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import os
+
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -50,5 +52,5 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
 ]
 
-if settings.DEBUG or getattr(settings, 'SERVE_MEDIA_VIA_DJANGO', False):
+if settings.DEBUG or os.getenv("SERVE_MEDIA_VIA_DJANGO") == "true":
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

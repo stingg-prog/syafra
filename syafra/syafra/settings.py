@@ -272,8 +272,8 @@ STORAGES = {
     },
 }
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = '/media/'
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "media")))
 SERVE_MEDIA_VIA_DJANGO = _env_bool("SERVE_MEDIA_VIA_DJANGO", default=False)
 
 # -----------------------------------------------------------------------------

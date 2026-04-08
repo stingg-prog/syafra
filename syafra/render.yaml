@@ -3,6 +3,10 @@ services:
     name: syafra-web
     runtime: python
     plan: free
+    disk:
+      name: media
+      mountPath: /var/data
+      sizeGB: 5
     buildCommand: bash build.sh
     startCommand: python manage.py migrate --noinput && python manage.py sync_admin_password && gunicorn syafra.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
     healthCheckPath: /
@@ -25,6 +29,8 @@ services:
         value: "true"
       - key: SERVE_MEDIA_VIA_DJANGO
         value: "true"
+      - key: MEDIA_ROOT
+        value: "/var/data/media"
       - key: EMAIL_SERVICE
         value: "sendgrid"
       - key: SENDGRID_API_KEY
