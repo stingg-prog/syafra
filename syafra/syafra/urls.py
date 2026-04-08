@@ -17,11 +17,11 @@ Examples:
 import os
 
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path, re_path
 from django.conf import settings
-from django.conf.urls.static import static
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import redirect
+from django.views.static import serve
 from django.views.generic.base import RedirectView
 from orders import views as order_views
 
@@ -52,5 +52,9 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
 ]
 
-if settings.DEBUG or os.getenv("SERVE_MEDIA_VIA_DJANGO") == "true":
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+if os.getenv("SERVE_MEDIA_VIA_DJANGO") == "true":
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {
+            'document_root': settings.MEDIA_ROOT,
+        }),
+    ]
