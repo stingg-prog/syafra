@@ -52,7 +52,8 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
 ]
 
-if os.getenv("SERVE_MEDIA_VIA_DJANGO") == "true":
+serve_media_via_django = os.getenv("SERVE_MEDIA_VIA_DJANGO", "").strip().lower() == "true"
+if serve_media_via_django:
     urlpatterns += [
         re_path(r'^media/(?P<path>.*)$', serve, {
             'document_root': settings.MEDIA_ROOT,
