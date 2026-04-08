@@ -25,7 +25,7 @@ def home(request):
     testimonial_latest = int(testimonial_stats['latest'].timestamp()) if testimonial_stats['latest'] else 0
 
     cache_key = (
-        f"homepage_data_v4:"
+        f"homepage_data_v5:"
         f"fp{featured_stats['count']}-{featured_latest}:"
         f"ig{instagram_stats['count']}-{instagram_latest}:"
         f"ts{testimonial_stats['count']}-{testimonial_latest}"
@@ -38,7 +38,6 @@ def home(request):
             .select_related('category')
             .prefetch_related('sizes', 'images')[:8]
         )
-        instagram_posts = instagram_queryset[:6]
         testimonials = Testimonial.objects.filter(is_active=True)[:3]
         
         payment_settings = PaymentSettings.get_settings()
@@ -46,13 +45,18 @@ def home(request):
         
         cached_data = {
             'featured_products': list(featured_products),
-            'instagram_posts': list(instagram_posts),
             'testimonials': list(testimonials),
             'currency': currency,
         }
         cache.set(cache_key, cached_data, 300)
-    
-    return render(request, 'home.html', cached_data)
+
+    # Keep Instagram posts out of cached payload format so templates always receive
+    # current model instances with post.image.url available.
+    context = {
+        **cached_data,
+        'instagram_posts': list(instagram_queryset[:6]),
+    }
+    return render(request, 'home.html', context)
 
 
 def shop(request):
