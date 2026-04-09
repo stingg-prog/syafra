@@ -564,7 +564,12 @@ CELERY_TASK_ROUTES = {
 
 RAZORPAY_KEY_ID = (os.getenv("RAZORPAY_KEY_ID", "") or "").strip()
 RAZORPAY_KEY_SECRET = (os.getenv("RAZORPAY_KEY_SECRET", "") or "").strip()
-RAZORPAY_WEBHOOK_SECRET = (os.getenv("RAZORPAY_WEBHOOK_SECRET", "") or "").strip()
+RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET")
+
+if os.getenv("RENDER") and not RAZORPAY_WEBHOOK_SECRET:
+    raise ImproperlyConfigured(
+        "RAZORPAY_WEBHOOK_SECRET must be set in production"
+    )
 
 WHATSAPP_NUMBER = os.getenv("WHATSAPP_NUMBER", "919037626684")
 WHATSAPP_DEFAULT_MESSAGE = os.getenv(
@@ -588,8 +593,6 @@ if not DEBUG:
         _missing.append("RAZORPAY_KEY_ID")
     if not RAZORPAY_KEY_SECRET or RAZORPAY_KEY_SECRET in ("", "your_razorpay_key_secret"):
         _missing.append("RAZORPAY_KEY_SECRET")
-    if not RAZORPAY_WEBHOOK_SECRET:
-        _missing.append("RAZORPAY_WEBHOOK_SECRET")
     if _missing:
         raise ImproperlyConfigured(
             f"Production requires: {', '.join(_missing)}. "
