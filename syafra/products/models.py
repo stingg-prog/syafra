@@ -1,5 +1,6 @@
 from django.db import models
 from django.urls import reverse
+from cloudinary.models import CloudinaryField
 
 
 class Category(models.Model):
@@ -103,7 +104,7 @@ class ProductImage(models.Model):
 
 
 class InstagramPost(models.Model):
-    image = models.ImageField(upload_to='instagram/', blank=True)
+    image = CloudinaryField('image', blank=True)
     link = models.URLField(default='https://www.instagram.com/syafra.thrift/')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

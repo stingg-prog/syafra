@@ -6,7 +6,11 @@ from .models import Product, Category, InstagramPost, Testimonial
 from orders.models import PaymentSettings
 
 def home(request):
-    instagram_queryset = InstagramPost.objects.filter(is_active=True).exclude(image='')
+    instagram_queryset = (
+        InstagramPost.objects.filter(is_active=True)
+        .exclude(image='')
+        .exclude(image__isnull=True)
+    )
     featured_stats = Product.objects.filter(is_featured=True, stock__gt=0).aggregate(
         count=Count('id'),
         latest=Max('updated_at'),
