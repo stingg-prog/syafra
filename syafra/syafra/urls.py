@@ -1,32 +1,19 @@
-"""
-URL configuration for syafra project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-    Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-    Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-    Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-import os
-
 from django.contrib import admin
-from django.urls import include, path, re_path
-from django.conf import settings
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.urls import include, path
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import redirect
-from django.views.static import serve
 from django.views.generic.base import RedirectView
+
 from orders import views as order_views
 
 handler404 = 'syafra.views.custom_page_not_found'
 handler500 = 'syafra.views.custom_server_error'
+
+
+def favicon_redirect(request):
+    return redirect(staticfiles_storage.url("images/syafra_logo.png"), permanent=True)
+
 
 def custom_method_not_allowed(request, exception=None):
     """Handle HTTP 405 Method Not Allowed errors gracefully."""
@@ -40,6 +27,7 @@ def custom_method_not_allowed(request, exception=None):
 handler405 = custom_method_not_allowed
 
 urlpatterns = [
+    path('favicon.ico', favicon_redirect),
     path('admin/analytics/', order_views.analytics_dashboard, name='analytics_dashboard'),
     path('admin/', admin.site.urls),
     path('password_reset/', RedirectView.as_view(pattern_name='accounts:password_reset', permanent=False)),
@@ -51,11 +39,3 @@ urlpatterns = [
     path('orders/', include('orders.urls')),
     path('accounts/', include('accounts.urls')),
 ]
-
-serve_media_via_django = os.getenv("SERVE_MEDIA_VIA_DJANGO", "").strip().lower() == "true"
-if serve_media_via_django:
-    urlpatterns += [
-        re_path(r'^media/(?P<path>.*)$', serve, {
-            'document_root': settings.MEDIA_ROOT,
-        }),
-    ]

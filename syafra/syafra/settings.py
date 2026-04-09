@@ -142,6 +142,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "cloudinary",
+    "cloudinary_storage",
     "products",
     "cart",
     "orders",
@@ -263,18 +265,26 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME"),
+    "API_KEY": os.getenv("CLOUDINARY_API_KEY"),
+    "API_SECRET": os.getenv("CLOUDINARY_API_SECRET"),
+    "SECURE": True,
+    "PREFIX": "",
+}
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": DEFAULT_FILE_STORAGE,
     },
     "staticfiles": {
-        "BACKEND": STATICFILES_STORAGE,
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, "media"))
-SERVE_MEDIA_VIA_DJANGO = _env_bool("SERVE_MEDIA_VIA_DJANGO", default=False)
+if DEBUG:
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
 
 # -----------------------------------------------------------------------------
 # HTTPS & browser security (single branch — no duplicate assignments later)
@@ -569,6 +579,12 @@ WHATSAPP_DEFAULT_MESSAGE = os.getenv(
 
 if not DEBUG:
     _missing = []
+    if not os.getenv("CLOUDINARY_CLOUD_NAME"):
+        _missing.append("CLOUDINARY_CLOUD_NAME")
+    if not os.getenv("CLOUDINARY_API_KEY"):
+        _missing.append("CLOUDINARY_API_KEY")
+    if not os.getenv("CLOUDINARY_API_SECRET"):
+        _missing.append("CLOUDINARY_API_SECRET")
     if not RAZORPAY_KEY_ID or RAZORPAY_KEY_ID in ("", "your_razorpay_key_id"):
         _missing.append("RAZORPAY_KEY_ID")
     if not RAZORPAY_KEY_SECRET or RAZORPAY_KEY_SECRET in ("", "your_razorpay_key_secret"):

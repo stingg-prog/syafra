@@ -36,7 +36,7 @@ def home(request):
         featured_products = (
             Product.objects.filter(is_featured=True, stock__gt=0)
             .select_related('category')
-            .prefetch_related('sizes', 'images')[:8]
+            .prefetch_related('sizes')[:8]
         )
         testimonials = Testimonial.objects.filter(is_active=True)[:3]
         
@@ -62,7 +62,7 @@ def home(request):
 def shop(request):
     products = (
         Product.objects.select_related('category')
-        .prefetch_related('sizes', 'images')
+        .prefetch_related('sizes')
         .all()
         .order_by('-created_at')
     )
@@ -131,7 +131,11 @@ def product_detail(request, pk):
         Product.objects.select_related('category').prefetch_related('sizes', 'images'),
         pk=pk
     )
+    gallery_images = list(product.images.all())
     related_products = Product.objects.filter(category=product.category).exclude(pk=pk)[:4]
+    primary_image_url = product.image.url if product.image else (
+        gallery_images[0].image.url if gallery_images else ""
+    )
     
     payment_settings = PaymentSettings.get_settings()
     currency = payment_settings.currency_symbol if payment_settings else '₹'
@@ -139,6 +143,8 @@ def product_detail(request, pk):
     wa_text = f'Hi, I am interested in {product.name} ({product.brand}). Is it available?'
     return render(request, 'product_detail.html', {
         'product': product,
+        'gallery_images': gallery_images,
+        'primary_image_url': primary_image_url,
         'related_products': related_products,
         'currency': currency,
         'whatsapp_product_message': wa_text,
@@ -150,7 +156,7 @@ def category_detail(request, slug):
     products = (
         Product.objects.filter(category=category)
         .select_related('category')
-        .prefetch_related('sizes', 'images')
+        .prefetch_related('sizes')
         .order_by('-created_at')
     )
     
