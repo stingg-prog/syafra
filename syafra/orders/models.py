@@ -1,3 +1,5 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 from django.conf import settings
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -226,6 +228,15 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
+
+    @property
+    def total_amount(self):
+        return int((Decimal(str(self.total_price)) * Decimal('100')).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+
+    @property
+    def razorpay_signature(self):
+        latest_payment = self.latest_payment
+        return latest_payment.razorpay_signature if latest_payment else ''
 
     @property
     def latest_payment(self):

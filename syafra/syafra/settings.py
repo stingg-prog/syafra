@@ -121,12 +121,10 @@ _DEV_CSRF_ORIGINS = [
 ]
 
 _env_csrf = _csv("CSRF_TRUSTED_ORIGINS", "")
-if _env_csrf:
-    CSRF_TRUSTED_ORIGINS = _env_csrf
-elif DEBUG:
-    CSRF_TRUSTED_ORIGINS = _DEFAULT_CSRF_ORIGINS + _DEV_CSRF_ORIGINS
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(_DEFAULT_CSRF_ORIGINS + _env_csrf + _DEV_CSRF_ORIGINS))
 else:
-    CSRF_TRUSTED_ORIGINS = list(_DEFAULT_CSRF_ORIGINS)
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(_DEFAULT_CSRF_ORIGINS + _env_csrf))
 
 # Email / absolute URLs: https when not in local HTTP mode (overridable via env)
 USE_HTTPS = _env_bool("USE_HTTPS", default=not DEBUG)
@@ -564,8 +562,9 @@ CELERY_TASK_ROUTES = {
 # Payments & integrations
 # -----------------------------------------------------------------------------
 
-RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
-RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_KEY_ID = (os.getenv("RAZORPAY_KEY_ID", "") or "").strip()
+RAZORPAY_KEY_SECRET = (os.getenv("RAZORPAY_KEY_SECRET", "") or "").strip()
+RAZORPAY_WEBHOOK_SECRET = (os.getenv("RAZORPAY_WEBHOOK_SECRET", "") or "").strip()
 
 WHATSAPP_NUMBER = os.getenv("WHATSAPP_NUMBER", "919037626684")
 WHATSAPP_DEFAULT_MESSAGE = os.getenv(
@@ -589,6 +588,8 @@ if not DEBUG:
         _missing.append("RAZORPAY_KEY_ID")
     if not RAZORPAY_KEY_SECRET or RAZORPAY_KEY_SECRET in ("", "your_razorpay_key_secret"):
         _missing.append("RAZORPAY_KEY_SECRET")
+    if not RAZORPAY_WEBHOOK_SECRET:
+        _missing.append("RAZORPAY_WEBHOOK_SECRET")
     if _missing:
         raise ImproperlyConfigured(
             f"Production requires: {', '.join(_missing)}. "

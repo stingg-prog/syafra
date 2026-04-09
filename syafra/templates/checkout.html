@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}CHECKOUT - SYAFRA{% endblock %}
 
@@ -124,9 +125,9 @@
                             </div>
                         </div>
                             
-                        <button type="submit" 
-                                class="w-full bg-black text-white py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
-                            PROCEED TO PAYMENT
+                        <button id="checkout-submit-btn" type="submit"
+                                class="w-full bg-black text-white py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                            PLACE ORDER
                         </button>
                     </div>
                 </form>
@@ -171,24 +172,252 @@
         </div>
     </div>
 </section>
+{% if 'razorpay' in available_methods %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+{% endif %}
 <script>
-    document.getElementById('checkout-form')?.addEventListener('submit', function(event) {
-        const name = this.querySelector('[name="customer_name"]').value.trim();
-        const phone = this.querySelector('[name="phone_number"]').value.trim();
-        const address = this.querySelector('[name="shipping_address"]').value.trim();
-        const pincode = this.querySelector('[name="pincode"]').value.trim();
+    (function() {
+        const form = document.getElementById('checkout-form');
+        const submitButton = document.getElementById('checkout-submit-btn');
+        const csrfToken = form?.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+        let checkoutRequestInFlight = false;
+        let paymentHandled = false;
 
-        const phoneDigits = phone.replace(/\D/g, '');
-        const phoneValid = phoneDigits.length >= 10;
-        const pincodeValid = /^\d{6}$/.test(pincode);
-
-        if (!name || !address || !phoneValid || !pincodeValid) {
-            event.preventDefault();
-            if (!name) showToast('Please enter your full name.', 'error');
-            else if (!phoneValid) showToast('Please enter a valid phone number.', 'error');
-            else if (!pincodeValid) showToast('Please enter a valid 6-digit pincode.', 'error');
-            else if (!address) showToast('Please enter your shipping address.', 'error');
+        if (!form || !submitButton) {
+            return;
         }
-    });
+
+        function getSelectedPaymentMethod() {
+            const checked = form.querySelector('input[name="payment_method"]:checked');
+            return checked ? checked.value : 'razorpay';
+        }
+
+        function updateSubmitButtonLabel() {
+            submitButton.textContent = getSelectedPaymentMethod() === 'upi'
+                ? 'CONTINUE TO UPI'
+                : 'PLACE ORDER';
+        }
+
+        function setSubmitting(isSubmitting, label) {
+            checkoutRequestInFlight = isSubmitting;
+            submitButton.disabled = isSubmitting;
+            submitButton.textContent = isSubmitting ? label : '';
+            if (!isSubmitting) {
+                updateSubmitButtonLabel();
+            }
+        }
+
+        function validateCheckoutForm() {
+            const name = form.querySelector('[name="customer_name"]').value.trim();
+            const phone = form.querySelector('[name="phone_number"]').value.trim();
+            const address = form.querySelector('[name="shipping_address"]').value.trim();
+            const pincode = form.querySelector('[name="pincode"]').value.trim();
+            const phoneDigits = phone.replace(/\D/g, '');
+
+            if (!name) {
+                return 'Please enter your full name.';
+            }
+            if (phoneDigits.length < 10) {
+                return 'Please enter a valid phone number.';
+            }
+            if (!/^\d{6}$/.test(pincode)) {
+                return 'Please enter a valid 6-digit pincode.';
+            }
+            if (!address) {
+                return 'Please enter your shipping address.';
+            }
+            return '';
+        }
+
+        function submitHiddenForm(action, fields) {
+            const fallbackForm = document.createElement('form');
+            fallbackForm.method = 'POST';
+            fallbackForm.action = action;
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            fallbackForm.appendChild(csrfInput);
+
+            Object.keys(fields).forEach(function(key) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = fields[key];
+                fallbackForm.appendChild(input);
+            });
+
+            document.body.appendChild(fallbackForm);
+            fallbackForm.submit();
+        }
+
+        function postPaymentAction(action, fields) {
+            return fetch(action, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(fields)
+            }).then(async function(response) {
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (error) {
+                    data = null;
+                }
+
+                if (data && data.redirect_url) {
+                    window.location.replace(data.redirect_url);
+                    return;
+                }
+
+                throw new Error((data && data.message) || 'Unexpected payment response.');
+            }).catch(function(error) {
+                console.error('Payment action fallback triggered:', error);
+                submitHiddenForm(action, fields);
+            });
+        }
+
+        function openRazorpayCheckout(paymentData) {
+            if (typeof window.Razorpay === 'undefined') {
+                showToast('Razorpay checkout.js failed to load. Please refresh and try again.', 'error');
+                return;
+            }
+
+            if (!paymentData.razorpay_key || !paymentData.razorpay_order_id || !paymentData.amount) {
+                showToast('Payment configuration error. Please refresh and try again.', 'error');
+                return;
+            }
+
+            paymentHandled = false;
+
+            const options = {
+                key: paymentData.razorpay_key,
+                amount: paymentData.amount,
+                currency: paymentData.currency,
+                order_id: paymentData.razorpay_order_id,
+                name: 'SYAFRA',
+                description: 'Order #' + paymentData.order_id,
+                image: '{% static "images/syafra_logo.png" %}',
+                handler: function(response) {
+                    if (paymentHandled) {
+                        return;
+                    }
+                    paymentHandled = true;
+                    postPaymentAction(paymentData.verify_url, {
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature
+                    });
+                },
+                prefill: {
+                    name: form.querySelector('[name="customer_name"]').value.trim(),
+                    email: form.querySelector('[name="email"]').value.trim(),
+                    contact: form.querySelector('[name="phone_number"]').value.trim()
+                },
+                notes: {
+                    order_id: String(paymentData.order_id)
+                },
+                modal: {
+                    ondismiss: function() {
+                        if (paymentHandled) {
+                            return;
+                        }
+                        paymentHandled = true;
+                        postPaymentAction(paymentData.failure_url, {
+                            order_id: String(paymentData.order_id),
+                            razorpay_order_id: paymentData.razorpay_order_id,
+                            failure_reason: 'Checkout dismissed before payment completion.'
+                        });
+                    }
+                },
+                theme: {
+                    color: '#000000'
+                }
+            };
+
+            const razorpayCheckout = new Razorpay(options);
+            razorpayCheckout.on('payment.failed', function(response) {
+                if (paymentHandled) {
+                    return;
+                }
+                paymentHandled = true;
+                const failureReason = response.error && response.error.description
+                    ? response.error.description
+                    : 'Payment failed at Razorpay checkout.';
+                postPaymentAction(paymentData.failure_url, {
+                    order_id: String(paymentData.order_id),
+                    razorpay_order_id: paymentData.razorpay_order_id,
+                    failure_reason: failureReason
+                });
+            });
+            razorpayCheckout.open();
+        }
+
+        form.addEventListener('submit', function(event) {
+            const validationError = validateCheckoutForm();
+            if (validationError) {
+                event.preventDefault();
+                showToast(validationError, 'error');
+                return;
+            }
+
+            if (getSelectedPaymentMethod() !== 'razorpay') {
+                return;
+            }
+
+            event.preventDefault();
+            if (checkoutRequestInFlight) {
+                return;
+            }
+
+            setSubmitting(true, 'CREATING ORDER...');
+
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).then(async function(response) {
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (error) {
+                    data = null;
+                }
+
+                if (!response.ok || !data || !data.ok) {
+                    const requestError = new Error((data && data.message) || 'Unable to start Razorpay checkout.');
+                    requestError.redirectUrl = data && data.redirect_url ? data.redirect_url : '';
+                    throw requestError;
+                }
+
+                console.log('Razorpay order response', data);
+                setSubmitting(false);
+                openRazorpayCheckout(data);
+            }).catch(function(error) {
+                setSubmitting(false);
+                if (error.redirectUrl) {
+                    window.location.assign(error.redirectUrl);
+                    return;
+                }
+                showToast(error.message || 'Unable to start payment. Please try again.', 'error');
+            });
+        });
+
+        form.querySelectorAll('input[name="payment_method"]').forEach(function(input) {
+            input.addEventListener('change', updateSubmitButtonLabel);
+        });
+
+        updateSubmitButtonLabel();
+    })();
 </script>
 {% endblock %}

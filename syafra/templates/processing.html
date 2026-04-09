@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Processing Payment - SYAFRA{% endblock %}
+
+{% block content %}
+<section class="pt-32 pb-16 px-6 bg-black text-white">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">PROCESSING</h1>
+        <p class="text-syafra-beige tracking-wider text-sm">We are confirming your payment</p>
+    </div>
+</section>
+
+<section class="py-16 px-6 bg-white min-h-screen">
+    <div class="max-w-2xl mx-auto">
+        <div class="bg-gray-100 p-8 text-center">
+            <div class="w-14 h-14 border-4 border-gray-300 border-t-black rounded-full mx-auto animate-spin"></div>
+            <h2 class="text-2xl font-bold tracking-tight mt-6">Payment Received</h2>
+            <p class="text-gray-600 mt-3">Order #{{ order.id }} is waiting for final confirmation from Razorpay webhook.</p>
+            <p class="text-gray-500 text-sm mt-2">This page refreshes automatically every 3 seconds.</p>
+
+            <div class="mt-8 space-y-3 text-left text-sm">
+                <div class="flex justify-between border-b border-gray-300 pb-3">
+                    <span class="text-gray-500">Order ID</span>
+                    <span class="font-semibold">#{{ order.id }}</span>
+                </div>
+                <div class="flex justify-between border-b border-gray-300 pb-3">
+                    <span class="text-gray-500">Payment Status</span>
+                    <span class="font-semibold uppercase">{{ order.payment_status }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Amount</span>
+                    <span class="font-semibold">{{ currency }}{{ order.total_price|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    setTimeout(function() {
+        window.location.href = "{% url 'orders:order_status' order.id %}";
+    }, 3000);
+</script>
+{% endblock %}

@@ -53,13 +53,14 @@
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
 var paymentHandled = false;
+var csrfToken = '{{ csrf_token }}';
 
 function submitPaymentForm(action, fields) {
     var form = document.createElement('form');
     form.method = 'POST';
     form.action = action;
 
-    fields.csrfmiddlewaretoken = '{{ csrf_token }}';
+    fields.csrfmiddlewaretoken = csrfToken;
 
     for (var key in fields) {
         var input = document.createElement('input');
@@ -73,23 +74,67 @@ function submitPaymentForm(action, fields) {
     form.submit();
 }
 
+function postPaymentAction(action, fields) {
+    return fetch(action, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(fields)
+    }).then(function (response) {
+        return response.text().then(function (text) {
+            var data = null;
+
+            try {
+                data = text ? JSON.parse(text) : null;
+            } catch (error) {
+                data = null;
+            }
+
+            return {
+                response: response,
+                data: data
+            };
+        });
+    }).then(function (result) {
+        if (result.data && result.data.redirect_url) {
+            window.location.replace(result.data.redirect_url);
+            return;
+        }
+
+        if (result.response.redirected && result.response.url) {
+            window.location.replace(result.response.url);
+            return;
+        }
+
+        throw new Error('Payment server returned an unexpected response.');
+    }).catch(function (error) {
+        console.error('Payment action fallback triggered:', error);
+        submitPaymentForm(action, fields);
+    });
+}
+
 function submitFailure(failureReason) {
     if (paymentHandled) {
         return;
     }
     paymentHandled = true;
-    submitPaymentForm('{% url "orders:payment_failure_callback" %}', {
+    postPaymentAction('{% url "orders:payment_failure_callback" %}', {
         order_id: '{{ order.id }}',
-        razorpay_order_id: '{{ razorpay_order_id }}',
+        razorpay_order_id: '{{ razorpay_order_id|escapejs }}',
         failure_reason: failureReason || 'Payment was not completed.'
     });
 }
 
 var options = {
-    "key": "{{ razorpay_key }}",
-    "amount": "{{ amount }}",
+    "key": "{{ razorpay_key|escapejs }}",
+    "amount": Number("{{ amount }}"),
     "currency": "{{ currency_code|escapejs }}",
-    "order_id": "{{ razorpay_order_id }}",
+    "order_id": "{{ razorpay_order_id|escapejs }}",
     "name": "SYAFRA",
     "description": "Order #{{ order.id }}",
     "image": "{% static 'images/syafra_logo.png' %}",
@@ -98,7 +143,7 @@ var options = {
             return;
         }
         paymentHandled = true;
-        submitPaymentForm('{% url "orders:verify_payment" %}', {
+        postPaymentAction('{% url "orders:verify_payment" %}', {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature
@@ -122,17 +167,35 @@ var options = {
     }
 };
 
-var rzp = new Razorpay(options);
-rzp.on('payment.failed', function (response) {
-    var errorDescription = response.error && response.error.description
-        ? response.error.description
-        : 'Payment failed at Razorpay checkout.';
-    submitFailure(errorDescription);
-});
+function openRazorpayCheckout(event) {
+    if (event) {
+        event.preventDefault();
+    }
 
-document.getElementById('pay-btn').onclick = function(e) {
+    if (paymentHandled) {
+        return;
+    }
+
+    if (typeof window.Razorpay === 'undefined') {
+        submitFailure('Razorpay checkout.js failed to load.');
+        return;
+    }
+
+    if (!options.key || !options.order_id || !options.amount || options.amount <= 0) {
+        submitFailure('Payment configuration error. Please refresh and try again.');
+        return;
+    }
+
+    var rzp = new Razorpay(options);
+    rzp.on('payment.failed', function (response) {
+        var errorDescription = response.error && response.error.description
+            ? response.error.description
+            : 'Payment failed at Razorpay checkout.';
+        submitFailure(errorDescription);
+    });
     rzp.open();
-    e.preventDefault();
-};
+}
+
+document.getElementById('pay-btn').addEventListener('click', openRazorpayCheckout);
 </script>
 {% endblock %}

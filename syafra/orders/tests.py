@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+import json
 from datetime import timedelta
 
 from django.core import mail
@@ -9,7 +12,7 @@ from django.utils import timezone
 from unittest import mock
 from products.models import Category, Product
 from cart.models import Cart, CartItem
-from .models import Order, OrderItem, PaymentSettings
+from .models import Order, OrderItem, Payment, PaymentSettings
 
 User = get_user_model()
 
@@ -107,6 +110,53 @@ class CheckoutViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('cart', response.context)
 
+    def test_ajax_checkout_returns_razorpay_payload(self):
+        self.client.login(username='testuser', password='testpass123')
+
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client_cls.return_value.order.create.return_value = {
+                'id': 'order_ajax_123',
+                'amount': 20000,
+                'currency': 'INR',
+                'status': 'created',
+            }
+
+            response = self.client.post(
+                reverse('orders:checkout'),
+                {
+                    'customer_name': 'Test User',
+                    'email': 'test@example.com',
+                    'phone_number': '9876543210',
+                    'pincode': '560001',
+                    'shipping_address': '123 Test Street',
+                    'payment_method': 'razorpay',
+                },
+                HTTP_ACCEPT='application/json',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                'ok': True,
+                'order_id': 1,
+                'amount': 20000,
+                'currency': 'INR',
+                'razorpay_key': 'test_key',
+                'razorpay_order_id': 'order_ajax_123',
+                'verify_url': reverse('orders:verify_payment'),
+                'failure_url': reverse('orders:payment_failure_callback'),
+                'status_url': reverse('orders:order_status', args=[1]),
+                'success_url': reverse('orders:order_success', args=[1]),
+                'failed_url': reverse('orders:payment_failed') + '?order_id=1',
+            },
+        )
+
+        order = Order.objects.get(user=self.user)
+        self.assertEqual(order.razorpay_order_id, 'order_ajax_123')
+        self.assertEqual(order.payment_status, 'pending')
+
     @override_settings(
         EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
         RAZORPAY_KEY_ID='your_razorpay_key_id',
@@ -197,6 +247,286 @@ class CheckoutViewTest(TestCase):
         self.assertEqual(second_response.status_code, 200)
         self.assertEqual(Order.objects.filter(user=self.user).count(), 1)
         self.assertFalse(CartItem.objects.filter(cart=self.cart).exists())
+
+
+class RazorpayPaymentFlowTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='payuser', password='testpass123')
+        self.client.login(username='payuser', password='testpass123')
+
+    @override_settings(
+        RAZORPAY_KEY_ID='env_key_id',
+        RAZORPAY_KEY_SECRET='env_key_secret',
+    )
+    def test_verify_payment_uses_env_credentials_without_paymentsettings(self):
+        PaymentSettings.objects.all().delete()
+        order = Order.objects.create(
+            user=self.user,
+            total_price=250.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='pending',
+            payment_status='pending',
+            razorpay_order_id='order_env_123',
+        )
+
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client = client_cls.return_value
+            client.utility.verify_payment_signature.return_value = None
+            client.payment.fetch.return_value = {
+                'id': 'pay_env_123',
+                'order_id': 'order_env_123',
+                'amount': 25000,
+                'currency': 'INR',
+                'status': 'captured',
+                'captured': True,
+            }
+
+            response = self.client.post(
+                reverse('orders:verify_payment'),
+                {
+                    'razorpay_order_id': 'order_env_123',
+                    'razorpay_payment_id': 'pay_env_123',
+                    'razorpay_signature': 'sig_env_123',
+                },
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('orders:order_status', args=[order.id]))
+        client_cls.assert_called_once_with(auth=('env_key_id', 'env_key_secret'))
+
+        order.refresh_from_db()
+        self.assertEqual(order.payment_status, 'pending')
+        self.assertEqual(order.status, 'pending')
+        self.assertEqual(order.razorpay_payment_id, 'pay_env_123')
+
+        payment = Payment.objects.get(order=order)
+        self.assertEqual(payment.status, 'authorized')
+        self.assertEqual(payment.razorpay_payment_id, 'pay_env_123')
+
+    def test_verify_payment_returns_json_for_ajax_handler(self):
+        PaymentSettings.objects.create(
+            razorpay_key_id='test_key',
+            razorpay_key_secret='test_secret',
+            is_active=True,
+            currency='INR',
+            currency_symbol='₹',
+        )
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='pending',
+            payment_status='pending',
+            razorpay_order_id='order_json_123',
+        )
+
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client = client_cls.return_value
+            client.utility.verify_payment_signature.return_value = None
+            client.payment.fetch.return_value = {
+                'id': 'pay_json_123',
+                'order_id': 'order_json_123',
+                'amount': 10000,
+                'currency': 'INR',
+                'status': 'captured',
+                'captured': True,
+            }
+
+            response = self.client.post(
+                reverse('orders:verify_payment'),
+                data=json.dumps({
+                    'razorpay_order_id': 'order_json_123',
+                    'razorpay_payment_id': 'pay_json_123',
+                    'razorpay_signature': 'sig_json_123',
+                }),
+                content_type='application/json',
+                HTTP_ACCEPT='application/json',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                'ok': True,
+                'redirect_url': reverse('orders:order_status', args=[order.id]),
+                'message': 'Payment received. Waiting for confirmation.',
+                'order_id': order.id,
+            },
+        )
+
+        order.refresh_from_db()
+        self.assertEqual(order.payment_status, 'pending')
+        self.assertEqual(order.status, 'pending')
+
+    def test_payment_failure_callback_returns_json_redirect(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='pending',
+            payment_status='pending',
+            razorpay_order_id='order_failed_123',
+        )
+
+        response = self.client.post(
+            reverse('orders:payment_failure_callback'),
+            data=json.dumps({
+                'order_id': str(order.id),
+                'razorpay_order_id': 'order_failed_123',
+                'failure_reason': 'Payment failed at Razorpay checkout.',
+            }),
+            content_type='application/json',
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                'ok': False,
+                'redirect_url': reverse('orders:payment_failed') + f'?order_id={order.id}',
+                'message': 'Payment was not completed. You can retry the payment below.',
+            },
+        )
+
+        order.refresh_from_db()
+        self.assertEqual(order.payment_status, 'failed')
+
+    @override_settings(
+        RAZORPAY_WEBHOOK_SECRET='mysecret123',
+    )
+    def test_razorpay_webhook_marks_order_paid(self):
+        PaymentSettings.objects.create(
+            razorpay_key_id='test_key',
+            razorpay_key_secret='test_secret',
+            is_active=True,
+            currency='INR',
+            currency_symbol='₹',
+        )
+        category = Category.objects.create(name='Webhook Category', slug='webhook-category')
+        product = Product.objects.create(
+            name='Webhook Product',
+            brand='Webhook Brand',
+            category=category,
+            price=100.00,
+            stock=10,
+        )
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='pending',
+            payment_status='pending',
+            razorpay_order_id='order_webhook_paid_123',
+        )
+        OrderItem.objects.create(order=order, product=product, quantity=1, price=100.00)
+
+        payload = {
+            'event': 'payment.captured',
+            'payload': {
+                'payment': {
+                    'entity': {
+                        'id': 'pay_webhook_paid_123',
+                        'order_id': 'order_webhook_paid_123',
+                        'currency': 'INR',
+                        'status': 'captured',
+                    }
+                }
+            }
+        }
+        body = json.dumps(payload).encode('utf-8')
+        signature = hmac.new(b'mysecret123', body, hashlib.sha256).hexdigest()
+
+        response = self.client.post(
+            reverse('orders:razorpay_webhook'),
+            data=body,
+            content_type='application/json',
+            HTTP_X_RAZORPAY_SIGNATURE=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        product.refresh_from_db()
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual(order.status, 'paid')
+        self.assertEqual(order.razorpay_payment_id, 'pay_webhook_paid_123')
+        self.assertEqual(product.stock, 9)
+
+    @override_settings(
+        RAZORPAY_WEBHOOK_SECRET='mysecret123',
+    )
+    def test_razorpay_webhook_marks_order_failed(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='pending',
+            payment_status='pending',
+            razorpay_order_id='order_webhook_failed_123',
+        )
+
+        payload = {
+            'event': 'payment.failed',
+            'payload': {
+                'payment': {
+                    'entity': {
+                        'id': 'pay_webhook_failed_123',
+                        'order_id': 'order_webhook_failed_123',
+                        'currency': 'INR',
+                        'status': 'failed',
+                        'error_description': 'Payment failed from webhook.',
+                    }
+                }
+            }
+        }
+        body = json.dumps(payload).encode('utf-8')
+        signature = hmac.new(b'mysecret123', body, hashlib.sha256).hexdigest()
+
+        response = self.client.post(
+            reverse('orders:razorpay_webhook'),
+            data=body,
+            content_type='application/json',
+            HTTP_X_RAZORPAY_SIGNATURE=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.payment_status, 'failed')
+
+    def test_order_status_redirects_paid_orders(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='paid',
+            payment_status='paid',
+        )
+
+        response = self.client.get(reverse('orders:order_status', args=[order.id]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('orders:order_success', args=[order.id]))
 
 
 class OrderSuccessViewTest(TestCase):
