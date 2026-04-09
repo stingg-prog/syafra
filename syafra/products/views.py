@@ -133,8 +133,10 @@ def product_detail(request, pk):
     )
     gallery_images = list(product.images.all())
     related_products = Product.objects.filter(category=product.category).exclude(pk=pk)[:4]
-    primary_image_url = product.image.url if product.image else (
-        gallery_images[0].image.url if gallery_images else ""
+    primary_image_url = (
+        product.image.url if product.image else (
+            gallery_images[0].image.url if gallery_images else ""
+        )
     )
     
     payment_settings = PaymentSettings.get_settings()

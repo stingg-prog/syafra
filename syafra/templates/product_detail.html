@@ -11,9 +11,9 @@
             <!-- Product Image Gallery -->
             <div class="relative">
                 {% if primary_image_url %}
-                <div class="aspect-[3/4] bg-gray-100 overflow-hidden relative rounded-lg">
+                <div class="aspect-[3/4] bg-gray-100 flex items-center justify-center overflow-hidden rounded-lg">
                     <img id="mainImage" 
-                         src="{{ primary_image_url|cloudinary_resize:'900x1200' }}" 
+                         src="{{ primary_image_url|cloudinary_normalize }}" 
                          alt="{{ product.name }}" 
                          decoding="async" width="900" height="1200"
                          class="w-full h-full object-contain bg-white transition-all duration-500 hover:scale-105 {% if product.stock == 0 %}opacity-50{% endif %}">
@@ -27,24 +27,24 @@
                 {% if gallery_images %}
                 <div class="flex gap-3 mt-4 overflow-x-auto pb-2">
                     {% if product.image %}
-                    <img src="{{ product.image.url|cloudinary_resize:'80x80' }}" 
+                    <img src="{{ product.image.url|cloudinary_normalize }}" 
                          alt="{{ product.name }} thumbnail" 
                          loading="lazy" decoding="async" width="80" height="80"
                          class="w-20 h-20 object-contain bg-white cursor-pointer border-2 border-black rounded-lg hover:opacity-100 transition-all duration-300 thumbnail active"
-                         onclick="changeImage(this, '{{ product.image.url|cloudinary_resize:'80x80' }}')">
+                         onclick="changeImage(this, '{{ product.image.url|cloudinary_normalize }}')">
                     {% endif %}
                     {% for img in gallery_images %}
-                    <img src="{{ img.image.url|cloudinary_resize:'80x80' }}" 
+                    <img src="{{ img.image.url|cloudinary_normalize }}" 
                          alt="{{ product.name }} gallery image {{ forloop.counter }}" 
                          loading="lazy" decoding="async" width="80" height="80"
                          class="w-20 h-20 object-contain bg-white cursor-pointer border-2 {% if not product.image and forloop.first %}border-black active{% else %}border-gray-300{% endif %} rounded-lg hover:border-black hover:opacity-100 transition-all duration-300 thumbnail"
-                         onclick="changeImage(this, '{{ img.image.url|cloudinary_resize:'80x80' }}')">
+                         onclick="changeImage(this, '{{ img.image.url|cloudinary_normalize }}')">
                     {% endfor %}
                 </div>
                 {% endif %}
                 
                 {% else %}
-                <div class="aspect-[3/4] bg-gray-100 overflow-hidden relative rounded-lg">
+                <div class="aspect-[3/4] bg-gray-100 flex items-center justify-center overflow-hidden rounded-lg">
                     <img id="mainImage" 
                          src="{% static 'images/default.jpg' %}" 
                          alt="No image available" 

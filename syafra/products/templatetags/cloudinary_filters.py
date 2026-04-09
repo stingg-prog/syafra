@@ -14,6 +14,10 @@ def _cloudinary_transform(url, transformation):
     if marker not in url:
         return url
 
+    suffix = url.split(marker, 1)[1]
+    if suffix.startswith(f"{transformation}/"):
+        return url
+
     return url.replace(marker, f"{marker}{transformation}/", 1)
 
 
