@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static cloudinary_filters %}
 
 {% block title %}SHOP - SYAFRA{% endblock %}
 
@@ -89,11 +89,11 @@
             <a href="{% url 'products:product_detail' product.pk %}" class="product-card group block reveal stagger-{{ forloop.counter }}">
                 <div class="relative overflow-hidden bg-gray-100 aspect-[3/4] mb-4 img-zoom">
                     {% if product.image %}
-                    <img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="800"
-                         class="product-image w-full h-full object-cover">
+                    <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="800"
+                         class="product-image w-full h-full object-contain bg-white">
                     {% else %}
                     <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="800"
-                         class="product-image w-full h-full object-cover">
+                         class="product-image w-full h-full object-contain bg-white">
                     {% endif %}
                     
                     {% if product.condition == 'new' %}

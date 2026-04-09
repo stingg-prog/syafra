@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static cloudinary_filters %}
 
 {% block title %}CART - SYAFRA{% endblock %}
 
@@ -23,11 +23,11 @@
                         <!-- Product Image -->
                         <div class="w-32 h-40 bg-gray-100 flex-shrink-0 overflow-hidden">
                             {% if item.product.image %}
-                            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" loading="lazy" decoding="async" width="128" height="160"
-                                 class="w-full h-full object-cover">
+                            <img src="{{ item.product.image.url|cloudinary_resize:'128x160' }}" alt="{{ item.product.name }}" loading="lazy" decoding="async" width="128" height="160"
+                                 class="w-full h-full object-contain bg-white">
                             {% else %}
                             <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="128" height="160"
-                                 class="w-full h-full object-cover">
+                                 class="w-full h-full object-contain bg-white">
                             {% endif %}
                         </div>
                         

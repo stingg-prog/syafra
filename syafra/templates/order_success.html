@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static cloudinary_filters %}
 
 {% block title %}ORDER CONFIRMED - SYAFRA{% endblock %}
 
@@ -49,11 +49,11 @@
                 <div class="flex justify-between items-center py-4 border-b border-gray-100 last:border-0">
                     <div class="flex items-center gap-4">
                         {% if item.product.image %}
-                        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" loading="lazy" decoding="async" width="64" height="80"
-                             class="w-16 h-20 object-cover bg-gray-100">
+                        <img src="{{ item.product.image.url|cloudinary_resize:'64x80' }}" alt="{{ item.product.name }}" loading="lazy" decoding="async" width="64" height="80"
+                             class="w-16 h-20 object-contain bg-white">
                         {% else %}
                         <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="64" height="80"
-                             class="w-16 h-20 object-cover bg-gray-100">
+                             class="w-16 h-20 object-contain bg-white">
                         {% endif %}
                         <div>
                             <p class="font-medium">{{ item.product.name }}</p>
