@@ -86,6 +86,27 @@ def _get_admin_notification_recipients():
     return [email for _name, email in admins if email]
 
 
+def _get_customer_recipients(order):
+    recipients = []
+
+    if getattr(order, 'email', ''):
+        recipients.append(order.email)
+    user_email = getattr(getattr(order, 'user', None), 'email', '')
+    if user_email:
+        recipients.append(user_email)
+
+    deduped_recipients = []
+    seen = set()
+    for recipient in recipients:
+        normalized = (recipient or '').strip().lower()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped_recipients.append(recipient.strip())
+
+    return deduped_recipients
+
+
 def _get_notification_fields(email_type):
     if email_type == 'confirmation':
         return 'confirmation_email_sent', 'confirmation_email_claimed_at', send_order_confirmation_email
@@ -99,7 +120,8 @@ def _get_notification_fields(email_type):
 def send_order_confirmation_email(order):
     """Send the order confirmation email to the customer."""
     try:
-        if not order.email:
+        recipients = _get_customer_recipients(order)
+        if not recipients:
             logger.warning("Cannot send confirmation email | order_id=%s | no email address", order.id)
             return False
 
@@ -107,7 +129,7 @@ def send_order_confirmation_email(order):
             subject=f'Order Confirmation - Order #{order.id}',
             template_name='emails/order_confirmation.html',
             context=_build_order_email_context(order),
-            recipient_list=[order.email],
+            recipient_list=recipients,
         )
         if not sent:
             return False
@@ -123,7 +145,8 @@ def send_order_confirmation_email(order):
 def send_payment_confirmation_email(order):
     """Send the payment confirmation email to the customer."""
     try:
-        if not order.email:
+        recipients = _get_customer_recipients(order)
+        if not recipients:
             logger.warning("Cannot send payment email | order_id=%s | no email address", order.id)
             return False
 
@@ -135,7 +158,7 @@ def send_payment_confirmation_email(order):
                 razorpay_payment_id=order.razorpay_payment_id,
                 total_price=order.total_price,
             ),
-            recipient_list=[order.email],
+            recipient_list=recipients,
         )
         if not sent:
             return False
@@ -151,7 +174,8 @@ def send_payment_confirmation_email(order):
 def send_order_status_update_email(order, status):
     """Send an order status update email to the customer."""
     try:
-        if not order.email:
+        recipients = _get_customer_recipients(order)
+        if not recipients:
             logger.warning("Cannot send status email | order_id=%s | no email address", order.id)
             return False
 
@@ -172,7 +196,7 @@ def send_order_status_update_email(order, status):
                 status_message=status_messages.get(status, f'Status updated to {order.get_status_display()}.'),
                 status=status,
             ),
-            recipient_list=[order.email],
+            recipient_list=recipients,
         )
         if not sent:
             return False

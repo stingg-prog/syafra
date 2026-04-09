@@ -124,6 +124,7 @@ class PaymentSettings(models.Model):
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('failed', 'Failed'),
         ('paid', 'Paid'),
         ('packed', 'Packed'),
         ('shipped', 'Shipped'),

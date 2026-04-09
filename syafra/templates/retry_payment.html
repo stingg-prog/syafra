@@ -50,23 +50,58 @@
     </div>
 </section>
 
+<form id="payment-csrf-form" style="display: none;">
+    {% csrf_token %}
+</form>
+
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
 var paymentHandled = false;
-var csrfToken = '{{ csrf_token }}';
+var checkoutOpening = false;
+
+function getCookie(name) {
+    var cookieValue = '';
+    if (!document.cookie) {
+        return cookieValue;
+    }
+
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i += 1) {
+        var cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+        }
+    }
+
+    return cookieValue;
+}
+
+function getCsrfToken() {
+    var csrfInput = document.querySelector('#payment-csrf-form input[name="csrfmiddlewaretoken"]');
+    if (csrfInput && csrfInput.value) {
+        return csrfInput.value;
+    }
+
+    return getCookie('csrftoken');
+}
 
 function submitPaymentForm(action, fields) {
+    var csrfToken = getCsrfToken();
+    var payload = Object.assign({}, fields);
     var form = document.createElement('form');
     form.method = 'POST';
     form.action = action;
 
-    fields.csrfmiddlewaretoken = csrfToken;
+    if (csrfToken) {
+        payload.csrfmiddlewaretoken = csrfToken;
+    }
 
-    for (var key in fields) {
+    for (var key in payload) {
         var input = document.createElement('input');
         input.type = 'hidden';
         input.name = key;
-        input.value = fields[key];
+        input.value = payload[key];
         form.appendChild(input);
     }
 
@@ -75,6 +110,12 @@ function submitPaymentForm(action, fields) {
 }
 
 function postPaymentAction(action, fields) {
+    var csrfToken = getCsrfToken();
+
+    if (!csrfToken) {
+        throw new Error('Missing CSRF token for secure payment confirmation.');
+    }
+
     return fetch(action, {
         method: 'POST',
         credentials: 'same-origin',
@@ -173,7 +214,7 @@ function openRazorpayCheckout(event) {
         event.preventDefault();
     }
 
-    if (paymentHandled) {
+    if (paymentHandled || checkoutOpening) {
         return;
     }
 
@@ -187,12 +228,25 @@ function openRazorpayCheckout(event) {
         return;
     }
 
+    checkoutOpening = true;
+    var payButton = document.getElementById('pay-btn');
+    payButton.disabled = true;
+    payButton.setAttribute('aria-disabled', 'true');
+
     var rzp = new Razorpay(options);
     rzp.on('payment.failed', function (response) {
+        checkoutOpening = false;
+        payButton.disabled = false;
+        payButton.removeAttribute('aria-disabled');
         var errorDescription = response.error && response.error.description
             ? response.error.description
             : 'Retry payment failed at Razorpay checkout.';
         submitFailure(errorDescription);
+    });
+    rzp.on('modal.close', function () {
+        checkoutOpening = false;
+        payButton.disabled = false;
+        payButton.removeAttribute('aria-disabled');
     });
     rzp.open();
 }

@@ -3,42 +3,140 @@
 {% block title %}Processing Payment - SYAFRA{% endblock %}
 
 {% block content %}
-<section class="pt-32 pb-16 px-6 bg-black text-white">
-    <div class="max-w-7xl mx-auto">
-        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">PROCESSING</h1>
-        <p class="text-syafra-beige tracking-wider text-sm">We are confirming your payment</p>
-    </div>
-</section>
+<main style="min-height: 100vh; background: #ffffff;">
+    <section style="max-width: 720px; margin: 0 auto; padding: 9rem 1.5rem 4rem;">
+        <article
+            data-order-status="{{ order.status|upper }}"
+            data-payment-status="{{ order.payment_status|upper }}"
+            style="background: #f7f7f7; border: 1px solid #e5e7eb; border-radius: 20px; padding: 2.5rem; text-align: center; box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);"
+        >
+            <div
+                aria-hidden="true"
+                style="width: 56px; height: 56px; margin: 0 auto; border: 4px solid #d1d5db; border-top-color: #111111; border-radius: 999px; animation: syafra-spin 1s linear infinite;"
+            ></div>
 
-<section class="py-16 px-6 bg-white min-h-screen">
-    <div class="max-w-2xl mx-auto">
-        <div class="bg-gray-100 p-8 text-center">
-            <div class="w-14 h-14 border-4 border-gray-300 border-t-black rounded-full mx-auto animate-spin"></div>
-            <h2 class="text-2xl font-bold tracking-tight mt-6">Payment Received</h2>
-            <p class="text-gray-600 mt-3">Order #{{ order.id }} is waiting for final confirmation from Razorpay webhook.</p>
-            <p class="text-gray-500 text-sm mt-2">This page refreshes automatically every 3 seconds.</p>
+            <p style="margin: 1.5rem 0 0; font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; color: #6b7280;">
+                Payment Update In Progress
+            </p>
+            <h1 style="margin: 0.75rem 0 1rem; font-size: clamp(2rem, 4vw, 2.75rem); line-height: 1.1; color: #111111;">
+                We are confirming your payment
+            </h1>
+            <p style="margin: 0 auto 0.75rem; max-width: 34rem; color: #4b5563; line-height: 1.7;">
+                Razorpay has returned control to us. Your order is safe, and we are waiting for the webhook to confirm the final payment result.
+            </p>
+            <p id="polling-message" style="margin: 0 auto 2rem; max-width: 34rem; color: #6b7280; line-height: 1.7;">
+                This page checks your payment status every 3 seconds and will move you forward automatically.
+            </p>
 
-            <div class="mt-8 space-y-3 text-left text-sm">
-                <div class="flex justify-between border-b border-gray-300 pb-3">
-                    <span class="text-gray-500">Order ID</span>
-                    <span class="font-semibold">#{{ order.id }}</span>
+            <dl style="margin: 0; padding: 1.5rem; border-radius: 16px; background: #ffffff; text-align: left;">
+                <div style="display: flex; justify-content: space-between; gap: 1rem; padding-bottom: 0.9rem; margin-bottom: 0.9rem; border-bottom: 1px solid #e5e7eb;">
+                    <dt style="color: #6b7280;">Order</dt>
+                    <dd style="margin: 0; font-weight: 700; color: #111111;">#{{ order.id }}</dd>
                 </div>
-                <div class="flex justify-between border-b border-gray-300 pb-3">
-                    <span class="text-gray-500">Payment Status</span>
-                    <span class="font-semibold uppercase">{{ order.payment_status }}</span>
+                <div style="display: flex; justify-content: space-between; gap: 1rem; padding-bottom: 0.9rem; margin-bottom: 0.9rem; border-bottom: 1px solid #e5e7eb;">
+                    <dt style="color: #6b7280;">Order status</dt>
+                    <dd id="order-status-label" style="margin: 0; font-weight: 700; color: #111111;">{{ order.status|upper }}</dd>
                 </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500">Amount</span>
-                    <span class="font-semibold">{{ currency }}{{ order.total_price|floatformat:2 }}</span>
+                <div style="display: flex; justify-content: space-between; gap: 1rem; padding-bottom: 0.9rem; margin-bottom: 0.9rem; border-bottom: 1px solid #e5e7eb;">
+                    <dt style="color: #6b7280;">Payment status</dt>
+                    <dd id="payment-status-label" style="margin: 0; font-weight: 700; color: #111111;">{{ order.payment_status|upper }}</dd>
                 </div>
+                <div style="display: flex; justify-content: space-between; gap: 1rem;">
+                    <dt style="color: #6b7280;">Amount</dt>
+                    <dd style="margin: 0; font-weight: 700; color: #111111;">{{ currency }}{{ order.total_price|floatformat:2 }}</dd>
+                </div>
+            </dl>
+
+            <div style="margin-top: 2rem;">
+                <a
+                    href="{% url 'products:shop' %}"
+                    style="display: inline-block; padding: 0.95rem 1.5rem; border-radius: 999px; background: #111111; color: #ffffff; text-decoration: none; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;"
+                >
+                    Continue Shopping
+                </a>
             </div>
-        </div>
-    </div>
-</section>
+        </article>
+    </section>
+</main>
+
+<style>
+    @keyframes syafra-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
 
 <script>
-    setTimeout(function() {
-        window.location.href = "{% url 'orders:order_status' order.id %}";
-    }, 3000);
+    (function () {
+        const statusUrl = "{% url 'orders:order_status' order.id %}";
+        const orderStatusLabel = document.getElementById('order-status-label');
+        const paymentStatusLabel = document.getElementById('payment-status-label');
+        const pollingMessage = document.getElementById('polling-message');
+        const parser = new DOMParser();
+        let redirecting = false;
+
+        function readStatuses(html) {
+            const doc = parser.parseFromString(html, 'text/html');
+            const marker = doc.querySelector('[data-order-status]');
+            if (!marker) {
+                return null;
+            }
+
+            return {
+                orderStatus: (marker.dataset.orderStatus || '').toUpperCase(),
+                paymentStatus: (marker.dataset.paymentStatus || '').toUpperCase()
+            };
+        }
+
+        function shouldExitPendingScreen(statuses) {
+            return ['PAID', 'FAILED'].includes(statuses.orderStatus) || ['PAID', 'FAILED'].includes(statuses.paymentStatus);
+        }
+
+        function pollStatus() {
+            if (redirecting) {
+                return;
+            }
+
+            fetch(statusUrl, {
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (html) {
+                    const statuses = readStatuses(html);
+                    if (!statuses) {
+                        window.location.assign(statusUrl);
+                        return;
+                    }
+
+                    if (statuses.orderStatus && orderStatusLabel) {
+                        orderStatusLabel.textContent = statuses.orderStatus;
+                    }
+                    if (statuses.paymentStatus && paymentStatusLabel) {
+                        paymentStatusLabel.textContent = statuses.paymentStatus;
+                    }
+
+                    if (shouldExitPendingScreen(statuses)) {
+                        redirecting = true;
+                        window.clearInterval(pollTimer);
+                        if (pollingMessage) {
+                            pollingMessage.textContent = statuses.orderStatus === 'PAID' || statuses.paymentStatus === 'PAID'
+                                ? 'Payment confirmed. Taking you to the confirmation page now.'
+                                : 'Payment failed. Taking you to the updated status page now.';
+                        }
+                        window.location.assign(statusUrl);
+                    }
+                })
+                .catch(function () {
+                    window.location.assign(statusUrl);
+                });
+        }
+
+        const pollTimer = window.setInterval(pollStatus, 3000);
+    })();
 </script>
 {% endblock %}

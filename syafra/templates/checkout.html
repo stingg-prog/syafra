@@ -125,9 +125,9 @@
                             </div>
                         </div>
                             
-                        <button id="checkout-submit-btn" type="submit"
+                        <button id="pay-btn" type="submit"
                                 class="w-full bg-black text-white py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-                            PLACE ORDER
+                            PAY NOW
                         </button>
                     </div>
                 </form>
@@ -178,7 +178,7 @@
 <script>
     (function() {
         const form = document.getElementById('checkout-form');
-        const submitButton = document.getElementById('checkout-submit-btn');
+        const submitButton = document.getElementById('pay-btn');
         const csrfToken = form?.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
         let checkoutRequestInFlight = false;
         let paymentHandled = false;
@@ -195,7 +195,7 @@
         function updateSubmitButtonLabel() {
             submitButton.textContent = getSelectedPaymentMethod() === 'upi'
                 ? 'CONTINUE TO UPI'
-                : 'PLACE ORDER';
+                : 'PAY NOW';
         }
 
         function setSubmitting(isSubmitting, label) {

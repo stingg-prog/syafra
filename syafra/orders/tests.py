@@ -97,6 +97,8 @@ class CheckoutViewTest(TestCase):
         response = self.client.get('/orders/checkout', follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'checkout.html')
+        self.assertContains(response, 'id="pay-btn"')
+        self.assertContains(response, 'PAY NOW')
 
     def test_checkout_response_sets_correlation_id_header(self):
         self.client.login(username='testuser', password='testpass123')
@@ -156,6 +158,85 @@ class CheckoutViewTest(TestCase):
         order = Order.objects.get(user=self.user)
         self.assertEqual(order.razorpay_order_id, 'order_ajax_123')
         self.assertEqual(order.payment_status, 'pending')
+
+    def test_checkout_persists_cart_items_as_order_items(self):
+        second_product = Product.objects.create(
+            name='Second Product',
+            brand='Test Brand',
+            category=self.category,
+            price=80.00,
+            stock=10,
+        )
+        CartItem.objects.create(
+            cart=self.cart,
+            product=second_product,
+            quantity=1,
+        )
+
+        self.client.login(username='testuser', password='testpass123')
+
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client_cls.return_value.order.create.return_value = {
+                'id': 'order_items_123',
+                'amount': 28000,
+                'currency': 'INR',
+                'status': 'created',
+            }
+
+            response = self.client.post(
+                reverse('orders:checkout'),
+                {
+                    'customer_name': 'Test User',
+                    'email': 'test@example.com',
+                    'phone_number': '9876543210',
+                    'pincode': '560001',
+                    'shipping_address': '123 Test Street',
+                    'payment_method': 'razorpay',
+                },
+                HTTP_ACCEPT='application/json',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+
+        self.assertEqual(response.status_code, 200)
+
+        order = Order.objects.get(user=self.user)
+        self.assertEqual(order.items.count(), 2)
+        self.assertEqual(
+            set(order.items.values_list('product_id', 'quantity', 'price')),
+            {
+                (self.product.id, 2, self.product.price),
+                (second_product.id, 1, second_product.price),
+            },
+        )
+        self.assertFalse(CartItem.objects.filter(cart=self.cart).exists())
+
+    def test_checkout_post_renders_payment_page_with_csrf_form(self):
+        self.client.login(username='testuser', password='testpass123')
+
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client_cls.return_value.order.create.return_value = {
+                'id': 'order_page_123',
+                'amount': 20000,
+                'currency': 'INR',
+                'status': 'created',
+            }
+
+            response = self.client.post(
+                reverse('orders:checkout'),
+                {
+                    'customer_name': 'Test User',
+                    'email': 'test@example.com',
+                    'phone_number': '9876543210',
+                    'pincode': '560001',
+                    'shipping_address': '123 Test Street',
+                    'payment_method': 'razorpay',
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'payment.html')
+        self.assertContains(response, 'id="payment-csrf-form"')
+        self.assertContains(response, 'getCsrfToken')
 
     @override_settings(
         EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
@@ -307,6 +388,11 @@ class RazorpayPaymentFlowTest(TestCase):
         self.assertEqual(payment.status, 'authorized')
         self.assertEqual(payment.razorpay_payment_id, 'pay_env_123')
 
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        DEFAULT_FROM_EMAIL='SYAFRA <noreply@syafra.com>',
+        ORDER_ALERT_EMAILS=['ops@syafra.com'],
+    )
     def test_verify_payment_returns_json_for_ajax_handler(self):
         PaymentSettings.objects.create(
             razorpay_key_id='test_key',
@@ -365,6 +451,127 @@ class RazorpayPaymentFlowTest(TestCase):
         order.refresh_from_db()
         self.assertEqual(order.payment_status, 'pending')
         self.assertEqual(order.status, 'pending')
+        self.assertFalse(any(
+            message.subject == f'Order Confirmation - Order #{order.id}'
+            and 'pay@example.com' in message.to
+            for message in mail.outbox
+        ))
+
+    def test_verify_payment_returns_already_paid_when_order_is_locked(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='paid',
+            payment_status='paid',
+            razorpay_order_id='order_paid_123',
+            razorpay_payment_id='pay_locked_123',
+        )
+
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            response = self.client.post(
+                reverse('orders:verify_payment'),
+                data=json.dumps({
+                    'razorpay_order_id': 'order_paid_123',
+                    'razorpay_payment_id': 'pay_locked_123',
+                    'razorpay_signature': 'sig_locked_123',
+                }),
+                content_type='application/json',
+                HTTP_ACCEPT='application/json',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                'ok': True,
+                'redirect_url': reverse('orders:order_success', args=[order.id]),
+                'message': 'Already paid',
+                'order_id': order.id,
+            },
+        )
+        client_cls.assert_not_called()
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        DEFAULT_FROM_EMAIL='SYAFRA <noreply@syafra.com>',
+        ORDER_ALERT_EMAILS=['ops@syafra.com'],
+    )
+    def test_verify_payment_uses_payment_attempt_when_order_has_new_retry_id(self):
+        PaymentSettings.objects.create(
+            razorpay_key_id='test_key',
+            razorpay_key_secret='test_secret',
+            is_active=True,
+            currency='INR',
+            currency_symbol='â‚¹',
+        )
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='pending',
+            payment_status='pending',
+            razorpay_order_id='order_retry_current_123',
+        )
+        Payment.objects.create(
+            order=order,
+            provider='razorpay',
+            status='created',
+            amount=100.00,
+            currency='INR',
+            receipt=f'order_{order.id}_retry_old',
+            razorpay_order_id='order_retry_old_123',
+        )
+
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client = client_cls.return_value
+            client.utility.verify_payment_signature.return_value = None
+            client.payment.fetch.return_value = {
+                'id': 'pay_retry_old_123',
+                'order_id': 'order_retry_old_123',
+                'amount': 10000,
+                'currency': 'INR',
+                'status': 'captured',
+                'captured': True,
+            }
+
+            response = self.client.post(
+                reverse('orders:verify_payment'),
+                data=json.dumps({
+                    'razorpay_order_id': 'order_retry_old_123',
+                    'razorpay_payment_id': 'pay_retry_old_123',
+                    'razorpay_signature': 'sig_retry_old_123',
+                }),
+                content_type='application/json',
+                HTTP_ACCEPT='application/json',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                'ok': True,
+                'redirect_url': reverse('orders:order_status', args=[order.id]),
+                'message': 'Payment received. Waiting for confirmation.',
+                'order_id': order.id,
+            },
+        )
+
+        order.refresh_from_db()
+        self.assertEqual(order.razorpay_order_id, 'order_retry_current_123')
+        self.assertEqual(order.razorpay_payment_id, 'pay_retry_old_123')
+
+        payment = Payment.objects.get(order=order, razorpay_order_id='order_retry_old_123')
+        self.assertEqual(payment.status, 'authorized')
+        self.assertEqual(payment.razorpay_payment_id, 'pay_retry_old_123')
 
     def test_payment_failure_callback_returns_json_redirect(self):
         order = Order.objects.create(
@@ -403,8 +610,12 @@ class RazorpayPaymentFlowTest(TestCase):
 
         order.refresh_from_db()
         self.assertEqual(order.payment_status, 'failed')
+        self.assertEqual(order.status, 'failed')
 
     @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        DEFAULT_FROM_EMAIL='SYAFRA <noreply@syafra.com>',
+        ORDER_ALERT_EMAILS=['ops@syafra.com'],
         RAZORPAY_WEBHOOK_SECRET='mysecret123',
     )
     def test_razorpay_webhook_marks_order_paid(self):
@@ -466,6 +677,11 @@ class RazorpayPaymentFlowTest(TestCase):
         self.assertEqual(order.status, 'paid')
         self.assertEqual(order.razorpay_payment_id, 'pay_webhook_paid_123')
         self.assertEqual(product.stock, 9)
+        self.assertTrue(any(
+            message.subject == f'Order Confirmation - Order #{order.id}'
+            and 'pay@example.com' in message.to
+            for message in mail.outbox
+        ))
 
     @override_settings(
         RAZORPAY_WEBHOOK_SECRET='mysecret123',
@@ -510,8 +726,130 @@ class RazorpayPaymentFlowTest(TestCase):
         self.assertEqual(response.status_code, 200)
         order.refresh_from_db()
         self.assertEqual(order.payment_status, 'failed')
+        self.assertEqual(order.status, 'failed')
 
-    def test_order_status_redirects_paid_orders(self):
+    @override_settings(
+        RAZORPAY_WEBHOOK_SECRET='mysecret123',
+    )
+    def test_razorpay_webhook_ignores_duplicate_paid_capture(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='paid',
+            payment_status='paid',
+            razorpay_order_id='order_webhook_duplicate_123',
+            razorpay_payment_id='pay_webhook_duplicate_123',
+            stock_reduced=True,
+        )
+        Payment.objects.create(
+            order=order,
+            provider='razorpay',
+            status='paid',
+            amount=100.00,
+            currency='INR',
+            receipt=f'order_{order.id}',
+            razorpay_order_id='order_webhook_duplicate_123',
+            razorpay_payment_id='pay_webhook_duplicate_123',
+        )
+
+        payload = {
+            'event': 'payment.captured',
+            'payload': {
+                'payment': {
+                    'entity': {
+                        'id': 'pay_webhook_duplicate_123',
+                        'order_id': 'order_webhook_duplicate_123',
+                        'currency': 'INR',
+                        'status': 'captured',
+                    }
+                }
+            }
+        }
+        body = json.dumps(payload).encode('utf-8')
+        signature = hmac.new(b'mysecret123', body, hashlib.sha256).hexdigest()
+
+        response = self.client.post(
+            reverse('orders:razorpay_webhook'),
+            data=body,
+            content_type='application/json',
+            HTTP_X_RAZORPAY_SIGNATURE=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'paid')
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual(order.razorpay_payment_id, 'pay_webhook_duplicate_123')
+        self.assertEqual(
+            Payment.objects.filter(order=order, razorpay_payment_id='pay_webhook_duplicate_123').count(),
+            1,
+        )
+
+    @override_settings(
+        RAZORPAY_WEBHOOK_SECRET='mysecret123',
+    )
+    def test_razorpay_webhook_failed_does_not_regress_paid_order(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='paid',
+            payment_status='paid',
+            razorpay_order_id='order_webhook_paid_456',
+            razorpay_payment_id='pay_webhook_paid_456',
+            stock_reduced=True,
+        )
+        Payment.objects.create(
+            order=order,
+            provider='razorpay',
+            status='paid',
+            amount=100.00,
+            currency='INR',
+            receipt=f'order_{order.id}',
+            razorpay_order_id='order_webhook_paid_456',
+            razorpay_payment_id='pay_webhook_paid_456',
+        )
+
+        payload = {
+            'event': 'payment.failed',
+            'payload': {
+                'payment': {
+                    'entity': {
+                        'id': 'pay_webhook_paid_456',
+                        'order_id': 'order_webhook_paid_456',
+                        'currency': 'INR',
+                        'status': 'failed',
+                        'error_description': 'Late failed webhook should not regress a paid order.',
+                    }
+                }
+            }
+        }
+        body = json.dumps(payload).encode('utf-8')
+        signature = hmac.new(b'mysecret123', body, hashlib.sha256).hexdigest()
+
+        response = self.client.post(
+            reverse('orders:razorpay_webhook'),
+            data=body,
+            content_type='application/json',
+            HTTP_X_RAZORPAY_SIGNATURE=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'paid')
+        self.assertEqual(order.payment_status, 'paid')
+
+        payment = Payment.objects.get(order=order, razorpay_payment_id='pay_webhook_paid_456')
+        self.assertEqual(payment.status, 'paid')
+
+    def test_order_status_renders_success_template_for_paid_orders(self):
         order = Order.objects.create(
             user=self.user,
             total_price=100.00,
@@ -525,8 +863,62 @@ class RazorpayPaymentFlowTest(TestCase):
 
         response = self.client.get(reverse('orders:order_status', args=[order.id]))
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse('orders:order_success', args=[order.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'success.html')
+        self.assertContains(response, 'Payment Successful')
+
+    def test_order_status_renders_failed_template_for_failed_orders(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='failed',
+            payment_status='failed',
+        )
+
+        response = self.client.get(reverse('orders:order_status', args=[order.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'failed.html')
+        self.assertContains(response, 'Payment Failed')
+
+    def test_order_status_renders_processing_template_for_pending_orders(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='pending',
+            payment_status='pending',
+        )
+
+        response = self.client.get(reverse('orders:order_status', args=[order.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'processing.html')
+        self.assertContains(response, 'Continue Shopping')
+
+    def test_order_status_response_is_never_cached(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Pay User',
+            email='pay@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Payment Street',
+            status='pending',
+            payment_status='pending',
+        )
+
+        response = self.client.get(reverse('orders:order_status', args=[order.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('no-cache', response['Cache-Control'])
 
 
 class OrderSuccessViewTest(TestCase):
@@ -539,7 +931,9 @@ class OrderSuccessViewTest(TestCase):
             customer_name='John Doe',
             email='john@example.com',
             phone_number='1234567890',
-            shipping_address='123 Test St'
+            shipping_address='123 Test St',
+            status='paid',
+            payment_status='paid',
         )
 
     def test_order_success_requires_login(self):
@@ -550,8 +944,20 @@ class OrderSuccessViewTest(TestCase):
         self.client.login(username='testuser', password='testpass123')
         response = self.client.get(f'/orders/success/{self.order.id}/', follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'order_success.html')
+        self.assertTemplateUsed(response, 'success.html')
         self.assertEqual(response.context['order'], self.order)
+        self.assertIn('no-cache', response['Cache-Control'])
+
+    def test_order_success_redirects_unpaid_orders_to_status_page(self):
+        self.order.status = 'pending'
+        self.order.payment_status = 'pending'
+        self.order.save(update_fields=['status', 'payment_status'])
+
+        self.client.login(username='testuser', password='testpass123')
+        response = self.client.get(f'/orders/success/{self.order.id}/', follow=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('orders:order_status', args=[self.order.id]))
 
     def test_order_success_other_user_404(self):
         other_user = User.objects.create_user(username='otheruser', password='testpass123')
@@ -663,7 +1069,7 @@ class OrderFlowTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Online payment is temporarily unavailable')
 
-    def test_order_status_change_admin_action_queues_notifications(self):
+    def test_packed_transition_for_paid_order_queues_notifications(self):
         order = Order.objects.create(
             user=self.user,
             total_price=100.00,
@@ -671,15 +1077,16 @@ class OrderFlowTest(TestCase):
             email='jane@example.com',
             phone_number='9876543210',
             shipping_address='123 Flow Lane',
-            status='pending'
+            status='pending',
+            payment_status='pending',
         )
 
         with mock.patch('orders.signals.queue_email_notification') as email_mock, mock.patch('orders.signals.queue_whatsapp_notification') as whatsapp_mock:
-            order.status = 'confirmed'
+            order.status = 'packed'
             order.save()
 
-            email_mock.assert_called_once_with(order, 'status', status_override='confirmed')
-            whatsapp_mock.assert_called_once_with(order, 'processing')
+            email_mock.assert_called_once_with(order, 'status', status_override='packed')
+            whatsapp_mock.assert_called_once_with(order, 'packed')
 
     def test_pending_order_creation_does_not_queue_customer_email(self):
         with mock.patch('orders.signals.queue_email_notification') as email_mock:
@@ -715,7 +1122,7 @@ class OrderFlowTest(TestCase):
         )
 
         with mock.patch('orders.signals.queue_email_notification') as email_mock, mock.patch('orders.signals.queue_whatsapp_notification') as whatsapp_mock:
-            order.status = 'confirmed'
+            order.status = 'paid'
             order.payment_status = 'paid'
             order.save()
 
@@ -726,6 +1133,7 @@ class OrderFlowTest(TestCase):
         self.assertEqual(self.product.stock, 9)
         email_mock.assert_any_call(order, 'confirmation')
         email_mock.assert_any_call(order, 'payment')
+        email_mock.assert_any_call(order, 'admin')
         whatsapp_mock.assert_called_once_with(order, 'created')
 
     def test_confirmation_email_queue_is_idempotent(self):
@@ -768,8 +1176,8 @@ class OrderFlowTest(TestCase):
             email='jane@example.com',
             phone_number='9876543210',
             shipping_address='123 Flow Lane',
-            status='confirmed',
-            payment_status='paid',
+            status='pending',
+            payment_status='pending',
         )
         OrderItem.objects.create(
             order=order,
@@ -986,10 +1394,12 @@ class OrderFlowTest(TestCase):
 
         order.refresh_from_db()
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(order.status, 'confirmed')
+        self.assertTemplateUsed(response, 'success.html')
+        self.assertEqual(order.status, 'paid')
         self.assertEqual(order.payment_status, 'paid')
         self.assertEqual(order.razorpay_payment_id, 'UPI-TXN123456')
         self.assertTrue(order.stock_reduced)
+        self.assertTrue(Payment.objects.filter(order=order, provider='upi', status='paid').exists())
 
     @override_settings(
         EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
@@ -1034,7 +1444,7 @@ class OrderFlowTest(TestCase):
         self.assertEqual(order.payment_status, 'pending')
         self.assertFalse(order.stock_reduced)
 
-    def test_retry_payment_reuses_existing_gateway_order(self):
+    def test_retry_payment_generates_new_gateway_order_for_failed_order(self):
         PaymentSettings.objects.create(
             razorpay_key_id='test_key',
             razorpay_key_secret='test_secret',
@@ -1049,19 +1459,41 @@ class OrderFlowTest(TestCase):
             email='jane@example.com',
             phone_number='9876543210',
             shipping_address='123 Flow Lane',
-            status='pending',
-            payment_status='pending',
+            status='failed',
+            payment_status='failed',
             razorpay_order_id='order_existing_123',
+            razorpay_payment_id='pay_existing_123',
+        )
+        Payment.objects.create(
+            order=order,
+            provider='razorpay',
+            status='failed',
+            amount=100.00,
+            currency='INR',
+            receipt=f'order_{order.id}_failed',
+            razorpay_order_id='order_existing_123',
+            razorpay_payment_id='pay_existing_123',
+            failure_reason='Previous attempt failed.',
         )
         self.client.login(username='flowuser', password='testpass123')
 
         with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client_cls.return_value.order.create.return_value = {'id': 'order_retry_fresh_123'}
             response = self.client.get(reverse('orders:retry_payment', args=[order.id]), follow=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'retry_payment.html')
-        self.assertEqual(response.context['razorpay_order_id'], 'order_existing_123')
-        client_cls.return_value.order.create.assert_not_called()
+        self.assertEqual(response.context['razorpay_order_id'], 'order_retry_fresh_123')
+        client_cls.return_value.order.create.assert_called_once()
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'pending')
+        self.assertEqual(order.payment_status, 'pending')
+        self.assertEqual(order.razorpay_order_id, 'order_retry_fresh_123')
+        self.assertEqual(order.razorpay_payment_id, '')
+        self.assertIsNotNone(order.payment_retry_reserved_at)
+        self.assertTrue(Payment.objects.filter(order=order, razorpay_order_id='order_existing_123').exists())
+        self.assertTrue(Payment.objects.filter(order=order, razorpay_order_id='order_retry_fresh_123').exists())
 
     def test_retry_payment_replaces_expired_retry_session(self):
         PaymentSettings.objects.create(
@@ -1122,8 +1554,38 @@ class OrderFlowTest(TestCase):
             response = self.client.get(reverse('orders:retry_payment', args=[order.id]), follow=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['order_id'], str(order.id))
+        self.assertEqual(str(response.context['order_id']), str(order.id))
         client_cls.return_value.order.create.assert_not_called()
+
+    def test_retry_payment_redirects_paid_order_without_creating_new_gateway_order(self):
+        PaymentSettings.objects.create(
+            razorpay_key_id='test_key',
+            razorpay_key_secret='test_secret',
+            is_active=True,
+            currency='INR',
+            currency_symbol='Ã¢â€šÂ¹'
+        )
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Jane Doe',
+            email='jane@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Flow Lane',
+            status='paid',
+            payment_status='paid',
+            razorpay_order_id='order_paid_existing',
+            razorpay_payment_id='pay_paid_existing',
+            stock_reduced=True,
+        )
+        self.client.login(username='flowuser', password='testpass123')
+
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            response = self.client.get(reverse('orders:retry_payment', args=[order.id]), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'success.html')
+        client_cls.assert_not_called()
 
     def test_inventory_lock_order_is_deterministic(self):
         second_product = Product.objects.create(

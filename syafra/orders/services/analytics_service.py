@@ -12,7 +12,7 @@ User = get_user_model()
 
 DEFAULT_RANGE_DAYS = 30
 SUPPORTED_RANGE_DAYS = {7, 30}
-STATUS_ORDER = ["pending", "paid", "packed", "shipped", "delivered", "cancelled"]
+STATUS_ORDER = ["pending", "failed", "paid", "packed", "shipped", "delivered", "cancelled"]
 
 
 def _decimal_zero():

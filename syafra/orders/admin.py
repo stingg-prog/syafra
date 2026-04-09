@@ -166,6 +166,7 @@ class OrderAdmin(admin.ModelAdmin):
         """Safe HTML via format_html."""
         status_colors = {
             'pending': '#FFC107',
+            'failed': '#DC2626',
             'paid': '#16A34A',
             'packed': '#2563EB',
             'shipped': '#9C27B0',
