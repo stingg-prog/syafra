@@ -11,6 +11,15 @@
             data-shop-url="{% url 'products:shop' %}"
             style="background: linear-gradient(180deg, #f4fbf4 0%, #ffffff 100%); border: 1px solid #d1fae5; border-radius: 20px; padding: 2.75rem; text-align: center; box-shadow: 0 18px 48px rgba(21, 128, 61, 0.12);"
         >
+            {% if messages %}
+            <div style="margin-bottom: 1.5rem; display: grid; gap: 0.75rem; text-align: left;">
+                {% for message in messages %}
+                <div style="border-radius: 14px; padding: 0.95rem 1rem; background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; line-height: 1.6;">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
             <p style="margin: 0; font-size: 2.5rem; line-height: 1;" aria-hidden="true">🎉</p>
             <p style="margin: 1rem 0 0; font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; color: #166534;">
                 Payment Confirmed

@@ -453,75 +453,47 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
 # -----------------------------------------------------------------------------
-# Email
+# Email (SendGrid API - Production Safe)
 # -----------------------------------------------------------------------------
 
-_configured_email_service = os.getenv("EMAIL_SERVICE", "").strip().lower()
-if _configured_email_service:
-    EMAIL_SERVICE = _configured_email_service
-elif os.getenv("SENDGRID_API_KEY", "").strip():
-    EMAIL_SERVICE = "sendgrid"
-elif os.getenv("EMAIL_HOST_USER", "").strip() and os.getenv("EMAIL_HOST_PASSWORD", "").strip():
-    EMAIL_SERVICE = "gmail"
-else:
-    EMAIL_SERVICE = "console"
-EMAIL_HOST = ""
-EMAIL_PORT = 0
-EMAIL_HOST_USER = ""
-EMAIL_HOST_PASSWORD = ""
-EMAIL_USE_TLS = False
+SENDGRID_API_KEY = (os.getenv("SENDGRID_API_KEY") or "").strip()
+SENDGRID_SENDER_EMAIL = (os.getenv("SENDGRID_SENDER_EMAIL") or "").strip()
+SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY = (os.getenv("SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY") or "").strip()
+SENDGRID_EVENT_WEBHOOK_MAX_AGE_SECONDS = _env_int("SENDGRID_EVENT_WEBHOOK_MAX_AGE_SECONDS", 300)
+SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE = _env_bool(
+    "SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE",
+    default=not DEBUG,
+)
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "sendgrid_sdk").strip() or "sendgrid_sdk"
+
+# HARD FAIL if missing when direct SendGrid delivery is enabled
+if EMAIL_BACKEND == "sendgrid_sdk" and not SENDGRID_API_KEY:
+    raise Exception("SENDGRID_API_KEY is missing in environment variables")
+
+if EMAIL_BACKEND == "sendgrid_sdk" and not SENDGRID_SENDER_EMAIL:
+    raise Exception("SENDGRID_SENDER_EMAIL is missing (must be verified in SendGrid)")
+
 # Public host only (no scheme), e.g. your-app.onrender.com — used in password-reset / auth emails and link context.
 # Payment flows use request URLs where applicable; keep DOMAIN aligned with your live hostname.
 DOMAIN = _clean_host(os.environ.get("DOMAIN", "127.0.0.1:8000" if DEBUG else "syafra.com"))
 ORDER_ALERT_EMAILS = _csv("ORDER_ALERT_EMAILS", "")
 
-if EMAIL_SERVICE == "sendgrid":
-    SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
-    SENDGRID_SENDER_EMAIL = os.getenv("SENDGRID_SENDER_EMAIL", "noreply@yourdomain.com")
-    if SENDGRID_API_KEY:
-        EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-        EMAIL_HOST = "smtp.sendgrid.net"
-        EMAIL_PORT = 587
-        EMAIL_USE_TLS = True
-        EMAIL_HOST_USER = "apikey"
-        EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
-        DEFAULT_FROM_EMAIL = os.getenv(
-            "DEFAULT_FROM_EMAIL",
-            f"SYAFRA <{SENDGRID_SENDER_EMAIL}>",
-        )
-    else:
-        EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-        DEFAULT_FROM_EMAIL = "SYAFRA <noreply@localhost>"
-
-elif EMAIL_SERVICE == "gmail":
-    EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-    EMAIL_PORT = _env_int("EMAIL_PORT", 587)
-    EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", default=True)
-    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-    if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
-        EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-        DEFAULT_FROM_EMAIL = os.getenv(
-            "DEFAULT_FROM_EMAIL",
-            f"SYAFRA <{EMAIL_HOST_USER}>",
-        )
-    else:
-        EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-        DEFAULT_FROM_EMAIL = "SYAFRA <noreply@localhost>"
-
-else:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "SYAFRA <noreply@localhost>")
-
+DEFAULT_FROM_EMAIL = f"SYAFRA <{SENDGRID_SENDER_EMAIL or 'noreply@localhost'}>"
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
-EMAIL_TIMEOUT = _env_int("EMAIL_TIMEOUT", 30)
-EMAIL_FAIL_SILENTLY = _env_bool("EMAIL_FAIL_SILENTLY", default=False)
+
+EMAIL_TIMEOUT = 30
+EMAIL_FAIL_SILENTLY = False
+EMAIL_SIMPLE_RETRY_ATTEMPTS = _env_int("EMAIL_SIMPLE_RETRY_ATTEMPTS", 2)
+EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS = _env_int("EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS", 1)
 
 if _env_bool("SYAFRA_LOG_EMAIL_CONFIG", default=False):
-    print(
-        f"[email config] backend={EMAIL_BACKEND} host={EMAIL_HOST} port={EMAIL_PORT} "
-        f"from={DEFAULT_FROM_EMAIL} service={EMAIL_SERVICE}",
-        file=sys.stderr,
+    _db_logger.info(
+        "Syafra email config | backend=%s | sendgrid_api_key=%s | sender=%s | webhook_public_key=%s | webhook_signature_required=%s",
+        EMAIL_BACKEND,
+        "set" if SENDGRID_API_KEY else "missing",
+        SENDGRID_SENDER_EMAIL or "missing",
+        "set" if SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY else "missing",
+        SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE,
     )
 
 ORDER_EMAIL_CLAIM_TIMEOUT_SECONDS = _env_int("ORDER_EMAIL_CLAIM_TIMEOUT_SECONDS", 900)
@@ -542,7 +514,7 @@ CELERY_RESULT_BACKEND = os.getenv(
     "CELERY_RESULT_BACKEND",
     os.getenv("REDIS_URL", "cache+memory://"),
 )
-CELERY_TASK_ALWAYS_EAGER = _env_bool("CELERY_TASK_ALWAYS_EAGER", default=True)
+CELERY_TASK_ALWAYS_EAGER = _env_bool("CELERY_TASK_ALWAYS_EAGER", default=DEBUG)
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_TASK_ACKS_LATE = True
@@ -604,13 +576,27 @@ if not DEBUG:
     ):
         raise ImproperlyConfigured(
             "Production is using the console email backend (no delivery). "
-            "Configure SendGrid or Gmail SMTP. (ALLOW_CONSOLE_EMAIL_IN_PRODUCTION=true is staging-only — remove for real launch.)"
+            "Configure the direct SendGrid integration. (ALLOW_CONSOLE_EMAIL_IN_PRODUCTION=true is staging-only - remove for real launch.)"
         )
 
     if DOMAIN in ("127.0.0.1:8000", "127.0.0.1", "localhost:8000", "localhost"):
         warnings.warn(
             "DOMAIN is still a development default. Set DOMAIN in the environment to your public host "
             "(e.g. your-app.onrender.com) so password-reset and other email links point at the real site.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    if SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE and not SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY:
+        raise ImproperlyConfigured(
+            "SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY must be set in production when "
+            "SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE is enabled."
+        )
+
+    if not SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY:
+        warnings.warn(
+            "SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY is not set. SendGrid event webhooks cannot be signature-verified "
+            "until you configure the public key from SendGrid Mail Settings.",
             UserWarning,
             stacklevel=2,
         )

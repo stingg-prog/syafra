@@ -108,7 +108,15 @@ def _send_activation_email(user, request):
     }
     html_message = render_to_string('emails/account_activation_email.html', context)
     plain_message = strip_tags(html_message)
-    send_email(subject, plain_message, [user.email], html_message=html_message)
+    return send_email(
+        subject,
+        plain_message,
+        [user.email],
+        html_message=html_message,
+        email_type='account_activation',
+        user=user,
+        metadata={'flow': 'account_activation'},
+    )
 
 
 @require_http_methods(['GET', 'POST', 'HEAD', 'OPTIONS'])

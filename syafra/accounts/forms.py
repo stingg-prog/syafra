@@ -3,10 +3,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordResetForm as BasePasswordResetForm
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 import logging
+
+from accounts.utils.email import send_email as send_syafra_email
 
 User = get_user_model()
 logger = logging.getLogger('syafra.email')
@@ -112,44 +113,33 @@ class PasswordResetForm(BasePasswordResetForm):
             if html_email_template_name:
                 html_message = render_to_string(html_email_template_name, email_context)
                 plain_message = render_to_string(email_template_name, email_context)
-                
-                try:
-                    email = EmailMultiAlternatives(
-                        subject=subject,
-                        body=plain_message,
-                        from_email=from_email,
-                        to=[to_email],
-                        headers={
-                            'X-Mailer': 'SYAFRA-Django',
-                            'X-Priority': '3',
-                            'Organization': 'SYAFRA',
-                        }
-                    )
-                    email.attach_alternative(html_message, 'text/html')
-                    email.send(fail_silently=False)
-                    
-                    logger.info(f"Password reset HTML email sent to: {to_email}")
-                    
-                except Exception as e:
-                    logger.error(f"HTML email failed, falling back to plain text: {str(e)}")
-                    # Fallback to plain text
-                    send_mail(
-                        subject=subject,
-                        message=plain_message,
-                        from_email=from_email,
-                        recipient_list=[to_email],
-                        fail_silently=False
-                    )
+                sent = send_syafra_email(
+                    subject=subject,
+                    message=plain_message,
+                    recipient_list=[to_email],
+                    html_message=html_message,
+                    from_email=from_email,
+                    email_type="password_reset",
+                    user=context.get("user"),
+                    metadata={"flow": "password_reset_form"},
+                )
+                if not sent:
+                    raise ValueError("Password reset HTML email failed to send")
+                logger.info(f"Password reset HTML email sent to: {to_email}")
             else:
                 # Plain text only
                 message = render_to_string(email_template_name, email_context)
-                send_mail(
+                sent = send_syafra_email(
                     subject=subject,
                     message=message,
-                    from_email=from_email,
                     recipient_list=[to_email],
-                    fail_silently=False
+                    from_email=from_email,
+                    email_type="password_reset",
+                    user=context.get("user"),
+                    metadata={"flow": "password_reset_form"},
                 )
+                if not sent:
+                    raise ValueError("Password reset plain text email failed to send")
                 logger.info(f"Password reset plain text email sent to: {to_email}")
                 
         except Exception as e:

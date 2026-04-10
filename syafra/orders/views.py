@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import razorpay
 from razorpay import errors as razorpay_errors
+from accounts.utils.email import recent_order_email_issue
 from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
@@ -342,6 +343,19 @@ def _mark_payment_failed(order, *, razorpay_order_id='', failure_reason=''):
         Order.objects.filter(pk=order.pk).update(**update_fields)
         for field_name, value in update_fields.items():
             setattr(order, field_name, value)
+
+
+def _add_order_email_delivery_notice(request, order):
+    issue = recent_order_email_issue(order)
+    if issue is None:
+        return
+
+    status_label = issue.get_status_display().lower()
+    messages.warning(
+        request,
+        f"Your order is confirmed, but the confirmation email is currently marked as {status_label}. "
+        "Please check your inbox and spam folder, and contact support if you still do not receive it.",
+    )
 
 
 @staff_member_required(login_url='admin:login')
@@ -953,6 +967,7 @@ def order_success(request, order_id):
 
     payment_settings = PaymentSettings.get_settings()
     currency = payment_settings.currency_symbol if payment_settings else '\u20b9'
+    _add_order_email_delivery_notice(request, order)
 
     return render(request, 'success.html', {
         'order': order,
@@ -981,6 +996,7 @@ def order_status(request, order_id):
     if _order_is_paid(order):
         if order.status != 'paid':
             order.status = 'paid'
+        _add_order_email_delivery_notice(request, order)
         return render(request, 'success.html', context)
     if order.status == 'failed' or order.payment_status == 'failed':
         if order.status != 'failed':

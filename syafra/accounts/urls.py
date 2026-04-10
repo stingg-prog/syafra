@@ -1,6 +1,7 @@
 from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
 from . import views
+from . import sendgrid_webhooks
 from .password_reset_views import CustomPasswordResetView, NoCachePasswordResetConfirmView, NoCachePasswordResetCompleteView
 
 app_name = 'accounts'
@@ -27,4 +28,5 @@ urlpatterns = [
     path('reset/done/', NoCachePasswordResetCompleteView.as_view(
         template_name='registration/password_reset_complete.html'
     ), name='password_reset_complete'),
+    path('webhooks/sendgrid/events/', sendgrid_webhooks.sendgrid_event_webhook, name='sendgrid_event_webhook'),
 ]

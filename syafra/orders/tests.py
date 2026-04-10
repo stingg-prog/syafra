@@ -4,14 +4,18 @@ import json
 from datetime import timedelta
 
 from django.core import mail
+from django.contrib.admin.sites import AdminSite
 from django.test import TestCase, Client, override_settings
 from django.db import IntegrityError
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from django.test.client import RequestFactory
 from django.utils import timezone
 from unittest import mock
+from accounts.models import EmailLog
 from products.models import Category, Product
 from cart.models import Cart, CartItem
+from .admin import OrderAdmin
 from .models import Order, OrderItem, Payment, PaymentSettings
 
 User = get_user_model()
@@ -54,6 +58,118 @@ class OrderModelTest(TestCase):
             shipping_address='123 Test St'
         )
         self.assertIn('Order', str(order))
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    DEFAULT_FROM_EMAIL='SYAFRA <noreply@syafra.com>',
+)
+class InstantOrderEmailSystemTest(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.admin_user = User.objects.create_superuser(
+            username='adminuser',
+            email='admin@example.com',
+            password='testpass123',
+        )
+        self.user = User.objects.create_user(
+            username='emailflowuser',
+            email='customer@example.com',
+            password='testpass123',
+        )
+        self.category = Category.objects.create(name='Email Category', slug='email-category')
+        self.product = Product.objects.create(
+            name='Email Product',
+            brand='Email Brand',
+            category=self.category,
+            price=100.00,
+            stock=10,
+        )
+        self.order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Email Flow User',
+            email='customer@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Email Flow Street',
+            status='pending',
+            payment_status='pending',
+        )
+        OrderItem.objects.create(
+            order=self.order,
+            product=self.product,
+            quantity=1,
+            price=100.00,
+        )
+
+    def test_send_order_email_is_idempotent_for_same_event(self):
+        from .services.email_service import send_order_email
+
+        first_sent = send_order_email(self.order, 'created')
+        second_sent = send_order_email(self.order, 'created')
+
+        self.assertTrue(first_sent)
+        self.assertFalse(second_sent)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(
+            EmailLog.objects.filter(
+                order=self.order,
+                correlation_id=str(self.order.id),
+                event_type='created',
+            ).count(),
+            1,
+        )
+
+    def test_status_change_schedules_event_email_after_commit(self):
+        with mock.patch('orders.signals._send_order_event_email_now', return_value=True) as send_mock:
+            with self.captureOnCommitCallbacks(execute=False) as callbacks:
+                self.order.status = 'shipped'
+                self.order.tracking_id = 'TRACK-123'
+                self.order.save(update_fields=['status', 'tracking_id'])
+                send_mock.assert_not_called()
+
+            self.assertEqual(len(callbacks), 1)
+            callbacks[0]()
+
+        send_mock.assert_called_once_with(self.order.id, 'shipped')
+
+    def test_same_status_update_does_not_schedule_event_email(self):
+        with mock.patch('orders.signals._send_order_event_email_now', return_value=True) as send_mock:
+            with self.captureOnCommitCallbacks(execute=False) as callbacks:
+                self.order.customer_name = 'Updated Name'
+                self.order.save(update_fields=['customer_name'])
+
+            self.assertEqual(callbacks, [])
+
+        send_mock.assert_not_called()
+
+    def test_admin_save_model_sends_created_email_after_commit(self):
+        admin_instance = OrderAdmin(Order, AdminSite())
+        request = self.factory.post('/admin/orders/order/add/')
+        request.user = self.admin_user
+        admin_order = Order(
+            user=self.user,
+            total_price=150.00,
+            customer_name='Admin Created Customer',
+            email='customer@example.com',
+            phone_number='9876543210',
+            shipping_address='456 Admin Street',
+            status='pending',
+            payment_status='pending',
+        )
+
+        with mock.patch('orders.admin.send_order_email', return_value=True) as send_mock:
+            with self.captureOnCommitCallbacks(execute=False) as callbacks:
+                admin_instance.save_model(request, admin_order, form=None, change=False)
+                send_mock.assert_not_called()
+
+            self.assertEqual(len(callbacks), 1)
+            callbacks[0]()
+
+        send_mock.assert_called_once()
+        sent_order, event_type = send_mock.call_args.args
+        self.assertEqual(sent_order.id, admin_order.id)
+        self.assertEqual(event_type, 'created')
 
 
 class CheckoutViewTest(TestCase):
@@ -1167,6 +1283,36 @@ class OrderFlowTest(TestCase):
 
         instant_email.assert_called_once()
         self.assertTrue(order.confirmation_email_sent)
+
+    def test_email_queue_waits_for_transaction_commit(self):
+        order = Order.objects.create(
+            user=self.user,
+            total_price=100.00,
+            customer_name='Jane Doe',
+            email='jane@example.com',
+            phone_number='9876543210',
+            shipping_address='123 Flow Lane',
+            status='pending',
+            payment_status='pending',
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=1,
+            price=100.00,
+        )
+
+        from orders.signals import queue_email_notification
+
+        with mock.patch('orders.signals._send_email_instant', return_value=True) as instant_email:
+            with self.captureOnCommitCallbacks(execute=False) as callbacks:
+                queue_email_notification(order, 'confirmation')
+                instant_email.assert_not_called()
+
+            self.assertEqual(len(callbacks), 1)
+            callbacks[0]()
+
+        instant_email.assert_called_once()
 
     def test_email_queue_falls_back_to_sync_when_async_dispatch_fails(self):
         order = Order.objects.create(

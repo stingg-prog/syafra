@@ -1,8 +1,8 @@
 import re
 import logging
 
+from accounts.utils.email import send_email
 from django.conf import settings
-from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
 
@@ -107,19 +107,25 @@ def _render_order_items_text(order):
     return items_text
 
 
-def _send_order_email(subject, message, recipient_list):
+def _send_order_email(order, subject, message, recipient_list, *, email_type='generic'):
     if not recipient_list:
         logger.warning('Order email skipped: no recipients provided.')
         return False
 
     try:
-        send_mail(
+        sent = send_email(
             subject=subject,
             message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=recipient_list,
-            fail_silently=False,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            email_type=email_type,
+            user=getattr(order, 'user', None),
+            order=order,
+            metadata={'flow': 'legacy_order_email'},
         )
+        if not sent:
+            logger.error('Order email FAILED | Subject: %s | Recipients: %s', subject, recipient_list)
+            return False
         logger.info('Order email sent | Subject: %s | Recipients: %s', subject, recipient_list)
         return True
     except Exception as e:
@@ -149,7 +155,7 @@ We will notify you once the order is processed.
 Best regards,
 SYAFRA Team
 """
-        return _send_order_email(subject, message, recipient_list)
+        return _send_order_email(order, subject, message, recipient_list, email_type='admin_order_alert')
 
     recipient_list = [order.email] if getattr(order, 'email', None) else []
     if not recipient_list:
@@ -188,7 +194,7 @@ Thank you for shopping with SYAFRA!
 Best regards,
 SYAFRA Team
 """
-        return _send_order_email(subject, message, recipient_list)
+        return _send_order_email(order, subject, message, recipient_list, email_type='order_confirmation')
 
     if email_type == 'payment':
         subject = f'Payment Confirmed - Order #{order.id} - SYAFRA'
@@ -212,7 +218,7 @@ Thank you for shopping with SYAFRA!
 Best regards,
 SYAFRA Team
 """
-        return _send_order_email(subject, message, recipient_list)
+        return _send_order_email(order, subject, message, recipient_list, email_type='payment_confirmation')
 
     if email_type == 'processing':
         subject = f'Your Order #{order.id} is Being Processed - SYAFRA'
@@ -234,7 +240,7 @@ Our team is preparing your items for shipment. We'll notify you once the order s
 Best regards,
 SYAFRA Team
 """
-        return _send_order_email(subject, message, recipient_list)
+        return _send_order_email(order, subject, message, recipient_list, email_type='order_status')
 
     status_value = status or order.status
     if email_type == 'status':
@@ -343,7 +349,7 @@ Thank you for shopping with SYAFRA.
 Best regards,
 SYAFRA Team
 """
-        return _send_order_email(subject, message, recipient_list)
+        return _send_order_email(order, subject, message, recipient_list, email_type='order_status')
 
     logger.warning(f'Unknown email_type requested: {email_type}')
     return False

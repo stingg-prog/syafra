@@ -31,12 +31,20 @@ services:
         value: "true"
       - key: MEDIA_ROOT
         value: "/var/data/media"
-      - key: EMAIL_SERVICE
-        value: "sendgrid"
       - key: SENDGRID_API_KEY
         sync: false
       - key: SENDGRID_SENDER_EMAIL
         sync: false
+      - key: SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY
+        sync: false
+      - key: SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE
+        value: "true"
+      - key: SENDGRID_EVENT_WEBHOOK_MAX_AGE_SECONDS
+        value: "300"
+      - key: EMAIL_SIMPLE_RETRY_ATTEMPTS
+        value: "2"
+      - key: EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS
+        value: "1"
       - key: DEFAULT_FROM_EMAIL
         sync: false
       - key: ORDER_ALERT_EMAILS

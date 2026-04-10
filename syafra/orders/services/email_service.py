@@ -4,8 +4,10 @@ Production-safe email helpers.
 import logging
 from datetime import timedelta
 
+from accounts.utils.email import send_email
+from accounts.email_tracking import latest_retryable_failure
+from accounts.models import EmailLog
 from django.conf import settings
-from django.core.mail import send_mail
 from django.db.models import Q
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -14,10 +16,73 @@ from django.utils.html import strip_tags
 logger = logging.getLogger(__name__)
 
 FORCE_EMAIL_RETRY = getattr(settings, 'FORCE_EMAIL_RETRY', False)
+ORDER_EVENT_CREATED = 'created'
+ORDER_EVENT_CONFIRMED = 'confirmed'
+ORDER_EVENT_SHIPPED = 'shipped'
+ORDER_EVENT_DELIVERED = 'delivered'
+ORDER_EVENT_CANCELLED = 'cancelled'
+ORDER_EMAIL_STATUS_EVENT_MAP = {
+    'packed': ORDER_EVENT_CONFIRMED,
+    'shipped': ORDER_EVENT_SHIPPED,
+    'delivered': ORDER_EVENT_DELIVERED,
+    'cancelled': ORDER_EVENT_CANCELLED,
+}
+NON_FAILED_EMAIL_LOG_STATUSES = [
+    EmailLog.STATUS_QUEUED,
+    EmailLog.STATUS_ACCEPTED,
+    EmailLog.STATUS_DELIVERED,
+    EmailLog.STATUS_DEFERRED,
+    EmailLog.STATUS_DROPPED,
+    EmailLog.STATUS_BOUNCED,
+    EmailLog.STATUS_BLOCKED,
+    EmailLog.STATUS_OPENED,
+    EmailLog.STATUS_SPAM_REPORTED,
+]
+ORDER_EMAIL_EVENT_CONFIG = {
+    ORDER_EVENT_CREATED: {
+        'email_type': EmailLog.TYPE_ORDER_CONFIRMATION,
+        'subject': 'Order Created - Order #{order_id}',
+        'headline': 'Your Order Has Been Created',
+        'status_label': 'Created',
+        'message': 'We have created your order and will confirm the next fulfillment step shortly.',
+    },
+    ORDER_EVENT_CONFIRMED: {
+        'email_type': EmailLog.TYPE_ORDER_STATUS,
+        'subject': 'Order Confirmed - Order #{order_id}',
+        'headline': 'Your Order Is Confirmed',
+        'status_label': 'Confirmed',
+        'message': 'Your order has been confirmed and is now being prepared.',
+    },
+    ORDER_EVENT_SHIPPED: {
+        'email_type': EmailLog.TYPE_ORDER_STATUS,
+        'subject': 'Order Shipped - Order #{order_id}',
+        'headline': 'Your Order Is On The Way',
+        'status_label': 'Shipped',
+        'message': 'Your order has been shipped.',
+    },
+    ORDER_EVENT_DELIVERED: {
+        'email_type': EmailLog.TYPE_ORDER_STATUS,
+        'subject': 'Order Delivered - Order #{order_id}',
+        'headline': 'Your Order Has Been Delivered',
+        'status_label': 'Delivered',
+        'message': 'Your order has been delivered successfully.',
+    },
+    ORDER_EVENT_CANCELLED: {
+        'email_type': EmailLog.TYPE_ORDER_STATUS,
+        'subject': 'Order Cancelled - Order #{order_id}',
+        'headline': 'Your Order Has Been Cancelled',
+        'status_label': 'Cancelled',
+        'message': 'Your order has been cancelled. If you have any questions, please contact support.',
+    },
+}
 
 
 class EmailDeliveryError(Exception):
     """Raised when an email send should be retried."""
+
+    def __init__(self, message, *, retryable=True):
+        super().__init__(message)
+        self.retryable = retryable
 
 
 def get_currency_symbol():
@@ -47,7 +112,121 @@ def _build_order_email_context(order, **extra_context):
     return context
 
 
-def _send_html_email(*, subject, template_name, context, recipient_list):
+def get_order_status_email_event(status):
+    return ORDER_EMAIL_STATUS_EVENT_MAP.get((status or '').strip().lower())
+
+
+def _normalize_order_event_type(event_type):
+    return (event_type or '').strip().lower()
+
+
+def _order_event_config(event_type):
+    return ORDER_EMAIL_EVENT_CONFIG.get(_normalize_order_event_type(event_type))
+
+
+def _order_event_already_logged(order, event_type):
+    if not getattr(order, 'pk', None):
+        return False
+
+    return EmailLog.objects.filter(
+        order=order,
+        correlation_id=str(order.pk),
+        event_type=_normalize_order_event_type(event_type),
+        status__in=NON_FAILED_EMAIL_LOG_STATUSES,
+    ).exists()
+
+
+def _build_order_event_context(order, event_type):
+    event_type = _normalize_order_event_type(event_type)
+    config = _order_event_config(event_type)
+    tracking_id = (getattr(order, 'tracking_id', '') or '').strip()
+    status_message = config['message']
+    if event_type == ORDER_EVENT_SHIPPED:
+        if tracking_id:
+            status_message = f"{status_message} Your tracking ID is {tracking_id}."
+        else:
+            status_message = f"{status_message} Tracking details will be shared as soon as they are available."
+
+    return _build_order_email_context(
+        order,
+        event_type=event_type,
+        headline=config['headline'],
+        order_status_label=config['status_label'],
+        status_message=status_message,
+        tracking_id=tracking_id,
+        show_tracking_id=bool(tracking_id and event_type == ORDER_EVENT_SHIPPED),
+    )
+
+
+def send_order_email(order, event_type):
+    """
+    Send an immediate, idempotent customer email for a specific order event.
+    """
+    event_type = _normalize_order_event_type(event_type)
+    config = _order_event_config(event_type)
+    if config is None:
+        logger.warning("Skipping order email because event_type is unsupported | order_id=%s | event_type=%s", getattr(order, 'pk', None), event_type)
+        return False
+
+    recipients = _get_customer_recipients(order)
+    if not recipients:
+        logger.warning("Skipping order email because the order has no customer recipients | order_id=%s | event_type=%s", order.id, event_type)
+        return False
+
+    if _order_event_already_logged(order, event_type):
+        logger.info("Skipping duplicate order event email | order_id=%s | event_type=%s", order.id, event_type)
+        return False
+
+    context = _build_order_event_context(order, event_type)
+    subject = config['subject'].format(order_id=order.id)
+    html_message = render_to_string('emails/order_event_email.html', context)
+    plain_message = render_to_string('emails/order_event_email.txt', context)
+    tracking_id = context['tracking_id']
+
+    try:
+        sent = send_email(
+            subject=subject,
+            message=plain_message,
+            recipient_list=recipients,
+            html_message=html_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            email_type=config['email_type'],
+            event_type=event_type,
+            user=getattr(order, 'user', None),
+            order=order,
+            correlation_id=str(order.id),
+            metadata={
+                'flow': 'instant_order_event_email',
+                'event_type': event_type,
+                'order_status': order.status,
+                'tracking_id': tracking_id,
+                'template_name': 'emails/order_event_email.html',
+            },
+            max_retries=1,
+        )
+    except Exception as exc:
+        logger.exception("Order event email raised an exception | order_id=%s | event_type=%s | error=%s", order.id, event_type, exc)
+        return False
+
+    if not sent:
+        logger.error("Order event email failed | order_id=%s | event_type=%s | recipients=%s", order.id, event_type, ",".join(recipients))
+        return False
+
+    logger.info("Order event email sent | order_id=%s | event_type=%s | recipients=%s", order.id, event_type, ",".join(recipients))
+    return True
+
+
+def _email_log_type_for_notification(email_type):
+    mapping = {
+        'confirmation': EmailLog.TYPE_ORDER_CONFIRMATION,
+        'payment': EmailLog.TYPE_PAYMENT_CONFIRMATION,
+        'status': EmailLog.TYPE_ORDER_STATUS,
+        'admin': EmailLog.TYPE_ADMIN_ORDER_ALERT,
+    }
+    return mapping.get(email_type, EmailLog.TYPE_GENERIC)
+
+
+def _send_html_email(*, subject, template_name, context, recipient_list, email_type, order):
     if not recipient_list:
         logger.warning("Skipping email because no recipients were provided | subject=%s", subject)
         return False
@@ -56,15 +235,21 @@ def _send_html_email(*, subject, template_name, context, recipient_list):
     plain_message = strip_tags(html_message)
 
     try:
-        send_mail(
+        sent = send_email(
             subject=subject,
             message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=recipient_list,
             html_message=html_message,
-            fail_silently=False,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            email_type=_email_log_type_for_notification(email_type),
+            user=getattr(order, 'user', None),
+            order=order,
+            metadata={
+                'flow': 'order_notification',
+                'template_name': template_name,
+            },
         )
-        return True
+        return bool(sent)
     except Exception as exc:
         logger.error(
             "Email delivery failed | subject=%s | recipients=%s | error=%s",
@@ -107,6 +292,15 @@ def _get_customer_recipients(order):
     return deduped_recipients
 
 
+def _get_order_event_recipients(order):
+    if getattr(order, 'email', ''):
+        return [order.email.strip()]
+    user_email = getattr(getattr(order, 'user', None), 'email', '')
+    if user_email:
+        return [user_email.strip()]
+    return []
+
+
 def _get_notification_fields(email_type):
     if email_type == 'confirmation':
         return 'confirmation_email_sent', 'confirmation_email_claimed_at', send_order_confirmation_email
@@ -120,7 +314,7 @@ def _get_notification_fields(email_type):
 def send_order_confirmation_email(order):
     """Send the order confirmation email to the customer."""
     try:
-        recipients = _get_customer_recipients(order)
+        recipients = _get_order_event_recipients(order)
         if not recipients:
             logger.warning("Cannot send confirmation email | order_id=%s | no email address", order.id)
             return False
@@ -130,6 +324,8 @@ def send_order_confirmation_email(order):
             template_name='emails/order_confirmation.html',
             context=_build_order_email_context(order),
             recipient_list=recipients,
+            email_type='confirmation',
+            order=order,
         )
         if not sent:
             return False
@@ -159,6 +355,8 @@ def send_payment_confirmation_email(order):
                 total_price=order.total_price,
             ),
             recipient_list=recipients,
+            email_type='payment',
+            order=order,
         )
         if not sent:
             return False
@@ -173,6 +371,10 @@ def send_payment_confirmation_email(order):
 
 def send_order_status_update_email(order, status):
     """Send an order status update email to the customer."""
+    mapped_event = get_order_status_email_event(status)
+    if mapped_event:
+        return send_order_email(order, mapped_event)
+
     try:
         recipients = _get_customer_recipients(order)
         if not recipients:
@@ -197,6 +399,8 @@ def send_order_status_update_email(order, status):
                 status=status,
             ),
             recipient_list=recipients,
+            email_type='status',
+            order=order,
         )
         if not sent:
             return False
@@ -232,6 +436,8 @@ def send_admin_new_order_alert_email(order):
             template_name='emails/admin_new_order_alert.html',
             context=_build_order_email_context(order),
             recipient_list=recipients,
+            email_type='admin',
+            order=order,
         )
         if not sent:
             return False
@@ -401,7 +607,14 @@ def send_notification_email(order_id, email_type, status=None, raise_on_failure=
             sent = sender(order)
             
             if not sent:
-                raise EmailDeliveryError(f"{email_type} email returned False for order {order.id}")
+                retryable = latest_retryable_failure(
+                    order,
+                    _email_log_type_for_notification(email_type),
+                ) is not None
+                raise EmailDeliveryError(
+                    f"{email_type} email returned False for order {order.id}",
+                    retryable=retryable,
+                )
             
             _complete_notification_email_claim(order.id, email_type, claim_started_at)
             logger.info(f"EMAIL SENT SUCCESS | type={email_type} | order={order_id} | sent={sent}")
@@ -413,7 +626,8 @@ def send_notification_email(order_id, email_type, status=None, raise_on_failure=
                 if isinstance(exc, EmailDeliveryError):
                     raise
                 raise EmailDeliveryError(
-                    f"Failed to send {email_type} email for order {order.id}"
+                    f"Failed to send {email_type} email for order {order.id}",
+                    retryable=False,
                 ) from exc
             logger.warning(
                 "Released %s email claim after send failure | order_id=%s | error=%s",

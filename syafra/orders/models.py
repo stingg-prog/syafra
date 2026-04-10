@@ -145,6 +145,7 @@ class Order(models.Model):
     razorpay_order_id = models.CharField(max_length=100, blank=True, default='', db_index=True)
     razorpay_payment_id = models.CharField(max_length=100, blank=True, default='')
     shipping_address = models.TextField(default='')
+    tracking_id = models.CharField(max_length=100, blank=True, default='', db_index=True)
     phone_number = models.CharField(max_length=20, default='')
     email = models.EmailField(default='', db_index=True)
     customer_name = models.CharField(max_length=200, default='')

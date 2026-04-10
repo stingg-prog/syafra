@@ -1,0 +1,19 @@
+{{ headline }}
+
+Hello {{ customer_name }},
+
+{{ status_message }}
+
+Order ID: #{{ order.id }}
+Current Status: {{ order_status_label }}
+Order Total: {{ currency }}{{ order.total_price|floatformat:2 }}
+{% if show_tracking_id %}Tracking ID: {{ tracking_id }}
+{% endif %}
+Items:
+{% for item in items %}- {{ item.product.name }}{% if item.size %} (Size: {{ item.size }}){% endif %} x {{ item.quantity }} - {{ currency }}{{ item.subtotal|floatformat:2 }}
+{% endfor %}
+
+Shipping Address:
+{{ order.shipping_address }}
+
+If you need help, reply to this email and our team will assist you.

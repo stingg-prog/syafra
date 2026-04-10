@@ -89,6 +89,8 @@ def send_email_sync(order_id, email_type, status=None, max_attempts=None, correl
                     attempt,
                     exc,
                 )
+                if not getattr(exc, 'retryable', True):
+                    break
 
     if last_error:
         raise last_error
@@ -108,6 +110,14 @@ def send_email_notification(self, order_id, email_type, status=None, correlation
             logger.info("Email task completed | order_id=%s | type=%s | sent=%s", order_id, email_type, sent)
             return sent
         except EmailDeliveryError as exc:
+            if not getattr(exc, 'retryable', True):
+                logger.error(
+                    "Email task failed with a non-retryable error | order_id=%s | type=%s | error=%s",
+                    order_id,
+                    email_type,
+                    exc,
+                )
+                return False
             retry_count = getattr(getattr(self, 'request', None), 'retries', 0)
             countdown = min(60 * (retry_count + 1), 300)
             logger.warning(

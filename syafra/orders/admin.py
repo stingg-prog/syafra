@@ -1,9 +1,15 @@
+import logging
+
 from django.contrib import admin
 from django.contrib import messages
+from django.db import transaction
 from django.utils.html import format_html
 
 from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES, Payment, PaymentSettings, WhatsAppSettings
+from .services.email_service import send_order_email
 from .services.order_service import confirm_order_payment, ensure_paid_order_stock_reduced
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(WhatsAppSettings)
@@ -99,6 +105,7 @@ class OrderAdmin(admin.ModelAdmin):
         'email',
         'phone_number', 
         'shipping_address',
+        'tracking_id',
         'razorpay_order_id',
         'razorpay_payment_id'
     )
@@ -122,13 +129,18 @@ class OrderAdmin(admin.ModelAdmin):
         ('Customer Information', {
             'fields': ('customer_name', 'email', 'phone_number')
         }),
+        ('Fulfillment', {
+            'fields': ('tracking_id',)
+        }),
         ('Shipping Address', {
             'fields': ('shipping_address',)
         }),
     )
 
     def save_model(self, request, obj, form, change):
-        """Track previous status for stock/email triggers."""
+        """Track previous status for stock/email triggers and send admin-created order emails."""
+        is_new = obj.pk is None
+        obj._created_via_admin = is_new
         if change:
             try:
                 old_obj = Order.objects.get(pk=obj.pk)
@@ -142,6 +154,21 @@ class OrderAdmin(admin.ModelAdmin):
             obj._admin_old_payment_status = None
         
         super().save_model(request, obj, form, change)
+        if is_new:
+            def send_created_email_after_commit(order_id=obj.pk):
+                fresh_order = (
+                    Order.objects.select_related('user')
+                    .prefetch_related('items__product')
+                    .filter(pk=order_id)
+                    .first()
+                )
+                if fresh_order is None:
+                    logger.warning("Skipping admin-created order email because order no longer exists | order_id=%s", order_id)
+                    return
+                if not send_order_email(fresh_order, "created"):
+                    logger.warning("Admin-created order email was not sent | order_id=%s", order_id)
+
+            transaction.on_commit(send_created_email_after_commit)
     
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)

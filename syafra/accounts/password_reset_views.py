@@ -21,7 +21,7 @@ class CustomPasswordResetView(BasePasswordResetView):
     
     Features:
     - Fresh token generation per request (handled by Django)
-    - Instant email delivery via SendGrid SMTP
+    - Instant email delivery via the direct SendGrid API
     - No caching of reset links
     - Comprehensive logging
     """
