@@ -432,9 +432,7 @@ def test_email_configuration():
         "from_email": settings.DEFAULT_FROM_EMAIL,
         "sendgrid_sender": getattr(settings, "SENDGRID_SENDER_EMAIL", "Not configured"),
         "sendgrid_api_key_configured": bool(getattr(settings, "SENDGRID_API_KEY", "")),
-        "sendgrid_webhook_verification_key_configured": bool(
-            getattr(settings, "SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY", "")
-        ),
+        "sendgrid_webhook_public_key_configured": bool(getattr(settings, "SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY", "")),
         "debug_mode": settings.DEBUG,
     }
 

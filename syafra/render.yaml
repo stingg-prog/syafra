@@ -35,7 +35,7 @@ services:
         sync: false
       - key: SENDGRID_SENDER_EMAIL
         sync: false
-      - key: SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY
+      - key: SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY
         sync: false
       - key: SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE
         value: "true"

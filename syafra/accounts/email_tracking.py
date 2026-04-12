@@ -16,7 +16,6 @@ SENDGRID_EVENT_STATUS_MAP = {
     "deferred": EmailLog.STATUS_DEFERRED,
     "dropped": EmailLog.STATUS_DROPPED,
     "bounce": EmailLog.STATUS_BOUNCED,
-    "bounced": EmailLog.STATUS_BOUNCED,
     "blocked": EmailLog.STATUS_BLOCKED,
     "open": EmailLog.STATUS_OPENED,
     "spamreport": EmailLog.STATUS_SPAM_REPORTED,
