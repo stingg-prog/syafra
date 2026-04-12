@@ -278,6 +278,8 @@ def confirm_order_payment(order, payment_reference='', save=True):
     Confirm order payment and reduce stock exactly once.
     """
     try:
+        status_email_order = None
+        previous_status = None
         with transaction.atomic(savepoint=False):
             locked_order = get_locked_order(order)
 
@@ -305,6 +307,7 @@ def confirm_order_payment(order, payment_reference='', save=True):
 
             locked_items = get_locked_order_items(locked_order)
             now = timezone.now()
+            previous_status = locked_order.status
             update_fields = ['payment_status', 'status', 'payment_confirmed_at']
             locked_order.payment_status = 'paid'
             locked_order.status = 'paid'
@@ -333,12 +336,32 @@ def confirm_order_payment(order, payment_reference='', save=True):
                 locked_order.save(update_fields=update_fields)
 
             _hydrate_order_instance(order, locked_order)
+            status_email_order = locked_order
             logger.info(
                 "Order payment confirmed and stock reduced | order_id=%s | user_id=%s",
                 locked_order.id,
                 locked_order.user_id,
             )
-            return locked_order, True
+
+        if save and status_email_order is not None and previous_status != status_email_order.status:
+            try:
+                from .email_service import send_order_status_email_if_changed
+
+                if not send_order_status_email_if_changed(status_email_order, previous_status, status_email_order.status):
+                    logger.info(
+                        "Payment confirmation status email skipped | order_id=%s | old_status=%s | new_status=%s",
+                        status_email_order.id,
+                        previous_status,
+                        status_email_order.status,
+                    )
+            except Exception as exc:
+                logger.exception(
+                    "Payment confirmation status email failed without interrupting order flow | order_id=%s | error=%s",
+                    status_email_order.id,
+                    exc,
+                )
+
+        return status_email_order, True
 
     except Exception as exc:
         logger.error(

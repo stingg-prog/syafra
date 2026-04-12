@@ -26,6 +26,7 @@ from cart.models import Cart
 from .forms import CheckoutForm
 from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES, Payment, PaymentSettings
 from .services.analytics_service import get_analytics_dashboard_data
+from .services.email_service import send_order_email
 from .services.order_service import confirm_order_payment, lock_inventory_rows
 
 logger = logging.getLogger(__name__)
@@ -358,6 +359,32 @@ def _add_order_email_delivery_notice(request, order):
     )
 
 
+def _send_order_email_safely(order, event_type, request=None):
+    try:
+        sent = send_order_email(order, event_type)
+        if not sent:
+            logger.warning(
+                _format_log_message(
+                    "Immediate order email was not sent",
+                    request,
+                    order_id=order.id,
+                    event_type=event_type,
+                )
+            )
+        return sent
+    except Exception as exc:
+        logger.exception(
+            _format_log_message(
+                "Immediate order email failed without interrupting order flow",
+                request,
+                order_id=order.id,
+                event_type=event_type,
+                error=exc,
+            )
+        )
+        return False
+
+
 @staff_member_required(login_url='admin:login')
 def analytics_dashboard(request):
     context = get_analytics_dashboard_data(request.GET)
@@ -578,6 +605,8 @@ def checkout(request):
                     status=500,
                 )
             return render_checkout(form)
+
+        _send_order_email_safely(order, "created", request=request)
 
         if payment_method == 'razorpay' and can_pay_online:
             logger.info(_format_log_message("Processing Razorpay payment", request, order_id=order.id))

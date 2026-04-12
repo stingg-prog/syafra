@@ -11,7 +11,7 @@ from django.conf import settings
 from django.db.models import Q
 from django.template.loader import render_to_string
 from django.utils import timezone
-from django.utils.html import strip_tags
+from django.utils.html import escape, strip_tags
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,9 @@ ORDER_EVENT_SHIPPED = 'shipped'
 ORDER_EVENT_DELIVERED = 'delivered'
 ORDER_EVENT_CANCELLED = 'cancelled'
 ORDER_EMAIL_STATUS_EVENT_MAP = {
+    'paid': ORDER_EVENT_CONFIRMED,
     'packed': ORDER_EVENT_CONFIRMED,
+    'confirmed': ORDER_EVENT_CONFIRMED,
     'shipped': ORDER_EVENT_SHIPPED,
     'delivered': ORDER_EVENT_DELIVERED,
     'cancelled': ORDER_EVENT_CANCELLED,
@@ -146,21 +148,73 @@ def _build_order_event_context(order, event_type):
         else:
             status_message = f"{status_message} Tracking details will be shared as soon as they are available."
 
-    return _build_order_email_context(
-        order,
-        event_type=event_type,
-        headline=config['headline'],
-        order_status_label=config['status_label'],
-        status_message=status_message,
-        tracking_id=tracking_id,
-        show_tracking_id=bool(tracking_id and event_type == ORDER_EVENT_SHIPPED),
+    return {
+        'order': order,
+        'event_type': event_type,
+        'headline': config['headline'],
+        'currency': get_currency_symbol(),
+        'customer_name': order.customer_name or getattr(getattr(order, 'user', None), 'get_full_name', lambda: '')() or 'Customer',
+        'order_status_label': config['status_label'],
+        'status_message': status_message,
+        'tracking_id': tracking_id,
+        'show_tracking_id': bool(tracking_id and event_type == ORDER_EVENT_SHIPPED),
+    }
+
+
+def _build_fast_order_event_messages(context):
+    order = context['order']
+    tracking_line = f"\nTracking ID: {context['tracking_id']}" if context['show_tracking_id'] else ""
+    plain_message = (
+        f"{context['headline']}\n\n"
+        f"Hello {context['customer_name']},\n\n"
+        f"{context['status_message']}\n\n"
+        f"Order ID: #{order.id}\n"
+        f"Current Status: {context['order_status_label']}\n"
+        f"Order Total: {context['currency']}{order.total_price:.2f}"
+        f"{tracking_line}\n\n"
+        f"Shipping Address:\n{order.shipping_address}\n\n"
+        "If you need help, reply to this email and our team will assist you."
     )
+
+    tracking_html = ""
+    if context['show_tracking_id']:
+        tracking_html = (
+            '<tr><td style="padding:8px 0;color:#6b7280;">Tracking ID</td>'
+            f'<td style="padding:8px 0;text-align:right;"><strong>{escape(context["tracking_id"])}</strong></td></tr>'
+        )
+
+    html_message = f"""
+<!DOCTYPE html>
+<html lang="en">
+<body style="font-family: Arial, sans-serif; color: #333333; background: #f5f5f5; margin: 0; padding: 24px;">
+    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; padding: 28px;">
+        <h1 style="font-size: 24px; margin: 0 0 16px;">{escape(context['headline'])}</h1>
+        <p style="margin: 0 0 12px;">Hello {escape(context['customer_name'])},</p>
+        <p style="margin: 0 0 18px;">{escape(context['status_message'])}</p>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px;">
+            <tbody>
+                <tr><td style="padding:8px 0;color:#6b7280;">Order ID</td><td style="padding:8px 0;text-align:right;"><strong>#{order.id}</strong></td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Current Status</td><td style="padding:8px 0;text-align:right;"><strong>{escape(context['order_status_label'])}</strong></td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Order Total</td><td style="padding:8px 0;text-align:right;"><strong>{escape(context['currency'])}{order.total_price:.2f}</strong></td></tr>
+                {tracking_html}
+            </tbody>
+        </table>
+        <p style="margin: 0 0 8px;">Shipping Address:</p>
+        <div style="padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb; white-space: pre-wrap; margin-bottom: 18px;">{escape(order.shipping_address)}</div>
+        <p style="margin: 0; color: #6b7280; font-size: 13px;">If you need help, reply to this email and our team will assist you.</p>
+    </div>
+</body>
+</html>
+""".strip()
+
+    return html_message, plain_message
 
 
 def send_order_email(order, event_type):
     """
     Send an immediate, idempotent customer email for a specific order event.
     """
+    print("EMAIL TRIGGERED")
     event_type = _normalize_order_event_type(event_type)
     config = _order_event_config(event_type)
     if config is None:
@@ -178,8 +232,7 @@ def send_order_email(order, event_type):
 
     context = _build_order_event_context(order, event_type)
     subject = config['subject'].format(order_id=order.id)
-    html_message = render_to_string('emails/order_event_email.html', context)
-    plain_message = render_to_string('emails/order_event_email.txt', context)
+    html_message, plain_message = _build_fast_order_event_messages(context)
     tracking_id = context['tracking_id']
 
     try:
@@ -199,7 +252,7 @@ def send_order_email(order, event_type):
                 'event_type': event_type,
                 'order_status': order.status,
                 'tracking_id': tracking_id,
-                'template_name': 'emails/order_event_email.html',
+                'template_name': 'inline_order_event',
             },
             max_retries=1,
         )
@@ -213,6 +266,29 @@ def send_order_email(order, event_type):
 
     logger.info("Order event email sent | order_id=%s | event_type=%s | recipients=%s", order.id, event_type, ",".join(recipients))
     return True
+
+
+def send_order_status_email_if_changed(order, old_status, new_status):
+    """
+    Send a customer-facing status email directly from the action that changed it.
+    """
+    old_status = (old_status or '').strip().lower()
+    new_status = (new_status or '').strip().lower()
+    if old_status == new_status:
+        logger.info("Skipping status email because status did not change | order_id=%s | status=%s", order.id, new_status)
+        return False
+
+    event_type = get_order_status_email_event(new_status)
+    if not event_type:
+        logger.info(
+            "Skipping status email because status has no customer email event | order_id=%s | old_status=%s | new_status=%s",
+            order.id,
+            old_status or "-",
+            new_status or "-",
+        )
+        return False
+
+    return send_order_email(order, event_type)
 
 
 def _email_log_type_for_notification(email_type):

@@ -2,18 +2,14 @@ import logging
 
 from django.db.models import DecimalField, F, Sum, Value
 from django.db.models.functions import Coalesce
-from django.db.models.signals import post_delete, post_save, pre_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from syafra.logging_context import get_correlation_id
 
-from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES
+from .models import Order, OrderItem
 
 logger = logging.getLogger(__name__)
-
-
-def _is_paid_fulfillment_stage(status, payment_status):
-    return payment_status == "paid" and status in PAID_FULFILLMENT_STATUSES
 
 
 def _dispatch_whatsapp_notification(order_pk, status, correlation_id=None):
@@ -32,29 +28,6 @@ def _dispatch_whatsapp_notification(order_pk, status, correlation_id=None):
             status,
             exc,
         )
-
-
-def _send_order_event_email(order, event_type):
-    try:
-        from .services.email_service import send_order_email
-
-        print("ORDER EVENT EMAIL FUNCTION CALLED")
-        sent = send_order_email(order, event_type)
-        if not sent:
-            logger.warning(
-                "Order event email was not sent | order_id=%s | event_type=%s",
-                order.pk,
-                event_type,
-            )
-        return sent
-    except Exception as exc:
-        logger.exception(
-            "Failed to send order event email | order_id=%s | event_type=%s | error=%s",
-            order.pk,
-            event_type,
-            exc,
-        )
-        return False
 
 
 def queue_whatsapp_notification(order, status):
@@ -130,148 +103,6 @@ def _send_email_instant(order_pk, email_type, status_override=None, correlation_
             logger.warning("Email delivery failed for order %s: %s", order_pk, exc)
         except Exception as exc:
             logger.exception("Failed to send instant email for order %s: %s", order_pk, exc)
-
-
-@receiver(pre_save, sender=Order)
-def track_order_changes(sender, instance, **kwargs):
-    if instance.pk:
-        try:
-            old_instance = Order.objects.get(pk=instance.pk)
-            instance._previous_status = old_instance.status
-            instance._previous_payment_status = old_instance.payment_status
-            instance._previous_total = old_instance.total_price
-        except Order.DoesNotExist:
-            instance._previous_status = None
-            instance._previous_payment_status = None
-            instance._previous_total = None
-    else:
-        instance._previous_status = None
-        instance._previous_payment_status = None
-        instance._previous_total = None
-
-
-@receiver(post_save, sender=Order)
-def handle_order_notifications(sender, instance, created, **kwargs):
-    print("SIGNAL TRIGGERED")
-    if created:
-        logger.info("New order created | Order #%s | User: %s", instance.id, instance.user.id)
-        _send_order_event_email(instance, "created")
-
-        if _is_paid_fulfillment_stage(instance.status, instance.payment_status):
-            logger.info(
-                "Paid order detected on create | order=%s | status=%s | payment=%s",
-                instance.id,
-                instance.status,
-                instance.payment_status,
-            )
-            try:
-                from .services.order_service import ensure_paid_order_stock_reduced
-
-                if not instance.stock_reduced:
-                    ensure_paid_order_stock_reduced(instance)
-            except Exception as exc:
-                logger.warning(
-                    "Could not reduce stock from signal for order #%s (admin may handle it): %s",
-                    instance.id,
-                    exc,
-                )
-            queue_email_notification(instance, "confirmation")
-            queue_email_notification(instance, "payment")
-            queue_email_notification(instance, "admin")
-            queue_whatsapp_notification(instance, "created")
-            logger.info("Notifications triggered for new paid order #%s", instance.id)
-        return
-
-    if not hasattr(instance, "_previous_status"):
-        instance._previous_status = None
-        instance._previous_payment_status = None
-
-    old_status = instance._previous_status
-    new_status = instance.status
-    prev_pay = getattr(instance, "_previous_payment_status", None)
-
-    if old_status is None:
-        if hasattr(instance, "_admin_old_status"):
-            old_status = instance._admin_old_status
-            prev_pay = getattr(instance, "_admin_old_payment_status", None)
-        else:
-            try:
-                old_order = Order.objects.get(pk=instance.pk)
-                old_status = old_order.status
-                prev_pay = old_order.payment_status
-            except Order.DoesNotExist:
-                old_status = None
-                prev_pay = None
-
-    logger.info(
-        "Status check | Order #%s | old_status=%s, new_status=%s | old_pay=%s, new_pay=%s",
-        instance.id,
-        old_status,
-        new_status,
-        prev_pay,
-        instance.payment_status,
-    )
-
-    if old_status == new_status and prev_pay == instance.payment_status:
-        logger.info("No status change for order #%s, skipping notifications", instance.id)
-        return
-
-    logger.info(
-        "Status change detected | Order #%s | %s -> %s | pay:%s -> %s",
-        instance.id,
-        old_status,
-        new_status,
-        prev_pay,
-        instance.payment_status,
-    )
-
-    entered_paid_fulfillment = not _is_paid_fulfillment_stage(old_status, prev_pay) and _is_paid_fulfillment_stage(
-        instance.status,
-        instance.payment_status,
-    )
-
-    if entered_paid_fulfillment:
-        logger.info("Paid confirmation trigger | order=%s", instance.id)
-        try:
-            from .services.order_service import ensure_paid_order_stock_reduced
-
-            if not instance.stock_reduced:
-                ensure_paid_order_stock_reduced(instance)
-        except Exception as exc:
-            logger.warning(
-                "Could not reduce stock from signal for order #%s (admin may handle it): %s",
-                instance.id,
-                exc,
-            )
-        queue_email_notification(instance, "confirmation")
-        queue_email_notification(instance, "payment")
-        queue_email_notification(instance, "admin")
-        queue_whatsapp_notification(instance, "created")
-        logger.info("Notifications triggered for paid order #%s", instance.id)
-        return
-
-    from .services.email_service import get_order_status_email_event
-
-    status_event = get_order_status_email_event(new_status)
-    if status_event == "confirmed":
-        print("STATUS CHANGED - SENDING EMAIL")
-        _send_order_event_email(instance, status_event)
-        queue_whatsapp_notification(instance, "packed")
-        logger.info("Packed notifications queued for order #%s", instance.id)
-    elif status_event == "shipped":
-        print("STATUS CHANGED - SENDING EMAIL")
-        _send_order_event_email(instance, status_event)
-        queue_whatsapp_notification(instance, "shipped")
-        logger.info("Shipped notifications queued for order #%s", instance.id)
-    elif status_event == "delivered":
-        print("STATUS CHANGED - SENDING EMAIL")
-        _send_order_event_email(instance, status_event)
-        queue_whatsapp_notification(instance, "delivered")
-        logger.info("Delivered notifications queued for order #%s", instance.id)
-    elif status_event == "cancelled":
-        print("STATUS CHANGED - SENDING EMAIL")
-        _send_order_event_email(instance, status_event)
-        logger.info("Cancelled email queued for order #%s", instance.id)
 
 
 @receiver([post_save, post_delete], sender=OrderItem)

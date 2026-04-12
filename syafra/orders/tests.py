@@ -110,7 +110,7 @@ class InstantOrderEmailSystemTest(TestCase):
 
         self.assertTrue(first_sent)
         self.assertFalse(second_sent)
-        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(
             EmailLog.objects.filter(
                 order=self.order,
@@ -151,19 +151,22 @@ class InstantOrderEmailSystemTest(TestCase):
             1,
         )
 
-    def test_status_change_sends_event_email_immediately(self):
-        with mock.patch('orders.signals._send_order_event_email', return_value=True) as send_mock, mock.patch('orders.signals.queue_whatsapp_notification'):
-            self.order.status = 'shipped'
-            self.order.tracking_id = 'TRACK-123'
-            self.order.save(update_fields=['status', 'tracking_id'])
+    def test_status_change_helper_sends_event_email_immediately(self):
+        from .services.email_service import send_order_status_email_if_changed
 
+        with mock.patch('orders.services.email_service.send_order_email', return_value=True) as send_mock:
+            sent = send_order_status_email_if_changed(self.order, 'pending', 'shipped')
+
+        self.assertTrue(sent)
         send_mock.assert_called_once_with(self.order, 'shipped')
 
     def test_same_status_update_does_not_send_event_email(self):
-        with mock.patch('orders.signals._send_order_event_email', return_value=True) as send_mock:
-            self.order.customer_name = 'Updated Name'
-            self.order.save(update_fields=['customer_name'])
+        from .services.email_service import send_order_status_email_if_changed
 
+        with mock.patch('orders.services.email_service.send_order_email', return_value=True) as send_mock:
+            sent = send_order_status_email_if_changed(self.order, 'pending', 'pending')
+
+        self.assertFalse(sent)
         send_mock.assert_not_called()
 
     def test_admin_save_model_sends_created_email_immediately(self):
@@ -181,7 +184,7 @@ class InstantOrderEmailSystemTest(TestCase):
             payment_status='pending',
         )
 
-        with mock.patch('orders.signals._send_order_event_email', return_value=True), mock.patch('orders.admin.send_order_email', return_value=True) as send_mock:
+        with mock.patch('orders.admin.send_order_email', return_value=True) as send_mock:
             admin_instance.save_model(request, admin_order, form=None, change=False)
 
         send_mock.assert_called_once()
@@ -195,10 +198,22 @@ class InstantOrderEmailSystemTest(TestCase):
         request.user = self.admin_user
         self.order.customer_name = 'Admin Updated Customer'
 
-        with mock.patch('orders.admin.send_order_email', return_value=True) as send_mock:
+        with mock.patch('orders.admin.send_order_email', return_value=True) as send_mock, mock.patch('orders.admin.send_order_status_email_if_changed', return_value=True) as status_mock:
             admin_instance.save_model(request, self.order, form=None, change=True)
 
         send_mock.assert_not_called()
+        status_mock.assert_not_called()
+
+    def test_admin_save_model_status_update_sends_status_email_immediately(self):
+        admin_instance = OrderAdmin(Order, AdminSite())
+        request = self.factory.post(f'/admin/orders/order/{self.order.id}/change/')
+        request.user = self.admin_user
+        self.order.status = 'shipped'
+
+        with mock.patch('orders.admin.send_order_status_email_if_changed', return_value=True) as status_mock:
+            admin_instance.save_model(request, self.order, form=None, change=True)
+
+        status_mock.assert_called_once_with(self.order, 'pending', 'shipped')
 
 
 class CheckoutViewTest(TestCase):
@@ -823,7 +838,7 @@ class RazorpayPaymentFlowTest(TestCase):
         self.assertEqual(order.razorpay_payment_id, 'pay_webhook_paid_123')
         self.assertEqual(product.stock, 9)
         self.assertTrue(any(
-            message.subject == f'Order Confirmation - Order #{order.id}'
+            message.subject == f'Order Confirmed - Order #{order.id}'
             and 'pay@example.com' in message.to
             for message in mail.outbox
         ))
@@ -1226,15 +1241,16 @@ class OrderFlowTest(TestCase):
             payment_status='pending',
         )
 
-        with mock.patch('orders.signals._send_order_event_email') as email_mock, mock.patch('orders.signals.queue_whatsapp_notification') as whatsapp_mock:
-            order.status = 'packed'
-            order.save()
+        from orders.services.email_service import send_order_status_email_if_changed
 
-            email_mock.assert_called_once_with(order, 'confirmed')
-            whatsapp_mock.assert_called_once_with(order, 'packed')
+        with mock.patch('orders.services.email_service.send_order_email', return_value=True) as email_mock:
+            sent = send_order_status_email_if_changed(order, 'paid', 'packed')
 
-    def test_pending_order_creation_does_not_queue_customer_email(self):
-        with mock.patch('orders.signals.queue_email_notification') as email_mock:
+        self.assertTrue(sent)
+        email_mock.assert_called_once_with(order, 'confirmed')
+
+    def test_order_creation_model_save_does_not_send_customer_email_from_signal(self):
+        with mock.patch('orders.services.email_service.send_order_email') as email_mock:
             Order.objects.create(
                 user=self.user,
                 total_price=100.00,
@@ -1248,7 +1264,7 @@ class OrderFlowTest(TestCase):
 
         email_mock.assert_not_called()
 
-    def test_paid_confirmation_transition_reduces_stock_and_queues_both_emails(self):
+    def test_paid_confirmation_transition_reduces_stock_and_sends_status_email_directly(self):
         order = Order.objects.create(
             user=self.user,
             total_price=100.00,
@@ -1266,20 +1282,22 @@ class OrderFlowTest(TestCase):
             price=100.00,
         )
 
-        with mock.patch('orders.signals.queue_email_notification') as email_mock, mock.patch('orders.signals.queue_whatsapp_notification') as whatsapp_mock:
-            order.status = 'paid'
-            order.payment_status = 'paid'
-            order.save()
+        from orders.services.order_service import confirm_order_payment
+
+        with mock.patch('orders.services.email_service.send_order_status_email_if_changed', return_value=True) as status_email_mock:
+            confirmed_order, processed = confirm_order_payment(order, payment_reference='PAY-123')
 
         order.refresh_from_db()
         self.product.refresh_from_db()
 
+        self.assertTrue(processed)
+        self.assertEqual(confirmed_order.status, 'paid')
         self.assertTrue(order.stock_reduced)
         self.assertEqual(self.product.stock, 9)
-        email_mock.assert_any_call(order, 'confirmation')
-        email_mock.assert_any_call(order, 'payment')
-        email_mock.assert_any_call(order, 'admin')
-        whatsapp_mock.assert_called_once_with(order, 'created')
+        status_email_mock.assert_called_once()
+        _sent_order, old_status, new_status = status_email_mock.call_args.args
+        self.assertEqual(old_status, 'pending')
+        self.assertEqual(new_status, 'paid')
 
     def test_confirmation_email_queue_is_idempotent(self):
         order = Order.objects.create(

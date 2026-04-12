@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.utils.html import format_html
 
 from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES, Payment, PaymentSettings, WhatsAppSettings
-from .services.email_service import send_order_email
+from .services.email_service import send_order_email, send_order_status_email_if_changed
 from .services.order_service import confirm_order_payment, ensure_paid_order_stock_reduced
 
 logger = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ class OrderAdmin(admin.ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        """Track previous status for stock/email triggers and send admin-created order emails."""
+        """Send order emails directly from the admin action that changed the order."""
         is_new = obj.pk is None
         obj._created_via_admin = is_new
         if change:
@@ -157,6 +157,26 @@ class OrderAdmin(admin.ModelAdmin):
             print("ADMIN ORDER CREATED - EMAIL")
             if not send_order_email(obj, "created"):
                 logger.warning("Admin-created order email was not sent | order_id=%s", obj.pk)
+        elif obj._admin_old_status and obj._admin_old_status != obj.status:
+            self._send_status_email_for_admin_change(obj, obj._admin_old_status)
+
+    def _send_status_email_for_admin_change(self, order, old_status):
+        try:
+            if not send_order_status_email_if_changed(order, old_status, order.status):
+                logger.info(
+                    "Admin status email skipped | order_id=%s | old_status=%s | new_status=%s",
+                    order.pk,
+                    old_status,
+                    order.status,
+                )
+        except Exception as exc:
+            logger.exception(
+                "Admin status email failed without interrupting save | order_id=%s | old_status=%s | new_status=%s | error=%s",
+                order.pk,
+                old_status,
+                order.status,
+                exc,
+            )
     
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
@@ -205,9 +225,11 @@ class OrderAdmin(admin.ModelAdmin):
                 continue
             try:
                 if order.payment_status == 'paid':
-                    order._admin_old_status = order.status
+                    old_status = order.status
+                    order._admin_old_status = old_status
                     order.status = 'paid'
                     order.save(update_fields=['status'])
+                    self._send_status_email_for_admin_change(order, old_status)
                 else:
                     order._admin_old_status = order.status
                     order._admin_old_payment_status = order.payment_status
@@ -229,9 +251,11 @@ class OrderAdmin(admin.ModelAdmin):
                 skipped += 1
                 continue
             if order.status != 'packed':
-                order._admin_old_status = order.status
+                old_status = order.status
+                order._admin_old_status = old_status
                 order.status = 'packed'
                 order.save(update_fields=['status'])
+                self._send_status_email_for_admin_change(order, old_status)
                 updated += 1
         if updated:
             self.message_user(request, f"{updated} order(s) marked as Packed. Notifications will be sent.", level=messages.SUCCESS)
@@ -247,9 +271,11 @@ class OrderAdmin(admin.ModelAdmin):
                 skipped += 1
                 continue
             if order.status != 'shipped':
-                order._admin_old_status = order.status
+                old_status = order.status
+                order._admin_old_status = old_status
                 order.status = 'shipped'
                 order.save(update_fields=['status'])
+                self._send_status_email_for_admin_change(order, old_status)
                 updated += 1
         if updated:
             self.message_user(request, f"{updated} order(s) marked as Shipped. Notifications will be sent.", level=messages.SUCCESS)
@@ -265,9 +291,11 @@ class OrderAdmin(admin.ModelAdmin):
                 skipped += 1
                 continue
             if order.status != 'delivered':
-                order._admin_old_status = order.status
+                old_status = order.status
+                order._admin_old_status = old_status
                 order.status = 'delivered'
                 order.save(update_fields=['status'])
+                self._send_status_email_for_admin_change(order, old_status)
                 updated += 1
         if updated:
             self.message_user(request, f"{updated} order(s) marked as Delivered. Notifications will be sent.", level=messages.SUCCESS)

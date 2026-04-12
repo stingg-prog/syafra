@@ -138,6 +138,7 @@ def _send_via_sendgrid_sdk(email_log, *, subject, message, recipient, html_messa
 
     response = client.send(mail)
     response_body = _read_sendgrid_body(response)
+    print("SendGrid Status:", response.status_code)
 
     logger.info(
         "SendGrid Status: %s | email_log_id=%s | recipient=%s | order_id=%s | user_id=%s",
