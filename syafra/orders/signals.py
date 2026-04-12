@@ -1,6 +1,5 @@
 import logging
 
-from django.db import transaction
 from django.db.models import DecimalField, F, Sum, Value
 from django.db.models.functions import Coalesce
 from django.db.models.signals import post_delete, post_save, pre_save
@@ -35,69 +34,36 @@ def _dispatch_whatsapp_notification(order_pk, status, correlation_id=None):
         )
 
 
-def _schedule_on_commit_once(kind, identifier, callback):
-    connection = transaction.get_connection()
-
-    key = (kind, identifier)
-    for queued_callback in getattr(connection, "run_on_commit", []):
-        queued_func = queued_callback[1]
-        if getattr(queued_func, "_orders_on_commit_key", None) == key:
-            logger.debug("Skipping duplicate on-commit registration for %s", key)
-            return False
-
-    def run_once():
-        callback()
-
-    run_once._orders_on_commit_key = key
-    transaction.on_commit(run_once)
-    return True
-
-
-def _send_order_event_email_now(order_pk, event_type):
-    from .services.email_service import send_order_email
-
-    order = (
-        Order.objects.select_related('user')
-        .prefetch_related('items__product')
-        .filter(pk=order_pk)
-        .first()
-    )
-    if order is None:
-        logger.warning("Skipping order event email because the order no longer exists | order_id=%s | event_type=%s", order_pk, event_type)
-        return False
-
-    return send_order_email(order, event_type)
-
-
-def _schedule_order_event_email(order, event_type):
+def _send_order_event_email(order, event_type):
     try:
-        scheduled = _schedule_on_commit_once(
-            "order_event_email",
-            (order.pk, event_type),
-            lambda order_pk=order.pk, event_type=event_type: _send_order_event_email_now(order_pk, event_type),
-        )
-        if not scheduled:
-            logger.info("Duplicate order event email skipped before commit | order_id=%s | event_type=%s", order.pk, event_type)
+        from .services.email_service import send_order_email
+
+        print("ORDER EVENT EMAIL FUNCTION CALLED")
+        sent = send_order_email(order, event_type)
+        if not sent:
+            logger.warning(
+                "Order event email was not sent | order_id=%s | event_type=%s",
+                order.pk,
+                event_type,
+            )
+        return sent
     except Exception as exc:
         logger.exception(
-            "Failed to schedule order event email | order_id=%s | event_type=%s | error=%s",
+            "Failed to send order event email | order_id=%s | event_type=%s | error=%s",
             order.pk,
             event_type,
             exc,
         )
+        return False
 
 
 def queue_whatsapp_notification(order, status):
     try:
         correlation_id = get_correlation_id()
-        _schedule_on_commit_once(
-            "whatsapp",
-            (order.pk, status),
-            lambda order_pk=order.pk, status=status, correlation_id=correlation_id: _dispatch_whatsapp_notification(
-                order_pk,
-                status,
-                correlation_id=correlation_id,
-            ),
+        _dispatch_whatsapp_notification(
+            order.pk,
+            status,
+            correlation_id=correlation_id,
         )
     except Exception as exc:
         logger.exception(
@@ -109,7 +75,7 @@ def queue_whatsapp_notification(order, status):
 
 
 def queue_email_notification(order, email_type, status_override=None):
-    """Queue email after commit so notifications only fire for persisted orders."""
+    """Send order notification emails immediately without interrupting order saves."""
     try:
         correlation_id = get_correlation_id()
 
@@ -121,40 +87,16 @@ def queue_email_notification(order, email_type, status_override=None):
                 logger.info("Email already sent | type=%s | order=%s | skipping", email_type, order.pk)
                 return
 
-        scheduled = _schedule_on_commit_once(
-            "email",
-            (order.pk, email_type, status_override or ""),
-            lambda order_pk=order.pk, email_type=email_type, status_override=status_override, correlation_id=correlation_id: _send_email_notification_after_commit(
-                order_pk,
-                email_type,
-                status_override,
-                correlation_id=correlation_id,
-            ),
-        )
-        if not scheduled:
-            logger.info(
-                "Duplicate email on-commit notification skipped | order_id=%s | type=%s | status=%s",
-                order.pk,
-                email_type,
-                status_override or "-",
-            )
-    except Exception as exc:
-        logger.error("Failed to queue email notification for order %s: %s", order.id, exc)
-
-
-def _send_email_notification_after_commit(order_pk, email_type, status_override=None, correlation_id=None):
-    """Send order notification email synchronously after DB commit."""
-    try:
         _send_email_instant(
-            order_pk,
+            order.pk,
             email_type,
             status_override,
             correlation_id=correlation_id,
         )
     except Exception as exc:
         logger.exception(
-            "Synchronous order email failed after commit | order_id=%s | type=%s | error=%s",
-            order_pk,
+            "Failed to send immediate email notification | order_id=%s | type=%s | error=%s",
+            order.id,
             email_type,
             exc,
         )
@@ -186,21 +128,8 @@ def _send_email_instant(order_pk, email_type, status_override=None, correlation_
             logger.info("Email send success | type=%s | order=%s | sent=%s", email_type, order_pk, sent)
         except EmailDeliveryError as exc:
             logger.warning("Email delivery failed for order %s: %s", order_pk, exc)
-            logger.info("Retrying sync email send | type=%s | order=%s", email_type, order_pk)
-            try:
-                sent = send_notification_email(
-                    order_pk,
-                    email_type,
-                    status=status_override,
-                    raise_on_failure=True,
-                )
-                logger.info("Email retry success | type=%s | order=%s | sent=%s", email_type, order_pk, sent)
-            except Exception as retry_exc:
-                logger.error("Email retry failed | type=%s | order=%s | error=%s", email_type, order_pk, retry_exc)
-                raise
         except Exception as exc:
             logger.exception("Failed to send instant email for order %s: %s", order_pk, exc)
-            raise
 
 
 @receiver(pre_save, sender=Order)
@@ -223,8 +152,10 @@ def track_order_changes(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Order)
 def handle_order_notifications(sender, instance, created, **kwargs):
+    print("SIGNAL TRIGGERED")
     if created:
         logger.info("New order created | Order #%s | User: %s", instance.id, instance.user.id)
+        _send_order_event_email(instance, "created")
 
         if _is_paid_fulfillment_stage(instance.status, instance.payment_status):
             logger.info(
@@ -323,19 +254,23 @@ def handle_order_notifications(sender, instance, created, **kwargs):
 
     status_event = get_order_status_email_event(new_status)
     if status_event == "confirmed":
-        _schedule_order_event_email(instance, status_event)
+        print("STATUS CHANGED - SENDING EMAIL")
+        _send_order_event_email(instance, status_event)
         queue_whatsapp_notification(instance, "packed")
         logger.info("Packed notifications queued for order #%s", instance.id)
     elif status_event == "shipped":
-        _schedule_order_event_email(instance, status_event)
+        print("STATUS CHANGED - SENDING EMAIL")
+        _send_order_event_email(instance, status_event)
         queue_whatsapp_notification(instance, "shipped")
         logger.info("Shipped notifications queued for order #%s", instance.id)
     elif status_event == "delivered":
-        _schedule_order_event_email(instance, status_event)
+        print("STATUS CHANGED - SENDING EMAIL")
+        _send_order_event_email(instance, status_event)
         queue_whatsapp_notification(instance, "delivered")
         logger.info("Delivered notifications queued for order #%s", instance.id)
     elif status_event == "cancelled":
-        _schedule_order_event_email(instance, status_event)
+        print("STATUS CHANGED - SENDING EMAIL")
+        _send_order_event_email(instance, status_event)
         logger.info("Cancelled email queued for order #%s", instance.id)
 
 

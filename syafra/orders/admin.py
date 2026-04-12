@@ -2,7 +2,6 @@ import logging
 
 from django.contrib import admin
 from django.contrib import messages
-from django.db import transaction
 from django.utils.html import format_html
 
 from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES, Payment, PaymentSettings, WhatsAppSettings
@@ -155,20 +154,9 @@ class OrderAdmin(admin.ModelAdmin):
         
         super().save_model(request, obj, form, change)
         if is_new:
-            def send_created_email_after_commit(order_id=obj.pk):
-                fresh_order = (
-                    Order.objects.select_related('user')
-                    .prefetch_related('items__product')
-                    .filter(pk=order_id)
-                    .first()
-                )
-                if fresh_order is None:
-                    logger.warning("Skipping admin-created order email because order no longer exists | order_id=%s", order_id)
-                    return
-                if not send_order_email(fresh_order, "created"):
-                    logger.warning("Admin-created order email was not sent | order_id=%s", order_id)
-
-            transaction.on_commit(send_created_email_after_commit)
+            print("ADMIN ORDER CREATED - EMAIL")
+            if not send_order_email(obj, "created"):
+                logger.warning("Admin-created order email was not sent | order_id=%s", obj.pk)
     
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)

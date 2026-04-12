@@ -105,17 +105,17 @@ class InstantOrderEmailSystemTest(TestCase):
     def test_send_order_email_is_idempotent_for_same_event(self):
         from .services.email_service import send_order_email
 
-        first_sent = send_order_email(self.order, 'created')
-        second_sent = send_order_email(self.order, 'created')
+        first_sent = send_order_email(self.order, 'shipped')
+        second_sent = send_order_email(self.order, 'shipped')
 
         self.assertTrue(first_sent)
         self.assertFalse(second_sent)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(len(mail.outbox), 2)
         self.assertEqual(
             EmailLog.objects.filter(
                 order=self.order,
                 correlation_id=str(self.order.id),
-                event_type='created',
+                event_type='shipped',
             ).count(),
             1,
         )
@@ -125,7 +125,7 @@ class InstantOrderEmailSystemTest(TestCase):
 
         EmailLog.objects.create(
             email_type=EmailLog.TYPE_ORDER_CONFIRMATION,
-            event_type='created',
+            event_type='cancelled',
             user=self.user,
             order=self.order,
             recipient='customer@example.com',
@@ -136,43 +136,37 @@ class InstantOrderEmailSystemTest(TestCase):
             error_message='Invalid recipient email address.',
         )
 
-        sent = send_order_email(self.order, 'created')
+        outbox_count = len(mail.outbox)
+
+        sent = send_order_email(self.order, 'cancelled')
 
         self.assertFalse(sent)
-        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(len(mail.outbox), outbox_count)
         self.assertEqual(
             EmailLog.objects.filter(
                 order=self.order,
                 correlation_id=str(self.order.id),
-                event_type='created',
+                event_type='cancelled',
             ).count(),
             1,
         )
 
-    def test_status_change_schedules_event_email_after_commit(self):
-        with mock.patch('orders.signals._send_order_event_email_now', return_value=True) as send_mock, mock.patch('orders.signals.queue_whatsapp_notification'):
-            with self.captureOnCommitCallbacks(execute=False) as callbacks:
-                self.order.status = 'shipped'
-                self.order.tracking_id = 'TRACK-123'
-                self.order.save(update_fields=['status', 'tracking_id'])
-                send_mock.assert_not_called()
+    def test_status_change_sends_event_email_immediately(self):
+        with mock.patch('orders.signals._send_order_event_email', return_value=True) as send_mock, mock.patch('orders.signals.queue_whatsapp_notification'):
+            self.order.status = 'shipped'
+            self.order.tracking_id = 'TRACK-123'
+            self.order.save(update_fields=['status', 'tracking_id'])
 
-            self.assertEqual(len(callbacks), 1)
-            callbacks[0]()
+        send_mock.assert_called_once_with(self.order, 'shipped')
 
-        send_mock.assert_called_once_with(self.order.id, 'shipped')
-
-    def test_same_status_update_does_not_schedule_event_email(self):
-        with mock.patch('orders.signals._send_order_event_email_now', return_value=True) as send_mock:
-            with self.captureOnCommitCallbacks(execute=False) as callbacks:
-                self.order.customer_name = 'Updated Name'
-                self.order.save(update_fields=['customer_name'])
-
-            self.assertEqual(callbacks, [])
+    def test_same_status_update_does_not_send_event_email(self):
+        with mock.patch('orders.signals._send_order_event_email', return_value=True) as send_mock:
+            self.order.customer_name = 'Updated Name'
+            self.order.save(update_fields=['customer_name'])
 
         send_mock.assert_not_called()
 
-    def test_admin_save_model_sends_created_email_after_commit(self):
+    def test_admin_save_model_sends_created_email_immediately(self):
         admin_instance = OrderAdmin(Order, AdminSite())
         request = self.factory.post('/admin/orders/order/add/')
         request.user = self.admin_user
@@ -187,13 +181,8 @@ class InstantOrderEmailSystemTest(TestCase):
             payment_status='pending',
         )
 
-        with mock.patch('orders.admin.send_order_email', return_value=True) as send_mock:
-            with self.captureOnCommitCallbacks(execute=False) as callbacks:
-                admin_instance.save_model(request, admin_order, form=None, change=False)
-                send_mock.assert_not_called()
-
-            self.assertEqual(len(callbacks), 1)
-            callbacks[0]()
+        with mock.patch('orders.signals._send_order_event_email', return_value=True), mock.patch('orders.admin.send_order_email', return_value=True) as send_mock:
+            admin_instance.save_model(request, admin_order, form=None, change=False)
 
         send_mock.assert_called_once()
         sent_order, event_type = send_mock.call_args.args
@@ -207,10 +196,7 @@ class InstantOrderEmailSystemTest(TestCase):
         self.order.customer_name = 'Admin Updated Customer'
 
         with mock.patch('orders.admin.send_order_email', return_value=True) as send_mock:
-            with self.captureOnCommitCallbacks(execute=False) as callbacks:
-                admin_instance.save_model(request, self.order, form=None, change=True)
-
-            self.assertEqual(callbacks, [])
+            admin_instance.save_model(request, self.order, form=None, change=True)
 
         send_mock.assert_not_called()
 
@@ -822,13 +808,12 @@ class RazorpayPaymentFlowTest(TestCase):
         body = json.dumps(payload).encode('utf-8')
         signature = hmac.new(b'mysecret123', body, hashlib.sha256).hexdigest()
 
-        with self.captureOnCommitCallbacks(execute=True):
-            response = self.client.post(
-                reverse('orders:razorpay_webhook'),
-                data=body,
-                content_type='application/json',
-                HTTP_X_RAZORPAY_SIGNATURE=signature,
-            )
+        response = self.client.post(
+            reverse('orders:razorpay_webhook'),
+            data=body,
+            content_type='application/json',
+            HTTP_X_RAZORPAY_SIGNATURE=signature,
+        )
 
         self.assertEqual(response.status_code, 200)
         order.refresh_from_db()
@@ -1229,7 +1214,7 @@ class OrderFlowTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Online payment is temporarily unavailable')
 
-    def test_packed_transition_for_paid_order_queues_status_event_email(self):
+    def test_packed_transition_for_paid_order_sends_status_event_email(self):
         order = Order.objects.create(
             user=self.user,
             total_price=100.00,
@@ -1241,7 +1226,7 @@ class OrderFlowTest(TestCase):
             payment_status='pending',
         )
 
-        with mock.patch('orders.signals._schedule_order_event_email') as email_mock, mock.patch('orders.signals.queue_whatsapp_notification') as whatsapp_mock:
+        with mock.patch('orders.signals._send_order_event_email') as email_mock, mock.patch('orders.signals.queue_whatsapp_notification') as whatsapp_mock:
             order.status = 'packed'
             order.save()
 
@@ -1320,15 +1305,14 @@ class OrderFlowTest(TestCase):
             Order.objects.filter(pk=order_pk).update(confirmation_email_sent=True)
 
         with mock.patch('orders.signals._send_email_instant', side_effect=mark_confirmation_sent) as instant_email:
-            with self.captureOnCommitCallbacks(execute=True):
-                queue_email_notification(order, 'confirmation')
-                queue_email_notification(order, 'confirmation')
+            queue_email_notification(order, 'confirmation')
+            queue_email_notification(order, 'confirmation')
             order.refresh_from_db()
 
         instant_email.assert_called_once()
         self.assertTrue(order.confirmation_email_sent)
 
-    def test_email_queue_waits_for_transaction_commit(self):
+    def test_email_queue_sends_immediately(self):
         order = Order.objects.create(
             user=self.user,
             total_price=100.00,
@@ -1349,16 +1333,11 @@ class OrderFlowTest(TestCase):
         from orders.signals import queue_email_notification
 
         with mock.patch('orders.signals._send_email_instant', return_value=True) as instant_email:
-            with self.captureOnCommitCallbacks(execute=False) as callbacks:
-                queue_email_notification(order, 'confirmation')
-                instant_email.assert_not_called()
-
-            self.assertEqual(len(callbacks), 1)
-            callbacks[0]()
+            queue_email_notification(order, 'confirmation')
 
         instant_email.assert_called_once()
 
-    def test_email_queue_falls_back_to_sync_when_async_dispatch_fails(self):
+    def test_email_queue_uses_sync_send_path(self):
         order = Order.objects.create(
             user=self.user,
             total_price=100.00,
@@ -1379,8 +1358,7 @@ class OrderFlowTest(TestCase):
         from orders.signals import queue_email_notification
 
         with mock.patch('orders.signals._send_email_instant', return_value=True) as instant_email:
-            with self.captureOnCommitCallbacks(execute=True):
-                queue_email_notification(order, 'confirmation')
+            queue_email_notification(order, 'confirmation')
         instant_email.assert_called_once()
 
     def test_email_claim_is_released_after_failure_for_retry(self):
