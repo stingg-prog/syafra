@@ -132,7 +132,6 @@ def _order_event_already_logged(order, event_type):
         order=order,
         correlation_id=str(order.pk),
         event_type=_normalize_order_event_type(event_type),
-        status__in=NON_FAILED_EMAIL_LOG_STATUSES,
     ).exists()
 
 

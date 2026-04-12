@@ -1,6 +1,5 @@
 import logging
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import DecimalField, F, Sum, Value
 from django.db.models.functions import Coalesce
@@ -36,15 +35,6 @@ def _dispatch_whatsapp_notification(order_pk, status, correlation_id=None):
         )
 
 
-def _dispatch_email_notification(order_pk, email_type, status_override=None, correlation_id=None):
-    try:
-        from .tasks import send_email_sync
-
-        send_email_sync(order_pk, email_type, status=status_override, correlation_id=correlation_id)
-    except Exception as exc:
-        logger.exception("Failed to send email notification for order %s: %s", order_pk, exc)
-
-
 def _schedule_on_commit_once(kind, identifier, callback):
     connection = transaction.get_connection()
 
@@ -61,34 +51,6 @@ def _schedule_on_commit_once(kind, identifier, callback):
     run_once._orders_on_commit_key = key
     transaction.on_commit(run_once)
     return True
-
-
-def _enqueue_async_email_notification(order_pk, email_type, status_override=None, correlation_id=None):
-    if not getattr(settings, "ORDER_ASYNC_NOTIFICATIONS_ENABLED", False):
-        return False
-
-    try:
-        from .tasks import send_email_notification
-    except ImportError:
-        logger.warning("Celery task module unavailable, skipping async email dispatch for order %s", order_pk)
-        return False
-
-    try:
-        send_email_notification.delay(
-            order_pk,
-            email_type,
-            status=status_override,
-            correlation_id=correlation_id,
-        )
-        return True
-    except Exception as exc:
-        logger.exception(
-            "Failed to queue async email notification | order_id=%s | type=%s | error=%s",
-            order_pk,
-            email_type,
-            exc,
-        )
-        return False
 
 
 def _send_order_event_email_now(order_pk, event_type):
@@ -162,7 +124,7 @@ def queue_email_notification(order, email_type, status_override=None):
         scheduled = _schedule_on_commit_once(
             "email",
             (order.pk, email_type, status_override or ""),
-            lambda order_pk=order.pk, email_type=email_type, status_override=status_override, correlation_id=correlation_id: _send_email_notification_with_fallback(
+            lambda order_pk=order.pk, email_type=email_type, status_override=status_override, correlation_id=correlation_id: _send_email_notification_after_commit(
                 order_pk,
                 email_type,
                 status_override,
@@ -180,37 +142,22 @@ def queue_email_notification(order, email_type, status_override=None):
         logger.error("Failed to queue email notification for order %s: %s", order.id, exc)
 
 
-def _send_email_notification_with_fallback(order_pk, email_type, status_override=None, correlation_id=None):
+def _send_email_notification_after_commit(order_pk, email_type, status_override=None, correlation_id=None):
+    """Send order notification email synchronously after DB commit."""
     try:
-        sent_async = _enqueue_async_email_notification(
+        _send_email_instant(
             order_pk,
             email_type,
             status_override,
             correlation_id=correlation_id,
         )
-        logger.info("Email async queued: %s for order %s", sent_async, order_pk)
-
-        if not sent_async:
-            try:
-                _send_email_instant(
-                    order_pk,
-                    email_type,
-                    status_override,
-                    correlation_id=correlation_id,
-                )
-            except Exception:
-                logger.exception("Fallback email send failed for order %s", order_pk)
-    except Exception:
-        logger.exception("Email notification failed completely for order %s, attempting sync fallback", order_pk)
-        try:
-            _send_email_instant(
-                order_pk,
-                email_type,
-                status_override,
-                correlation_id=correlation_id,
-            )
-        except Exception:
-            logger.exception("Emergency fallback email send failed for order %s", order_pk)
+    except Exception as exc:
+        logger.exception(
+            "Synchronous order email failed after commit | order_id=%s | type=%s | error=%s",
+            order_pk,
+            email_type,
+            exc,
+        )
 
 
 def _send_email_instant(order_pk, email_type, status_override=None, correlation_id=None):
