@@ -267,13 +267,12 @@ class EmailInfrastructureTest(TestCase):
         )
 
         private_key = ec.generate_private_key(ec.SECP256R1())
-        public_key = private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        verification_key = base64.b64encode(
+            private_key.public_key().public_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
         ).decode('utf-8')
-        public_key_value = ''.join(
-            line for line in public_key.splitlines() if 'BEGIN PUBLIC KEY' not in line and 'END PUBLIC KEY' not in line
-        )
 
         payload = json.dumps(
             [
@@ -295,7 +294,10 @@ class EmailInfrastructureTest(TestCase):
             ec.ECDSA(hashes.SHA256()),
         )
 
-        with self.settings(SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY=public_key_value):
+        with self.settings(
+            SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY=verification_key,
+            SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE=True,
+        ):
             response = self.client.post(
                 reverse('accounts:sendgrid_event_webhook'),
                 data=payload,
@@ -309,6 +311,58 @@ class EmailInfrastructureTest(TestCase):
         self.assertEqual(email_log.status, EmailLog.STATUS_DELIVERED)
         self.assertEqual(email_log.last_event_type, 'delivered')
         self.assertEqual(EmailWebhookEvent.objects.count(), 1)
+
+    @override_settings(EMAIL_SIMPLE_RETRY_ATTEMPTS=1)
+    def test_sendgrid_webhook_rejects_invalid_signature(self):
+        email_log = EmailLog.objects.create(
+            email_type=EmailLog.TYPE_ORDER_CONFIRMATION,
+            user=self.user,
+            order=self.order,
+            recipient='customer@example.com',
+            recipient_domain='example.com',
+            subject='Order confirmation',
+            status=EmailLog.STATUS_ACCEPTED,
+            sendgrid_message_id='msg-invalid-signature',
+        )
+
+        private_key = ec.generate_private_key(ec.SECP256R1())
+        verification_key = base64.b64encode(
+            private_key.public_key().public_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+        ).decode('utf-8')
+        payload = json.dumps(
+            [
+                {
+                    'event': 'delivered',
+                    'email': 'customer@example.com',
+                    'timestamp': 1_710_000_000,
+                    'sg_event_id': 'evt-invalid-signature',
+                    'sg_message_id': 'msg-invalid-signature',
+                    'custom_args': {
+                        'email_log_id': str(email_log.id),
+                    },
+                }
+            ]
+        )
+
+        with self.settings(
+            SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY=verification_key,
+            SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE=True,
+        ):
+            response = self.client.post(
+                reverse('accounts:sendgrid_event_webhook'),
+                data=payload,
+                content_type='application/json',
+                HTTP_X_TWILIO_EMAIL_EVENT_WEBHOOK_SIGNATURE=base64.b64encode(b'invalid-signature').decode('utf-8'),
+                HTTP_X_TWILIO_EMAIL_EVENT_WEBHOOK_TIMESTAMP=str(int(time.time())),
+            )
+
+        self.assertEqual(response.status_code, 400)
+        email_log.refresh_from_db()
+        self.assertEqual(email_log.status, EmailLog.STATUS_ACCEPTED)
+        self.assertEqual(EmailWebhookEvent.objects.count(), 0)
 
     def test_open_event_keeps_delivery_status_and_increments_open_count(self):
         from accounts.email_tracking import apply_sendgrid_webhook_event

@@ -458,11 +458,11 @@ LOGOUT_REDIRECT_URL = "/"
 
 SENDGRID_API_KEY = (os.getenv("SENDGRID_API_KEY") or "").strip()
 SENDGRID_SENDER_EMAIL = (os.getenv("SENDGRID_SENDER_EMAIL") or "").strip()
-SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY = (os.getenv("SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY") or "").strip()
+SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY = (os.getenv("SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY") or "").strip()
 SENDGRID_EVENT_WEBHOOK_MAX_AGE_SECONDS = _env_int("SENDGRID_EVENT_WEBHOOK_MAX_AGE_SECONDS", 300)
 SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE = _env_bool(
     "SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE",
-    default=not DEBUG,
+    default=True,
 )
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "sendgrid_sdk").strip() or "sendgrid_sdk"
 
@@ -488,11 +488,11 @@ EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS = _env_int("EMAIL_SIMPLE_RETRY_BASE_DELAY_
 
 if _env_bool("SYAFRA_LOG_EMAIL_CONFIG", default=False):
     _db_logger.info(
-        "Syafra email config | backend=%s | sendgrid_api_key=%s | sender=%s | webhook_public_key=%s | webhook_signature_required=%s",
+        "Syafra email config | backend=%s | sendgrid_api_key=%s | sender=%s | webhook_verification_key=%s | webhook_signature_required=%s",
         EMAIL_BACKEND,
         "set" if SENDGRID_API_KEY else "missing",
         SENDGRID_SENDER_EMAIL or "missing",
-        "set" if SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY else "missing",
+        "set" if SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY else "missing",
         SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE,
     )
 
@@ -587,16 +587,21 @@ if not DEBUG:
             stacklevel=2,
         )
 
-    if SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE and not SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY:
+    if not SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE:
         raise ImproperlyConfigured(
-            "SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY must be set in production when "
+            "SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE must be true in production."
+        )
+
+    if SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE and not SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY:
+        raise ImproperlyConfigured(
+            "SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY must be set in production when "
             "SENDGRID_EVENT_WEBHOOK_REQUIRE_SIGNATURE is enabled."
         )
 
-    if not SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY:
+    if not SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY:
         warnings.warn(
-            "SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY is not set. SendGrid event webhooks cannot be signature-verified "
-            "until you configure the public key from SendGrid Mail Settings.",
+            "SENDGRID_EVENT_WEBHOOK_VERIFICATION_KEY is not set. SendGrid event webhooks cannot be signature-verified "
+            "until you configure the Verification Key from SendGrid Mail Settings.",
             UserWarning,
             stacklevel=2,
         )
