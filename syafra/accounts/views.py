@@ -10,8 +10,10 @@ from django.shortcuts import render, redirect, resolve_url
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode
 
-from .utils.email import send_email
+from .forms import PasswordResetForm
+from accounts.utils.email import send_email
 from django.utils.html import strip_tags
 from django.utils.http import (
     urlsafe_base64_encode,
@@ -56,6 +58,69 @@ def _get_safe_redirect_url(request, next_url, fallback):
     ):
         return next_url
     return resolve_url(fallback)
+
+def password_reset_request(request):
+    if request.method == "POST":
+        form = PasswordResetForm(request.POST)
+
+        if form.is_valid():
+            email = form.cleaned_data["email"]
+            user = User.objects.get(email=email)
+
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+
+            reset_link = f"https://yourdomain.com/reset/{uid}/{token}/"
+
+            subject = "Password Reset Request"
+            message = f"""
+            Click the link below to reset your password:
+
+            {reset_link}
+            """
+
+            # 🔥 INSTANT EMAIL (NO DELAY)
+            send_email(
+                subject=subject,
+                message=message,
+                recipient_list=[email],
+            )
+
+            messages.success(request, "Password reset email sent.")
+            return redirect("accounts:login")
+
+    else:
+        form = PasswordResetForm()
+
+    return render(request, "accounts/password_reset.html", {"form": form})
+
+
+from django.contrib.auth.forms import SetPasswordForm
+from django.utils.http import urlsafe_base64_decode
+
+
+def password_reset_confirm(request, uidb64, token):
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except:
+        user = None
+
+    if user and default_token_generator.check_token(user, token):
+
+        if request.method == "POST":
+            form = SetPasswordForm(user, request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Password updated successfully.")
+                return redirect("accounts:login")
+
+        else:
+            form = SetPasswordForm(user)
+
+        return render(request, "accounts/password_reset_confirm.html", {"form": form})
+
+    return render(request, "accounts/password_reset_invalid.html")
 
 
 def _find_user_by_identifier(identifier):
@@ -109,9 +174,9 @@ def _send_activation_email(user, request):
     html_message = render_to_string('emails/account_activation_email.html', context)
     plain_message = strip_tags(html_message)
     return send_email(
-        subject,
-        plain_message,
-        [user.email],
+        subject=subject,
+        message=plain_message,
+        recipient_list=[user.email],
         html_message=html_message,
         email_type='account_activation',
         user=user,

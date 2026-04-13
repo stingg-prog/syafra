@@ -303,9 +303,9 @@ def send_email(
     attempts in EmailLog. Explicit Django backend overrides remain available for
     tests and local diagnostics.
     """
-    print("EMAIL FUNCTION CALLED")
-    print("Sending to:", recipient_list)
-    recipient_list = _normalize_recipients(recipient_list)
+    if isinstance(recipient_list, str):
+        recipient_list = [recipient_list]
+
     if not recipient_list:
         logger.warning("EMAIL SKIPPED | subject=%s | no recipients", subject)
         return False

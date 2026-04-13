@@ -146,6 +146,7 @@ INSTALLED_APPS = [
     "cart",
     "orders",
     "accounts",
+    "sendgrid",
 ]
 
 # WhiteNoise must sit directly after SecurityMiddleware — https://whitenoise.readthedocs.io/
