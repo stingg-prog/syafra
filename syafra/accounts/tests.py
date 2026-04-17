@@ -5,6 +5,7 @@ from unittest import mock
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
+from django.core import mail
 from django.utils import timezone
 from django.test import TestCase
 from django.test import override_settings
@@ -141,6 +142,42 @@ class LogoutViewTest(TestCase):
         self.client.login(username='testuser', password='testpass123')
         response = self.client.get(reverse('accounts:logout'))
         self.assertEqual(response.status_code, 405)
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    DEFAULT_FROM_EMAIL='SYAFRA <noreply@syafra.com>',
+    DOMAIN='syafra.com',
+    USE_HTTPS=True,
+    EMAIL_SIMPLE_RETRY_ATTEMPTS=1,
+    EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS=0,
+)
+class PasswordResetViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='resetuser',
+            email='resetuser@example.com',
+            password='testpass123',
+        )
+        mail.outbox = []
+
+    def test_password_reset_email_uses_configured_domain(self):
+        response = self.client.post(
+            reverse('accounts:password_reset'),
+            {'email': self.user.email},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('https://syafra.com/accounts/reset/', mail.outbox[0].body)
+        self.assertNotIn('yourdomain.com', mail.outbox[0].body)
+        self.assertTrue(
+            EmailLog.objects.filter(
+                email_type=EmailLog.TYPE_PASSWORD_RESET,
+                recipient=self.user.email,
+            ).exists()
+        )
 
 
 class ProfileViewTest(TestCase):

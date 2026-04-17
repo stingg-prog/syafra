@@ -390,6 +390,7 @@ def send_password_reset_email(user, request=None):
             "reset_url": reset_url,
             "protocol": protocol,
             "domain": domain,
+            "uid": uidb64,
             "uidb64": uidb64,
             "token": token,
         }

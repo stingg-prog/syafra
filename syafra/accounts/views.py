@@ -13,7 +13,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode
 
 from .forms import PasswordResetForm
-from accounts.utils.email import send_email
+from accounts.utils.email import send_email, send_password_reset_email
 from django.utils.html import strip_tags
 from django.utils.http import (
     urlsafe_base64_encode,
@@ -67,26 +67,12 @@ def password_reset_request(request):
             email = form.cleaned_data["email"]
             user = User.objects.get(email=email)
 
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
+            sent = send_password_reset_email(user, request=request)
 
-            reset_link = f"https://yourdomain.com/reset/{uid}/{token}/"
-
-            subject = "Password Reset Request"
-            message = f"""
-            Click the link below to reset your password:
-
-            {reset_link}
-            """
-
-            # 🔥 INSTANT EMAIL (NO DELAY)
-            send_email(
-                subject=subject,
-                message=message,
-                recipient_list=[email],
-            )
-
-            messages.success(request, "Password reset email sent.")
+            if sent:
+                messages.success(request, "Password reset email sent.")
+            else:
+                messages.error(request, "We couldn't send the password reset email. Please try again.")
             return redirect("accounts:login")
 
     else:
