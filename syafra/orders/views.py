@@ -978,6 +978,52 @@ def verify_payment(request):
 payment_success = verify_payment
 
 
+def razorpay_webhook_health(request):
+    secret_configured = bool(getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '') or '')
+    from .models import Order
+    import os
+
+    pending_orders = Order.objects.filter(payment_status='pending').count()
+    paid_orders = Order.objects.filter(payment_status='paid').count()
+
+    render_app_url = os.getenv('RENDER_EXTERNAL_URL', 'NOTSET')
+    render_service = os.getenv('RENDER_SERVICE', 'NOTSET')
+
+    return JsonResponse({
+        'status': 'ok',
+        'webhook_secret_configured': secret_configured,
+        'razorpay_key_configured': bool(getattr(settings, 'RAZORPAY_KEY_ID', '')),
+        'pending_orders_count': pending_orders,
+        'paid_orders_count': paid_orders,
+        'render_app_url': render_app_url,
+        'render_service': render_service,
+    })
+
+
+def razorpay_webhook_test(request):
+    """Simple test endpoint to verify Render can reach Django."""
+    from .models import Order
+
+    test_data = {
+        'status': 'ok',
+        'message': 'Razorpay webhook test endpoint working',
+        'method': request.method,
+        'user_agent': request.headers.get('User-Agent', 'NOTSET'),
+        'content_length': len(request.body) if request.body else 0,
+    }
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body) if request.body else {}
+            test_data['received_event'] = data.get('event')
+            test_data['order_id'] = data.get('payload', {}).get('order', {}).get('entity', {}).get('id')
+            test_data['payment_id'] = data.get('payload', {}).get('payment', {}).get('entity', {}).get('id')
+        except json.JSONDecodeError:
+            test_data['json_error'] = 'Failed to parse JSON body'
+
+    return JsonResponse(test_data)
+
+
 @login_required
 @never_cache
 @require_http_methods(['GET', 'HEAD', 'OPTIONS'])
@@ -1099,40 +1145,105 @@ def payment_failed(request):
 
 @csrf_exempt
 def razorpay_webhook(request):
-    # Razorpay sends server-to-server callbacks, so CSRF validation does not apply here.
+    from .services.order_service import confirm_order_payment
+    import time
+    start_time = time.monotonic()
+
+    logger.info(
+        "Razorpay webhook hit | method=%s | content_length=%s | signature_present=%s | user_agent=%s",
+        request.method,
+        len(request.body) if request.body else 0,
+        bool(request.headers.get('X-Razorpay-Signature')),
+        request.headers.get('User-Agent', 'NOTSET'),
+    )
+
+    logger.debug(
+        "Razorpay headers debug | %s",
+        {k: v for k, v in request.headers.items() if k.lower() not in ('authorization', 'cookie')},
+    )
+
     if request.method != 'POST':
+        logger.warning("Razorpay webhook non-POST request rejected: %s", request.method)
         return HttpResponse(status=400)
 
     webhook_secret = (getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '') or '').strip()
     if not webhook_secret:
-        logger.error("Razorpay webhook secret is not configured.")
+        logger.error("Razorpay webhook secret is NOT configured - check RAZORPAY_WEBHOOK_SECRET env var")
         return HttpResponse(status=500)
 
     body = request.body or b''
     received_signature = (request.headers.get('X-Razorpay-Signature') or '').strip()
+
+    logger.info(
+        "Razorpay webhook processing | body_length=%s | signature_header=%s | secret_configured=%s",
+        len(body),
+        received_signature[:20] + "..." if received_signature else "MISSING",
+        bool(webhook_secret),
+    )
+
     if not received_signature:
-        logger.warning("Razorpay webhook received without signature header.")
+        logger.warning(
+            "Razorpay webhook rejected: missing X-Razorpay-Signature header. "
+            "headersreceived=%s",
+            list(request.headers.keys()),
+        )
         return HttpResponse(status=400)
 
     try:
         payload_text = _verify_razorpay_webhook_signature(body, received_signature, webhook_secret)
         data = json.loads(payload_text or '{}')
+        logger.info("Razorpay webhook signature verified OK | event=%s", data.get('event'))
     except razorpay_errors.SignatureVerificationError:
-        logger.warning("Razorpay webhook signature verification failed.")
+        logger.warning(
+            "Razorpay webhook signature verification FAILED | "
+            "received_signature=%s | secret_prefix=%s",
+            received_signature[:20],
+            webhook_secret[:4] if webhook_secret else "NOTSET",
+        )
         return HttpResponse(status=400)
     except (ValueError, json.JSONDecodeError) as exc:
         logger.warning("Invalid Razorpay webhook payload: %s", exc)
         return HttpResponse(status=400)
 
     event = data.get('event', '')
-    payment = (
-        data.get('payload', {})
-        .get('payment', {})
-        .get('entity', {})
+    payload_data = data.get('payload', {})
+
+    razorpay_order_id = ''
+    razorpay_payment_id = ''
+
+    logger.info(
+        "Razorpay raw event data | event=%s | payload_keys=%s",
+        event,
+        list(payload_data.keys()),
     )
-    razorpay_order_id = (payment.get('order_id') or '').strip()
-    razorpay_payment_id = (payment.get('id') or '').strip()
+
+    if event == 'order.paid':
+        order_entity = payload_data.get('order', {}).get('entity', {})
+        razorpay_order_id = (order_entity.get('id') or '').strip()
+        razorpay_payment_id = (order_entity.get('payment_id') or '').strip()
+        logger.info(
+            "Razorpay order.paid parsed | order_id=%s | payment_id=%s",
+            razorpay_order_id,
+            razorpay_payment_id,
+        )
+    elif event in ('payment.captured', 'payment.failed'):
+        payment = payload_data.get('payment', {}).get('entity', {})
+        razorpay_order_id = (payment.get('order_id') or '').strip()
+        razorpay_payment_id = (payment.get('id') or '').strip()
+        logger.info(
+            "Razorpay %s parsed | razorpay_order_id=%s | razorpay_payment_id=%s",
+            event,
+            razorpay_order_id,
+            razorpay_payment_id,
+        )
+    else:
+        payment = payload_data.get('payment', {}).get('entity', {})
+        razorpay_order_id = (payment.get('order_id') or '').strip()
+        razorpay_payment_id = (payment.get('id') or '').strip()
+
+    payment = payload_data.get('payment', {}).get('entity', {})
     payment_currency = (payment.get('currency') or 'INR').strip() or 'INR'
+    amount = payment.get('amount', 0)
     failure_reason = (
         payment.get('error_description')
         or payment.get('description')
@@ -1140,38 +1251,51 @@ def razorpay_webhook(request):
     )
 
     logger.info(
-        "Razorpay webhook received | event=%s | razorpay_order_id=%s | payment_reference=%s",
+        "Razorpay webhook parsed | event=%s | razorpay_order_id=%s | razorpay_payment_id=%s | amount=%s",
         event,
         razorpay_order_id,
         _redact_reference(razorpay_payment_id),
+        amount,
     )
 
     if not razorpay_order_id:
-        logger.warning("Razorpay webhook missing order_id for event %s", event)
+        logger.warning(
+            "Razorpay webhook missing order_id for event %s | payload_data=%s",
+            event,
+            payload_data,
+        )
         return HttpResponse(status=200)
 
     try:
         order = _get_order_for_gateway_order(razorpay_order_id)
+        logger.info(
+            "Razorpay order found in DB | order_id=%s | payment_status=%s | status=%s",
+            order.id,
+            order.payment_status,
+            order.status,
+        )
     except Order.DoesNotExist:
         logger.warning("Razorpay webhook received for unknown order_id=%s", razorpay_order_id)
         return HttpResponse(status=200)
 
-    if event == 'payment.captured':
+    if event in ('payment.captured', 'order.paid'):
         try:
             existing_paid_payment = _get_paid_payment_attempt(order, razorpay_payment_id)
             if existing_paid_payment:
                 if not _order_is_paid(order):
                     order, _processed = confirm_order_payment(order, payment_reference=razorpay_payment_id)
                     logger.info(
-                        "Recovered paid order state from duplicate captured webhook | order_id=%s | payment_reference=%s",
+                        "Recovered paid order state from duplicate captured webhook | order_id=%s | payment_reference=%s | event=%s",
                         order.id,
                         _redact_reference(razorpay_payment_id),
+                        event,
                     )
                 else:
                     logger.info(
-                        "Ignoring duplicate captured webhook | order_id=%s | payment_reference=%s",
+                        "Ignoring duplicate captured webhook | order_id=%s | payment_reference=%s | event=%s",
                         order.id,
                         _redact_reference(razorpay_payment_id),
+                        event,
                     )
                 return HttpResponse(status=200)
 
@@ -1188,22 +1312,25 @@ def razorpay_webhook(request):
             )
             if _order_is_paid(order):
                 logger.info(
-                    "Ignoring duplicate paid webhook | order_id=%s | payment_reference=%s",
+                    "Ignoring duplicate paid webhook | order_id=%s | payment_reference=%s | event=%s",
                     order.id,
                     _redact_reference(razorpay_payment_id),
+                    event,
                 )
                 return HttpResponse(status=200)
             order, _processed = confirm_order_payment(order, payment_reference=razorpay_payment_id)
             logger.info(
-                "Razorpay webhook marked order paid | order_id=%s | payment_reference=%s",
+                "Razorpay webhook marked order paid | order_id=%s | payment_reference=%s | event=%s",
                 order.id,
                 _redact_reference(razorpay_payment_id),
+                event,
             )
         except Exception as exc:
             logger.exception(
-                "Failed to finalize payment from Razorpay webhook | order_id=%s | error=%s",
+                "Failed to finalize payment from Razorpay webhook | order_id=%s | error=%s | event=%s",
                 order.id,
                 exc,
+                event,
             )
             return HttpResponse(status=500)
 
@@ -1253,6 +1380,13 @@ def razorpay_webhook(request):
     else:
         logger.info("Ignoring unhandled Razorpay webhook event=%s", event)
 
+    elapsed_ms = (time.monotonic() - start_time) * 1000
+    logger.info(
+        "Razorpay webhook completed | event=%s | razorpay_order_id=%s | elapsed_ms=%.2f",
+        event,
+        razorpay_order_id,
+        elapsed_ms,
+    )
     return HttpResponse(status=200)
 
 

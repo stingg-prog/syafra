@@ -1009,6 +1009,70 @@ class RazorpayPaymentFlowTest(TestCase):
         payment = Payment.objects.get(order=order, razorpay_payment_id='pay_webhook_paid_456')
         self.assertEqual(payment.status, 'paid')
 
+    @override_settings(
+        RAZORPAY_WEBHOOK_SECRET='mysecret123',
+    )
+    def test_razorpay_webhandles_order_paid_event(self):
+        PaymentSettings.objects.create(
+            razorpay_key_id='test_key',
+            razorpay_key_secret='test_secret',
+            is_active=True,
+            currency='INR',
+            currency_symbol='₹',
+        )
+        category = Category.objects.create(name='OrderPaid Category', slug='orderpaid-category')
+        product = Product.objects.create(
+            name='OrderPaid Product',
+            brand='OrderPaid Brand',
+            category=category,
+            price=200.00,
+            stock=20,
+        )
+        order = Order.objects.create(
+            user=self.user,
+            total_price=200.00,
+            customer_name='OrderPaid User',
+            email='orderpaid@example.com',
+            phone_number='9876543210',
+            shipping_address='123 OrderPaid Street',
+            status='pending',
+            payment_status='pending',
+            razorpay_order_id='order_paid_123',
+        )
+        OrderItem.objects.create(order=order, product=product, quantity=1, price=200.00)
+
+        payload = {
+            'event': 'order.paid',
+            'payload': {
+                'order': {
+                    'entity': {
+                        'id': 'order_paid_123',
+                        'payment_id': 'pay_order_paid_123',
+                        'amount': 20000,
+                        'currency': 'INR',
+                        'status': 'paid',
+                    }
+                }
+            }
+        }
+        body = json.dumps(payload).encode('utf-8')
+        signature = hmac.new(b'mysecret123', body, hashlib.sha256).hexdigest()
+
+        response = self.client.post(
+            reverse('orders:razorpay_webhook'),
+            data=body,
+            content_type='application/json',
+            HTTP_X_RAZORPAY_SIGNATURE=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        product.refresh_from_db()
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual(order.status, 'paid')
+        self.assertEqual(order.razorpay_payment_id, 'pay_order_paid_123')
+        self.assertEqual(product.stock, 19)
+
     def test_order_status_renders_success_template_for_paid_orders(self):
         order = Order.objects.create(
             user=self.user,

@@ -1,11 +1,14 @@
 from django.urls import path
 from . import views
+from .views import razorpay_webhook_health
 
 app_name = 'orders'
 
 urlpatterns = [
     path('checkout/', views.checkout, name='checkout'),
     path('razorpay/webhook/', views.razorpay_webhook, name='razorpay_webhook'),
+    path('webhook-health/', razorpay_webhook_health, name='webhook_health'),
+    path('webhook-test/', views.razorpay_webhook_test, name='razorpay_webhook_test'),
     path('verify-payment/', views.verify_payment, name='verify_payment'),
     path('payment/verify/', views.verify_payment, name='verify_payment_legacy'),
     path('payment-success/', views.verify_payment, name='payment_success'),
