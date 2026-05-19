@@ -5,7 +5,6 @@ Single module: development defaults, production enforced via environment variabl
 See `.env.example` for Render / production variables.
 """
 
-import logging
 import os
 import sys
 import warnings
@@ -186,56 +185,12 @@ TEMPLATES = [
 # -----------------------------------------------------------------------------
 # Database
 # -----------------------------------------------------------------------------
-# Pick the engine from DATABASE_URL only. Do not infer "Render" from RENDER / RENDER_EXTERNAL_URL here:
-# those are often copied into a local .env and cause false positives.
-# On Render, link PostgreSQL so DATABASE_URL is set; local dev usually omits it and uses SQLite.
-#
-# Optional: SYAFRA_LOG_DB_CONFIG=true prints a safe one-line summary to stderr (engine + whether DATABASE_URL is set).
 
-_db_logger = logging.getLogger(__name__)
-_database_url = (os.environ.get("DATABASE_URL") or "").strip()
-
-if _database_url:
-    _db_ssl = _env_bool("DATABASE_SSL_REQUIRE", default=not DEBUG)
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=_database_url,
-            conn_max_age=600,
-            ssl_require=_db_ssl,
-        )
-    }
-    if not DEBUG and DATABASES["default"].get("ENGINE") != "django.db.backends.postgresql":
-        raise ImproperlyConfigured(
-            "Production requires PostgreSQL via DATABASE_URL. "
-            "Set DATABASE_URL to your Render Postgres connection string."
-        )
-    _db_logger.debug("Database: from DATABASE_URL (ssl_require=%s).", _db_ssl)
-else:
-    if not DEBUG:
-        raise ImproperlyConfigured(
-            "Set DATABASE_URL in the environment when DEBUG=False. "
-            "Production must use PostgreSQL and must not fall back to SQLite."
-        )
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-            "OPTIONS": {"timeout": 60, "check_same_thread": False},
-        }
-    }
-    _db_logger.debug("Database: SQLite (DATABASE_URL not set).")
-
-if _env_bool("SYAFRA_LOG_DB_CONFIG", default=False):
-    _engine = DATABASES["default"].get("ENGINE", "?")
-    _db_logger.info(
-        "Syafra DB: ENGINE=%s DATABASE_URL=%s",
-        _engine,
-        "set" if _database_url else "not set",
+DATABASES = {
+    "default": dj_database_url.config(
+        default=os.environ.get("DATABASE_URL")
     )
-    print(
-        f"[syafra settings] ENGINE={_engine} DATABASE_URL={'set' if _database_url else 'not set'}",
-        file=sys.stderr,
-    )
+}
 
 # -----------------------------------------------------------------------------
 # Auth & i18n
