@@ -12,6 +12,9 @@
 
 💼 **LinkedIn:** https://www.linkedin.com/in/syamraj-r-53670a419/
 
+💻 **GitHub Repository:**
+https://github.com/stingg-prog/syafra
+
 ---
 
 # ✨ Features
@@ -153,26 +156,18 @@ syafra/
 
 Founder — **SYAFRA**
 
-🌐 Portfolio
+🌐 Portfolio: [syamraj-portfolio.onrender.com](https://syamraj-portfolio.onrender.com)
 
-https://syamraj-portfolio.onrender.com/
+💼 LinkedIn: [Syamraj R](https://www.linkedin.com/in/syamraj-r-53670a419/)
 
-💼 LinkedIn
+💻 GitHub: [stingg-prog](https://github.com/stingg-prog)
 
-https://www.linkedin.com/in/syamraj-r-53670a419/
-
-💻 GitHub
-
-https://github.com/stingg-prog
-
-🛍️ Live Website
-
-https://syafra.com
+🛍️ Live Website: [syafra.com](https://syafra.com)
 
 ---
 
-# ⭐ Support
+## ⭐ Support
 
-If you like this project, consider giving it a ⭐ on GitHub.
+Made with ❤️ using Python, Django, PostgreSQL (Neon), Render, and Cloudinary.
 
-Thank you for visiting the repository.
+⭐ If you found this project helpful, please consider giving it a Star on GitHub!
