@@ -1,15 +1,32 @@
 {% load static %}
 {% with config=section.config ds=section.device_settings %}
 {% if config.text %}
-<section class="py-3 px-6 text-center text-sm tracking-wider"
-         style="background-color: {{ config.bg_color|default:'#000000' }}; color: {{ config.text_color|default:'#E8DCC4' }};">
-    <div class="max-w-7xl mx-auto">
-        {% if config.link_url %}
-        <a href="{{ config.link_url }}" class="hover:underline">{{ config.text }}</a>
-        {% else %}
-        <span>{{ config.text }}</span>
-        {% endif %}
+<div class="announcement-bar" id="announcement-bar" role="banner" aria-label="Announcement">
+    <div class="announcement-content">
+        <div class="announcement-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+            </svg>
+            <span class="announcement-text">Free Shipping on Orders Over ₹999</span>
+        </div>
+        <div class="announcement-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+            </svg>
+            <span class="announcement-text">Easy 7-Day Returns</span>
+        </div>
+        <div class="announcement-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            <span class="announcement-text">Authentic Vintage Guarantee</span>
+        </div>
     </div>
-</section>
+    <button class="announcement-close" aria-label="Dismiss announcement" id="announcement-close">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+    </button>
+</div>
 {% endif %}
 {% endwith %}

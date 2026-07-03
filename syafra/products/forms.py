@@ -101,6 +101,8 @@ class HomepageSectionAdminForm(forms.ModelForm):
             config = self.instance.config if self.instance.pk else {}
         elif section_type == 'product_collection':
             config = self.instance.config if self.instance.pk else {}
+        elif section_type in ('womens_tops', 'trending_now', 'best_sellers'):
+            config = self.instance.config if self.instance.pk else {}
         else:
             config = self.instance.config if self.instance.pk else {}
 

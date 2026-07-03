@@ -46,6 +46,7 @@ class Command(BaseCommand):
                 'display_order': 1,
                 'is_active': True,
                 'config': {
+                    'text': 'FREE SHIPPING ON ORDERS OVER ₹5000',
                     'bg_color': '#000000',
                     'text_color': '#FFFFFF',
                 },
@@ -186,6 +187,94 @@ class Command(BaseCommand):
         )
         if created:
             self.stdout.write('Created: Featured Jackets collection section')
+
+        # Section 5b: Women's Tops (Product Collection)
+        womens_collection, _ = ProductCollection.objects.get_or_create(
+            name="Women's Tops",
+            defaults={
+                'description': "Curated women's vintage tops and blouses",
+            }
+        )
+        womens_section, created = HomepageSection.objects.get_or_create(
+            section_type='womens_tops',
+            defaults={
+                'title': "Women's Tops",
+                'subtitle': 'Vintage Elegance Redefined',
+                'collection': womens_collection,
+                'display_order': 6,
+                'is_active': True,
+                'config': {
+                    'max_items': 12,
+                    'show_view_all': True,
+                    'view_all_url': '/shop/',
+                },
+            }
+        )
+        if created:
+            self.stdout.write("Created: Women's Tops collection section")
+
+        # Section 5c: Trending Now (Product Collection)
+        trending_collection, _ = ProductCollection.objects.get_or_create(
+            name='Trending Now',
+            defaults={
+                'description': 'Currently trending vintage pieces',
+            }
+        )
+        trending_section, created = HomepageSection.objects.get_or_create(
+            section_type='trending_now',
+            defaults={
+                'title': 'Trending Now',
+                'subtitle': 'What Everyone Is Wearing',
+                'collection': trending_collection,
+                'display_order': 7,
+                'is_active': True,
+                'config': {
+                    'max_items': 12,
+                    'show_view_all': True,
+                    'view_all_url': '/shop/',
+                },
+            }
+        )
+        if created:
+            self.stdout.write('Created: Trending Now collection section')
+
+        # Section 5d: Best Sellers (Product Collection)
+        bestsellers_collection, _ = ProductCollection.objects.get_or_create(
+            name='Best Sellers',
+            defaults={
+                'description': 'Most popular vintage pieces',
+            }
+        )
+        bestsellers_section, created = HomepageSection.objects.get_or_create(
+            section_type='best_sellers',
+            defaults={
+                'title': 'Best Sellers',
+                'subtitle': 'Customer Favorites',
+                'collection': bestsellers_collection,
+                'display_order': 8,
+                'is_active': True,
+                'config': {
+                    'max_items': 12,
+                    'show_view_all': True,
+                    'view_all_url': '/shop/',
+                },
+            }
+        )
+        if created:
+            self.stdout.write('Created: Best Sellers collection section')
+
+        # Shift existing sections to make room for new ones
+        order_shifts = {
+            'promotional_banner': 9,
+            'customer_reviews': 10,
+            'instagram_feed': 11,
+            'newsletter': 12,
+            'footer': 13,
+        }
+        for stype, new_order in order_shifts.items():
+            HomepageSection.objects.filter(section_type=stype).exclude(
+                display_order=new_order
+            ).update(display_order=new_order)
 
         # Section 6: Promotional Banner
         promo_section, created = HomepageSection.objects.get_or_create(

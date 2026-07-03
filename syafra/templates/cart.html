@@ -1,124 +1,112 @@
 {% extends 'base.html' %}
 {% load static cloudinary_filters %}
 
-{% block title %}CART - SYAFRA{% endblock %}
+{% block title %}Shopping Bag - SYAFRA{% endblock %}
 
 {% block content %}
-<section class="pt-32 pb-16 px-6 bg-black text-white">
-    <div class="max-w-7xl mx-auto">
-        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">CART</h1>
-        <p class="text-syafra-beige tracking-wider text-sm">Your selected items</p>
-    </div>
-</section>
+<section class="cart-page">
+    <div class="container-max">
+        <div class="cart-header">
+            <h1 class="cart-header__title">Shopping Bag</h1>
+            <p class="cart-header__subtitle">{{ items|length }} {% if items|length == 1 %}item{% else %}items{% endif %}</p>
+        </div>
 
-<section class="py-16 px-6 bg-white min-h-screen">
-    <div class="max-w-7xl mx-auto">
         {% if items %}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div class="cart-layout">
             <!-- Cart Items -->
-            <div class="lg:col-span-2">
-                <div class="space-y-6">
-                    {% for item in items %}
-                    <div class="flex gap-6 pb-6 border-b border-gray-200 cart-item" data-item-id="{{ item.id }}">
-                        <!-- Product Image -->
-                        <div class="w-32 h-40 bg-gray-100 flex-shrink-0 overflow-hidden">
-                            {% if item.product.image %}
-                            <img src="{{ item.product.image.url|cloudinary_resize:'128x160' }}" alt="{{ item.product.name }}" loading="lazy" decoding="async" width="128" height="160"
-                                 class="w-full h-full object-contain bg-white">
-                            {% else %}
-                            <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="128" height="160"
-                                 class="w-full h-full object-contain bg-white">
-                            {% endif %}
-                        </div>
-                        
-                        <!-- Product Details -->
-                        <div class="flex-1 flex flex-col justify-between">
+            <div class="cart-items">
+                {% for item in items %}
+                <div class="cart-item" data-item-id="{{ item.id }}">
+                    <div class="cart-item__image">
+                        {% if item.product.image %}
+                        <img src="{{ item.product.image.url|cloudinary_resize:'240x300' }}"
+                             alt="{{ item.product.name }}"
+                             loading="lazy" decoding="async" width="240" height="300">
+                        {% else %}
+                        <img src="{% static 'images/default.jpg' %}"
+                             alt="No image available"
+                             loading="lazy" decoding="async" width="240" height="300">
+                        {% endif %}
+                    </div>
+
+                    <div class="cart-item__details">
+                        <div class="cart-item__top">
                             <div>
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <h3 class="font-semibold text-sm tracking-wide">{{ item.product.name }}</h3>
-                                        <p class="text-gray-500 text-xs tracking-wider mt-1">{{ item.product.brand }}</p>
-                                        {% if item.size %}
-                                        <p class="text-gray-400 text-xs mt-1">Size: {{ item.size|upper }}</p>
-                                        {% endif %}
-                                    </div>
-                                    <button onclick="removeFromCart({{ item.id }})" class="text-gray-400 hover:text-black transition-colors">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
-                                </div>
+                                <h3 class="cart-item__name">{{ item.product.name }}</h3>
+                                <p class="cart-item__brand">{{ item.product.brand }}</p>
+                                {% if item.size %}
+                                <p class="cart-item__size">Size: {{ item.size|upper }}</p>
+                                {% endif %}
                             </div>
-                            
-                            <div class="flex justify-between items-center mt-4">
-                                <!-- Quantity Controls -->
-                                <div class="flex items-center border border-gray-300">
-                                    <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} - 1)" 
-                                            class="px-3 py-1 text-gray-600 hover:bg-gray-100 transition-colors">−</button>
-                                    <span id="quantity-{{ item.id }}" class="px-4 py-1 text-sm font-medium">{{ item.quantity }}</span>
-                                    <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} + 1)" 
-                                            class="px-3 py-1 text-gray-600 hover:bg-gray-100 transition-colors">+</button>
-                                </div>
-                                
-                                <!-- Subtotal -->
-                                <div class="text-right">
-                                    <p id="subtotal-{{ item.id }}" class="font-semibold">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
-                                </div>
+                            <button onclick="removeFromCart({{ item.id }})" class="cart-item__remove" aria-label="Remove item">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="cart-item__bottom">
+                            <div class="cart-qty">
+                                <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} - 1)"
+                                        class="cart-qty__btn" aria-label="Decrease quantity">&minus;</button>
+                                <span id="quantity-{{ item.id }}" class="cart-qty__value">{{ item.quantity }}</span>
+                                <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} + 1)"
+                                        class="cart-qty__btn" aria-label="Increase quantity">+</button>
                             </div>
+                            <p id="subtotal-{{ item.id }}" class="cart-item__subtotal">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
+                {% endfor %}
             </div>
-            
+
             <!-- Order Summary -->
-            <div class="lg:col-span-1">
-                <div class="bg-gray-100 p-8 sticky top-32">
-                    <h2 class="text-xl font-bold tracking-tight mb-6">ORDER SUMMARY</h2>
-                    
-                    <div class="space-y-4 pb-6 border-b border-gray-300">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-500">Subtotal</span>
-                            <span id="cart-subtotal">{{ currency }}{{ total|floatformat:2 }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-500">Shipping</span>
-                            <span>Calculated at checkout</span>
-                        </div>
+            <div class="cart-summary">
+                <h2 class="cart-summary__title">Order Summary</h2>
+
+                <div class="cart-summary__rows">
+                    <div class="cart-summary__row">
+                        <span>Subtotal</span>
+                        <span id="cart-subtotal">{{ currency }}{{ total|floatformat:2 }}</span>
                     </div>
-                    
-                    <div class="flex justify-between py-6">
-                        <span class="font-semibold">Total</span>
-                        <span id="cart-total" class="text-xl font-bold">{{ currency }}{{ total|floatformat:2 }}</span>
+                    <div class="cart-summary__row">
+                        <span>Shipping</span>
+                        <span>Calculated at checkout</span>
                     </div>
-                    
-                    {% if checkout_available %}
-                    <a href="{% url 'orders:checkout' %}" class="block w-full bg-black text-white text-center py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
-                        PROCEED TO CHECKOUT
-                    </a>
-                    {% else %}
-                    <button disabled class="block w-full bg-gray-400 text-white text-center py-4 text-sm tracking-wider font-semibold cursor-not-allowed">
-                        CHECKOUT UNAVAILABLE
-                    </button>
-                    <p class="text-red-500 text-xs text-center mt-2">{{ checkout_notice }}</p>
-                    {% endif %}
-                    
-                    <a href="{% url 'products:shop' %}" class="block w-full text-center py-4 text-sm tracking-wider text-gray-500 hover:text-black transition-colors mt-2">
-                        CONTINUE SHOPPING
-                    </a>
                 </div>
+
+                <div class="cart-summary__total">
+                    <span class="cart-summary__total-label">Total</span>
+                    <span id="cart-total" class="cart-summary__total-value">{{ currency }}{{ total|floatformat:2 }}</span>
+                </div>
+
+                {% if checkout_available %}
+                <a href="{% url 'orders:checkout' %}" class="cart-summary__checkout">
+                    Proceed to Checkout
+                </a>
+                {% else %}
+                <button disabled class="cart-summary__checkout">
+                    Checkout Unavailable
+                </button>
+                {% endif %}
+
+                <a href="{% url 'products:shop' %}" class="cart-summary__continue">
+                    Continue Shopping
+                </a>
             </div>
         </div>
+
         {% else %}
         <!-- Empty Cart -->
-        <div class="text-center py-20">
-            <svg class="w-20 h-20 mx-auto text-gray-300 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+        <div class="cart-empty">
+            <svg class="cart-empty__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                      d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
             </svg>
-            <h2 class="text-2xl font-bold mb-4">Your cart is empty</h2>
-            <p class="text-gray-500 tracking-wider mb-8">Looks like you haven't added anything to your cart yet.</p>
-            <a href="{% url 'products:shop' %}" class="inline-block bg-black text-white px-10 py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
-                START SHOPPING
+            <h2 class="cart-empty__title">Your bag is empty</h2>
+            <p class="cart-empty__text">Looks like you haven't added anything yet.</p>
+            <a href="{% url 'products:shop' %}" class="cart-empty__cta">
+                Start Shopping
             </a>
         </div>
         {% endif %}
@@ -133,7 +121,7 @@ function updateQuantity(itemId, newQuantity) {
         removeFromCart(itemId);
         return;
     }
-    
+
     fetch(`/cart/update/${itemId}/`, {
         method: 'POST',
         headers: {
@@ -149,7 +137,7 @@ function updateQuantity(itemId, newQuantity) {
             document.getElementById(`subtotal-${itemId}`).textContent = `${currencySymbol}${data.item_subtotal.toFixed(2)}`;
             document.getElementById('cart-subtotal').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
             document.getElementById('cart-total').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
-            
+
             if (data.item_removed) {
                 const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
                 if (itemElement) itemElement.remove();
@@ -170,30 +158,15 @@ function removeFromCart(itemId) {
         if (data.success) {
             const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
             if (itemElement) itemElement.remove();
-            
+
             document.getElementById('cart-subtotal').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
             document.getElementById('cart-total').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
-            
+
             if (data.cart_count === 0) {
                 location.reload();
             }
         }
     });
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
 }
 </script>
 {% endblock %}

@@ -60,7 +60,7 @@ class CartItem(models.Model):
         unique_together = ('cart', 'product', 'size')
         constraints = [
             models.CheckConstraint(
-                check=models.Q(quantity__gt=0),
+                condition=models.Q(quantity__gt=0),
                 name='cart_items_quantity_gt_0',
             ),
         ]

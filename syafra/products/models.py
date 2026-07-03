@@ -40,11 +40,11 @@ class Product(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(price__gte=0),
+                condition=models.Q(price__gte=0),
                 name='products_price_gte_0',
             ),
             models.CheckConstraint(
-                check=models.Q(stock__gte=0),
+                condition=models.Q(stock__gte=0),
                 name='products_stock_gte_0',
             ),
         ]
@@ -80,7 +80,7 @@ class ProductSize(models.Model):
         ordering = ['id']
         constraints = [
             models.CheckConstraint(
-                check=models.Q(stock__gte=0),
+                condition=models.Q(stock__gte=0),
                 name='product_sizes_stock_gte_0',
             ),
         ]
@@ -154,6 +154,9 @@ class HomepageSection(models.Model):
         ('trust_bar', 'Trust Bar'),
         ('shop_by_category', 'Shop By Category'),
         ('product_collection', 'Product Collection'),
+        ('womens_tops', "Women's Tops"),
+        ('trending_now', 'Trending Now'),
+        ('best_sellers', 'Best Sellers'),
         ('promotional_banner', 'Promotional Banner'),
         ('customer_reviews', 'Customer Reviews'),
         ('instagram_feed', 'Instagram Feed'),

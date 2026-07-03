@@ -1,0 +1,130 @@
+/* ============================================
+   SYAFRA Customer Reviews — Glass Luxury
+   ============================================ */
+
+.testimonials-section {
+    background: var(--color-black);
+    color: var(--color-white);
+    padding: clamp(4rem, 8vw, 8rem) 0;
+}
+
+.testimonials-header {
+    text-align: center;
+    margin-bottom: clamp(3rem, 5vw, 5rem);
+}
+
+.testimonials-overline {
+    display: block;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 1rem;
+}
+
+.testimonials-title {
+    font-family: var(--font-family-serif);
+    font-size: clamp(2rem, 3.5vw, 3rem);
+    font-weight: 400;
+    color: var(--color-white);
+    line-height: 1.15;
+    margin: 0;
+}
+
+.testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 0 clamp(1.5rem, 4vw, 4rem);
+}
+
+@media (max-width: 1023px) {
+    .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .testimonials-grid { grid-template-columns: 1fr; }
+}
+
+.testimonial-card {
+    padding: clamp(2rem, 3vw, 2.5rem);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: border-color 0.4s ease, background 0.4s ease, transform 0.4s var(--ease-luxury);
+    display: flex;
+    flex-direction: column;
+}
+
+.testimonial-card:hover {
+    border-color: rgba(201, 169, 110, 0.2);
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-2px);
+}
+
+.testimonial-quote-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--color-accent);
+    opacity: 0.5;
+    margin-bottom: 1.25rem;
+    flex-shrink: 0;
+}
+
+.testimonial-stars {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+    color: var(--color-accent);
+    font-size: 0.8125rem;
+}
+
+.testimonial-quote {
+    font-family: var(--font-family);
+    font-size: var(--type-body);
+    line-height: 1.75;
+    color: rgba(255, 255, 255, 0.65);
+    margin-bottom: 1.5rem;
+    font-style: italic;
+    flex: 1;
+}
+
+.testimonial-author-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: auto;
+}
+
+.testimonial-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family-serif);
+    font-size: var(--type-caption);
+    font-weight: 600;
+    color: var(--color-black);
+    background: var(--color-accent);
+    flex-shrink: 0;
+}
+
+.testimonial-author {
+    font-family: var(--font-family);
+    font-size: var(--type-caption);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-wider);
+    text-transform: uppercase;
+    color: var(--color-white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .testimonial-card { transition: none !important; }
+}

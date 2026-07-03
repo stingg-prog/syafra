@@ -30,6 +30,13 @@ def cloudinary_normalize(url):
 
 
 @register.filter
+def get_by_key(d, key):
+    if isinstance(d, dict):
+        return d.get(key)
+    return None
+
+
+@register.filter
 def cloudinary_resize(url, size="600x800"):
     if not url:
         return ""

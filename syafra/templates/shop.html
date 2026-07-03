@@ -87,12 +87,12 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {% for product in products %}
             <a href="{% url 'products:product_detail' product.pk %}" class="product-card group block reveal stagger-{{ forloop.counter }}">
-                <div class="relative overflow-hidden bg-gray-100 aspect-[3/4] mb-4 img-zoom">
+                <div class="relative overflow-hidden bg-gray-100 aspect-[4/5] mb-4 img-zoom">
                     {% if product.image %}
-                    <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="800"
+                    <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="750"
                          class="product-image w-full h-full object-contain bg-white">
                     {% else %}
-                    <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="800"
+                    <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750"
                          class="product-image w-full h-full object-contain bg-white">
                     {% endif %}
                     

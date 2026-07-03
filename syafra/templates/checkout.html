@@ -1,423 +1,370 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}CHECKOUT - SYAFRA{% endblock %}
+{% block title %}Checkout - SYAFRA{% endblock %}
 
 {% block content %}
-<section class="pt-32 pb-16 px-6 bg-black text-white">
-    <div class="max-w-7xl mx-auto">
-        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">CHECKOUT</h1>
-        <p class="text-syafra-beige tracking-wider text-sm">Complete your order</p>
-    </div>
-</section>
+<section class="checkout-page">
+    <div class="container-max">
+        <div class="checkout-header">
+            <h1 class="checkout-header__title">Checkout</h1>
+            <p class="checkout-header__subtitle">Complete your order</p>
+        </div>
 
-<section class="py-16 px-6 bg-white min-h-screen">
-    <div class="max-w-7xl mx-auto">
-        {% if messages %}
-        <div class="mb-8">
-            {% for message in messages %}
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-2">
-                {{ message }}
+        <div class="checkout-steps">
+            <div class="checkout-step active">
+                <span class="checkout-step__number">1</span>
+                <span>Information</span>
             </div>
+            <div class="checkout-step-divider"></div>
+            <div class="checkout-step active">
+                <span class="checkout-step__number">2</span>
+                <span>Payment</span>
+            </div>
+        </div>
+
+        {% if messages %}
+        <div class="checkout-errors">
+            {% for message in messages %}
+            <div class="checkout-error">{{ message }}</div>
             {% endfor %}
         </div>
         {% endif %}
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            <!-- Order Form -->
-            <div class="lg:col-span-2">
-                <form id="checkout-form" method="POST" action="{% url 'orders:checkout' %}" novalidate>
-                    {% csrf_token %}
-                    
-                    <div class="space-y-8">
-                        <div>
-                            <h2 class="text-xl font-bold tracking-tight mb-6">CONTACT INFORMATION</h2>
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">FULL NAME *</label>
-                                    <input type="text" name="customer_name" required 
-                                           class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
-                                           placeholder="Enter your full name"
-                                           value="{{ form.customer_name.value|default_if_none:'' }}">
-                                    {% if form.customer_name.errors %}
-                                    <p class="text-red-600 text-sm mt-2">{{ form.customer_name.errors.0 }}</p>
-                                    {% endif %}
-                                </div>
-                                <div>
-                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">EMAIL *</label>
-                                    <input type="email" name="email" required 
-                                           class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
-                                           placeholder="your@email.com"
-                                           value="{{ form.email.value|default_if_none:'' }}">
-                                    {% if form.email.errors %}
-                                    <p class="text-red-600 text-sm mt-2">{{ form.email.errors.0 }}</p>
-                                    {% endif %}
-                                </div>
-                                <div>
-                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">PHONE NUMBER *</label>
-                                    <input type="tel" name="phone_number" required 
-                                           class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
-                                           placeholder="+1 234 567 8900"
-                                           value="{{ form.phone_number.value|default_if_none:'' }}">
-                                    {% if form.phone_number.errors %}
-                                    <p class="text-red-600 text-sm mt-2">{{ form.phone_number.errors.0 }}</p>
-                                    {% endif %}
-                                </div>
-                                <div>
-                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">PINCODE *</label>
-                                    <input type="text" name="pincode" required pattern="\d{6}"
-                                           class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
-                                           placeholder="560001"
-                                           value="{{ form.pincode.value|default_if_none:'' }}">
-                                    {% if form.pincode.errors %}
-                                    <p class="text-red-600 text-sm mt-2">{{ form.pincode.errors.0 }}</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
+        <div class="checkout-layout">
+            <!-- Form -->
+            <form id="checkout-form" method="POST" action="{% url 'orders:checkout' %}" novalidate>
+                {% csrf_token %}
 
-                        <div>
-                            <h2 class="text-xl font-bold tracking-tight mb-6">SHIPPING ADDRESS</h2>
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm tracking-wider text-gray-500 mb-2">STREET ADDRESS *</label>
-                                    <textarea name="shipping_address" required rows="4"
-                                              class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors resize-none"
-                                              placeholder="Enter your full shipping address">{{ form.shipping_address.value|default_if_none:'' }}</textarea>
-                                    {% if form.shipping_address.errors %}
-                                    <p class="text-red-600 text-sm mt-2">{{ form.shipping_address.errors.0 }}</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <h2 class="text-xl font-bold tracking-tight mb-6">PAYMENT METHOD</h2>
-                            {% if payment_notice %}
-                            <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                                <p class="text-amber-800 text-sm">{{ payment_notice }}</p>
-                            </div>
-                            {% elif not available_methods %}
-                            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                                <p class="text-red-800 text-sm">No payment methods available. Please contact support.</p>
-                            </div>
-                            {% endif %}
-                            <div class="space-y-3">
-                                {% if 'razorpay' in available_methods %}
-                                <label class="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors">
-                                    <input type="radio" name="payment_method" value="razorpay" class="w-4 h-4 text-black" checked>
-                                    <div class="ml-3">
-                                        <span class="block text-sm font-medium">Pay Online (Card/UPI/Bank)</span>
-                                        <span class="block text-xs text-gray-500">Secure payment via Razorpay</span>
-                                    </div>
-                                </label>
-                                {% endif %}
-                                
-                                {% if upi_enabled and 'upi' in available_methods %}
-                                <label class="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors">
-                                    <input type="radio" name="payment_method" value="upi" class="w-4 h-4 text-black">
-                                    <div class="ml-3">
-                                        <span class="block text-sm font-medium">Pay via UPI</span>
-                                        <span class="block text-xs text-gray-500">Google Pay, PhonePe, Paytm & more</span>
-                                    </div>
-                                </label>
-                                {% endif %}
-                            </div>
-                        </div>
-                            
-                        <button id="pay-btn" type="submit"
-                                class="w-full bg-black text-white py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-                            PAY NOW
-                        </button>
+                <div class="checkout-section">
+                    <h2 class="checkout-section__title">Contact Information</h2>
+                    <div class="checkout-field">
+                        <label class="checkout-field__label">Full Name *</label>
+                        <input type="text" name="customer_name" required
+                               class="checkout-field__input"
+                               placeholder="Enter your full name"
+                               value="{{ form.customer_name.value|default_if_none:'' }}">
+                        {% if form.customer_name.errors %}
+                        <p class="checkout-field__error">{{ form.customer_name.errors.0 }}</p>
+                        {% endif %}
                     </div>
-                </form>
-            </div>
+                    <div class="checkout-field">
+                        <label class="checkout-field__label">Email *</label>
+                        <input type="email" name="email" required
+                               class="checkout-field__input"
+                               placeholder="your@email.com"
+                               value="{{ form.email.value|default_if_none:'' }}">
+                        {% if form.email.errors %}
+                        <p class="checkout-field__error">{{ form.email.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="checkout-field">
+                        <label class="checkout-field__label">Phone Number *</label>
+                        <input type="tel" name="phone_number" required
+                               class="checkout-field__input"
+                               placeholder="+1 234 567 8900"
+                               value="{{ form.phone_number.value|default_if_none:'' }}">
+                        {% if form.phone_number.errors %}
+                        <p class="checkout-field__error">{{ form.phone_number.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="checkout-field">
+                        <label class="checkout-field__label">Pincode *</label>
+                        <input type="text" name="pincode" required pattern="\d{6}"
+                               class="checkout-field__input"
+                               placeholder="560001"
+                               value="{{ form.pincode.value|default_if_none:'' }}">
+                        {% if form.pincode.errors %}
+                        <p class="checkout-field__error">{{ form.pincode.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="checkout-section">
+                    <h2 class="checkout-section__title">Shipping Address</h2>
+                    <div class="checkout-field">
+                        <label class="checkout-field__label">Street Address *</label>
+                        <textarea name="shipping_address" required
+                                  class="checkout-field__textarea"
+                                  placeholder="Enter your full shipping address">{{ form.shipping_address.value|default_if_none:'' }}</textarea>
+                        {% if form.shipping_address.errors %}
+                        <p class="checkout-field__error">{{ form.shipping_address.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="checkout-payment">
+                    <h2 class="checkout-payment__title">Payment Method</h2>
+                    {% if payment_notice %}
+                    <div class="checkout-payment__notice checkout-payment__notice--warning">{{ payment_notice }}</div>
+                    {% elif not available_methods %}
+                    <div class="checkout-payment__notice checkout-payment__notice--error">
+                        No payment methods available. Please contact support.
+                    </div>
+                    {% endif %}
+                    <div class="checkout-payment__options">
+                        {% if 'razorpay' in available_methods %}
+                        <label class="checkout-payment__option">
+                            <input type="radio" name="payment_method" value="razorpay" checked>
+                            <div class="checkout-payment__option-text">
+                                <span class="checkout-payment__option-name">Pay Online (Card/UPI/Bank)</span>
+                                <span class="checkout-payment__option-desc">Secure payment via Razorpay</span>
+                            </div>
+                        </label>
+                        {% endif %}
+                        {% if upi_enabled and 'upi' in available_methods %}
+                        <label class="checkout-payment__option">
+                            <input type="radio" name="payment_method" value="upi">
+                            <div class="checkout-payment__option-text">
+                                <span class="checkout-payment__option-name">Pay via UPI</span>
+                                <span class="checkout-payment__option-desc">Google Pay, PhonePe, Paytm & more</span>
+                            </div>
+                        </label>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <button id="pay-btn" type="submit" class="checkout-submit">
+                    Pay Now
+                </button>
+            </form>
 
             <!-- Order Summary -->
-            <div class="lg:col-span-1">
-                <div class="bg-gray-100 p-8 sticky top-32">
-                    <h2 class="text-xl font-bold tracking-tight mb-6">ORDER SUMMARY</h2>
-                    
-                    <div class="space-y-4 pb-6 border-b border-gray-300 max-h-64 overflow-y-auto">
-                        {% for item in items %}
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">{{ item.product.name }} × {{ item.quantity }}</span>
-                            <span>{{ currency }}{{ item.subtotal|floatformat:2 }}</span>
-                        </div>
-                        {% endfor %}
+            <div class="checkout-summary">
+                <h2 class="checkout-summary__title">Order Summary</h2>
+
+                <div class="checkout-summary__items">
+                    {% for item in items %}
+                    <div class="checkout-summary__item">
+                        <span>{{ item.product.name }} &times; {{ item.quantity }}</span>
+                        <span>{{ currency }}{{ item.subtotal|floatformat:2 }}</span>
                     </div>
-                    
-                    <div class="space-y-4 py-6 border-b border-gray-300">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-500">Subtotal</span>
-                            <span>{{ currency }}{{ total|floatformat:2 }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-500">Shipping</span>
-                            <span>Free</span>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-between py-6">
-                        <span class="font-semibold">Total</span>
-                        <span class="text-xl font-bold">{{ currency }}{{ total|floatformat:2 }}</span>
-                    </div>
-                    
-                    <a href="{% url 'cart:cart_view' %}" 
-                       class="block w-full text-center py-4 text-sm tracking-wider text-gray-500 hover:text-black transition-colors">
-                        ← BACK TO CART
-                    </a>
+                    {% endfor %}
                 </div>
+
+                <div class="checkout-summary__rows">
+                    <div class="checkout-summary__row">
+                        <span>Subtotal</span>
+                        <span>{{ currency }}{{ total|floatformat:2 }}</span>
+                    </div>
+                    <div class="checkout-summary__row">
+                        <span>Shipping</span>
+                        <span>Free</span>
+                    </div>
+                </div>
+
+                <div class="checkout-summary__total">
+                    <span class="checkout-summary__total-label">Total</span>
+                    <span class="checkout-summary__total-value">{{ currency }}{{ total|floatformat:2 }}</span>
+                </div>
+
+                <a href="{% url 'cart:cart_view' %}" class="checkout-summary__back">
+                    &larr; Back to Bag
+                </a>
             </div>
         </div>
     </div>
 </section>
+
 {% if 'razorpay' in available_methods %}
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 {% endif %}
 <script>
-    (function() {
-        const form = document.getElementById('checkout-form');
-        const submitButton = document.getElementById('pay-btn');
-        const csrfToken = form?.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
-        let checkoutRequestInFlight = false;
-        let paymentHandled = false;
+(function() {
+    const form = document.getElementById('checkout-form');
+    const submitButton = document.getElementById('pay-btn');
+    const csrfToken = form?.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+    let checkoutRequestInFlight = false;
+    let paymentHandled = false;
 
-        if (!form || !submitButton) {
+    if (!form || !submitButton) return;
+
+    function getSelectedPaymentMethod() {
+        const checked = form.querySelector('input[name="payment_method"]:checked');
+        return checked ? checked.value : 'razorpay';
+    }
+
+    function updateSubmitButtonLabel() {
+        submitButton.textContent = getSelectedPaymentMethod() === 'upi'
+            ? 'Continue to UPI'
+            : 'Pay Now';
+    }
+
+    function setSubmitting(isSubmitting, label) {
+        checkoutRequestInFlight = isSubmitting;
+        submitButton.disabled = isSubmitting;
+        submitButton.textContent = isSubmitting ? label : '';
+        if (!isSubmitting) updateSubmitButtonLabel();
+    }
+
+    function validateCheckoutForm() {
+        const name = form.querySelector('[name="customer_name"]').value.trim();
+        const phone = form.querySelector('[name="phone_number"]').value.trim();
+        const address = form.querySelector('[name="shipping_address"]').value.trim();
+        const pincode = form.querySelector('[name="pincode"]').value.trim();
+        const phoneDigits = phone.replace(/\D/g, '');
+
+        if (!name) return 'Please enter your full name.';
+        if (phoneDigits.length < 10) return 'Please enter a valid phone number.';
+        if (!/^\d{6}$/.test(pincode)) return 'Please enter a valid 6-digit pincode.';
+        if (!address) return 'Please enter your shipping address.';
+        return '';
+    }
+
+    function submitHiddenForm(action, fields) {
+        const fallbackForm = document.createElement('form');
+        fallbackForm.method = 'POST';
+        fallbackForm.action = action;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        fallbackForm.appendChild(csrfInput);
+        Object.keys(fields).forEach(function(key) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key];
+            fallbackForm.appendChild(input);
+        });
+        document.body.appendChild(fallbackForm);
+        fallbackForm.submit();
+    }
+
+    function postPaymentAction(action, fields) {
+        return fetch(action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(fields)
+        }).then(async function(response) {
+            let data = null;
+            try { data = await response.json(); } catch (e) { data = null; }
+            if (data && data.redirect_url) {
+                window.location.replace(data.redirect_url);
+                return;
+            }
+            throw new Error((data && data.message) || 'Unexpected payment response.');
+        }).catch(function(error) {
+            console.error('Payment action fallback:', error);
+            submitHiddenForm(action, fields);
+        });
+    }
+
+    function openRazorpayCheckout(paymentData) {
+        if (typeof window.Razorpay === 'undefined') {
+            showToast('Razorpay failed to load. Please refresh.', 'error');
+            return;
+        }
+        if (!paymentData.razorpay_key || !paymentData.razorpay_order_id || !paymentData.amount) {
+            showToast('Payment config error.', 'error');
             return;
         }
 
-        function getSelectedPaymentMethod() {
-            const checked = form.querySelector('input[name="payment_method"]:checked');
-            return checked ? checked.value : 'razorpay';
-        }
-
-        function updateSubmitButtonLabel() {
-            submitButton.textContent = getSelectedPaymentMethod() === 'upi'
-                ? 'CONTINUE TO UPI'
-                : 'PAY NOW';
-        }
-
-        function setSubmitting(isSubmitting, label) {
-            checkoutRequestInFlight = isSubmitting;
-            submitButton.disabled = isSubmitting;
-            submitButton.textContent = isSubmitting ? label : '';
-            if (!isSubmitting) {
-                updateSubmitButtonLabel();
-            }
-        }
-
-        function validateCheckoutForm() {
-            const name = form.querySelector('[name="customer_name"]').value.trim();
-            const phone = form.querySelector('[name="phone_number"]').value.trim();
-            const address = form.querySelector('[name="shipping_address"]').value.trim();
-            const pincode = form.querySelector('[name="pincode"]').value.trim();
-            const phoneDigits = phone.replace(/\D/g, '');
-
-            if (!name) {
-                return 'Please enter your full name.';
-            }
-            if (phoneDigits.length < 10) {
-                return 'Please enter a valid phone number.';
-            }
-            if (!/^\d{6}$/.test(pincode)) {
-                return 'Please enter a valid 6-digit pincode.';
-            }
-            if (!address) {
-                return 'Please enter your shipping address.';
-            }
-            return '';
-        }
-
-        function submitHiddenForm(action, fields) {
-            const fallbackForm = document.createElement('form');
-            fallbackForm.method = 'POST';
-            fallbackForm.action = action;
-
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrfmiddlewaretoken';
-            csrfInput.value = csrfToken;
-            fallbackForm.appendChild(csrfInput);
-
-            Object.keys(fields).forEach(function(key) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = fields[key];
-                fallbackForm.appendChild(input);
-            });
-
-            document.body.appendChild(fallbackForm);
-            fallbackForm.submit();
-        }
-
-        function postPaymentAction(action, fields) {
-            return fetch(action, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify(fields)
-            }).then(async function(response) {
-                let data = null;
-                try {
-                    data = await response.json();
-                } catch (error) {
-                    data = null;
-                }
-
-                if (data && data.redirect_url) {
-                    window.location.replace(data.redirect_url);
-                    return;
-                }
-
-                throw new Error((data && data.message) || 'Unexpected payment response.');
-            }).catch(function(error) {
-                console.error('Payment action fallback triggered:', error);
-                submitHiddenForm(action, fields);
-            });
-        }
-
-        function openRazorpayCheckout(paymentData) {
-            if (typeof window.Razorpay === 'undefined') {
-                showToast('Razorpay checkout.js failed to load. Please refresh and try again.', 'error');
-                return;
-            }
-
-            if (!paymentData.razorpay_key || !paymentData.razorpay_order_id || !paymentData.amount) {
-                showToast('Payment configuration error. Please refresh and try again.', 'error');
-                return;
-            }
-
-            paymentHandled = false;
-
-            const options = {
-                key: paymentData.razorpay_key,
-                amount: paymentData.amount,
-                currency: paymentData.currency,
-                order_id: paymentData.razorpay_order_id,
-                name: 'SYAFRA',
-                description: 'Order #' + paymentData.order_id,
-                image: '{% static "images/syafra_logo.png" %}',
-                handler: function(response) {
-                    if (paymentHandled) {
-                        return;
-                    }
-                    paymentHandled = true;
-                    postPaymentAction(paymentData.verify_url, {
-                        razorpay_order_id: response.razorpay_order_id,
-                        razorpay_payment_id: response.razorpay_payment_id,
-                        razorpay_signature: response.razorpay_signature
-                    });
-                },
-                prefill: {
-                    name: form.querySelector('[name="customer_name"]').value.trim(),
-                    email: form.querySelector('[name="email"]').value.trim(),
-                    contact: form.querySelector('[name="phone_number"]').value.trim()
-                },
-                notes: {
-                    order_id: String(paymentData.order_id)
-                },
-                modal: {
-                    ondismiss: function() {
-                        if (paymentHandled) {
-                            return;
-                        }
-                        paymentHandled = true;
-                        postPaymentAction(paymentData.failure_url, {
-                            order_id: String(paymentData.order_id),
-                            razorpay_order_id: paymentData.razorpay_order_id,
-                            failure_reason: 'Checkout dismissed before payment completion.'
-                        });
-                    }
-                },
-                theme: {
-                    color: '#000000'
-                }
-            };
-
-            const razorpayCheckout = new Razorpay(options);
-            razorpayCheckout.on('payment.failed', function(response) {
-                if (paymentHandled) {
-                    return;
-                }
+        paymentHandled = false;
+        const options = {
+            key: paymentData.razorpay_key,
+            amount: paymentData.amount,
+            currency: paymentData.currency,
+            order_id: paymentData.razorpay_order_id,
+            name: 'SYAFRA',
+            description: 'Order #' + paymentData.order_id,
+            image: '{% static "images/syafra_logo.png" %}',
+            handler: function(response) {
+                if (paymentHandled) return;
                 paymentHandled = true;
-                const failureReason = response.error && response.error.description
-                    ? response.error.description
-                    : 'Payment failed at Razorpay checkout.';
-                postPaymentAction(paymentData.failure_url, {
-                    order_id: String(paymentData.order_id),
-                    razorpay_order_id: paymentData.razorpay_order_id,
-                    failure_reason: failureReason
+                postPaymentAction(paymentData.verify_url, {
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature
                 });
+            },
+            prefill: {
+                name: form.querySelector('[name="customer_name"]').value.trim(),
+                email: form.querySelector('[name="email"]').value.trim(),
+                contact: form.querySelector('[name="phone_number"]').value.trim()
+            },
+            notes: { order_id: String(paymentData.order_id) },
+            modal: {
+                ondismiss: function() {
+                    if (paymentHandled) return;
+                    paymentHandled = true;
+                    postPaymentAction(paymentData.failure_url, {
+                        order_id: String(paymentData.order_id),
+                        razorpay_order_id: paymentData.razorpay_order_id,
+                        failure_reason: 'Checkout dismissed.'
+                    });
+                }
+            },
+            theme: { color: '#000000' }
+        };
+
+        const razorpayCheckout = new Razorpay(options);
+        razorpayCheckout.on('payment.failed', function(response) {
+            if (paymentHandled) return;
+            paymentHandled = true;
+            const reason = response.error?.description || 'Payment failed.';
+            postPaymentAction(paymentData.failure_url, {
+                order_id: String(paymentData.order_id),
+                razorpay_order_id: paymentData.razorpay_order_id,
+                failure_reason: reason
             });
-            razorpayCheckout.open();
-        }
+        });
+        razorpayCheckout.open();
+    }
 
-        form.addEventListener('submit', function(event) {
-            const validationError = validateCheckoutForm();
-            if (validationError) {
-                event.preventDefault();
-                showToast(validationError, 'error');
-                return;
-            }
-
-            if (getSelectedPaymentMethod() !== 'razorpay') {
-                return;
-            }
-
+    form.addEventListener('submit', function(event) {
+        const validationError = validateCheckoutForm();
+        if (validationError) {
             event.preventDefault();
-            if (checkoutRequestInFlight) {
+            showToast(validationError, 'error');
+            return;
+        }
+        if (getSelectedPaymentMethod() !== 'razorpay') return;
+
+        event.preventDefault();
+        if (checkoutRequestInFlight) return;
+
+        setSubmitting(true, 'Creating order...');
+
+        fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(async function(response) {
+            let data = null;
+            try { data = await response.json(); } catch (e) { data = null; }
+            if (!response.ok || !data || !data.ok) {
+                const err = new Error((data && data.message) || 'Unable to start checkout.');
+                err.redirectUrl = data?.redirect_url || '';
+                throw err;
+            }
+            setSubmitting(false);
+            openRazorpayCheckout(data);
+        }).catch(function(error) {
+            setSubmitting(false);
+            if (error.redirectUrl) {
+                window.location.assign(error.redirectUrl);
                 return;
             }
-
-            setSubmitting(true, 'CREATING ORDER...');
-
-            fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                credentials: 'same-origin',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            }).then(async function(response) {
-                let data = null;
-                try {
-                    data = await response.json();
-                } catch (error) {
-                    data = null;
-                }
-
-                if (!response.ok || !data || !data.ok) {
-                    const requestError = new Error((data && data.message) || 'Unable to start Razorpay checkout.');
-                    requestError.redirectUrl = data && data.redirect_url ? data.redirect_url : '';
-                    throw requestError;
-                }
-
-                console.log('Razorpay order response', data);
-                setSubmitting(false);
-                openRazorpayCheckout(data);
-            }).catch(function(error) {
-                setSubmitting(false);
-                if (error.redirectUrl) {
-                    window.location.assign(error.redirectUrl);
-                    return;
-                }
-                showToast(error.message || 'Unable to start payment. Please try again.', 'error');
-            });
+            showToast(error.message || 'Payment error.', 'error');
         });
+    });
 
-        form.querySelectorAll('input[name="payment_method"]').forEach(function(input) {
-            input.addEventListener('change', updateSubmitButtonLabel);
-        });
+    form.querySelectorAll('input[name="payment_method"]').forEach(function(input) {
+        input.addEventListener('change', updateSubmitButtonLabel);
+    });
 
-        updateSubmitButtonLabel();
-    })();
+    updateSubmitButtonLabel();
+})();
 </script>
 {% endblock %}

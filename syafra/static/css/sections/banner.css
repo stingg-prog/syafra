@@ -1,0 +1,118 @@
+/* ============================================
+   SYAFRA Promotional Banner — Editorial Campaign
+   ============================================ */
+
+.promo-banner {
+    position: relative;
+    overflow: hidden;
+}
+
+.promo-banner__inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 70vh;
+    align-items: center;
+}
+
+@media (max-width: 1023px) {
+    .promo-banner__inner {
+        grid-template-columns: 1fr;
+        min-height: auto;
+    }
+}
+
+.promo-banner__content {
+    padding: clamp(3rem, 6vw, 8rem);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.promo-banner__overline {
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--color-accent);
+    margin-bottom: 1.25rem;
+}
+
+.promo-banner__headline {
+    font-family: var(--font-family-serif);
+    font-size: clamp(2rem, 3.5vw, 3.5rem);
+    line-height: 1.1;
+    font-weight: 400;
+    margin-bottom: 1.25rem;
+}
+
+.promo-banner__text {
+    font-family: var(--font-family);
+    font-size: var(--type-body);
+    line-height: var(--leading-body);
+    margin-bottom: 2.5rem;
+    max-width: 420px;
+    opacity: 0.75;
+}
+
+.promo-banner__image {
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+}
+
+.promo-banner__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    min-height: 50vh;
+    transition: transform 0.8s var(--ease-out-expo);
+}
+
+.promo-banner:hover .promo-banner__image img {
+    transform: scale(1.04);
+}
+
+.promo-banner__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 2.75rem;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.4s var(--ease-luxury);
+    cursor: pointer;
+    border: none;
+}
+
+.promo-banner__btn-primary {
+    background: var(--color-black);
+    color: var(--color-white);
+}
+
+.promo-banner__btn-primary:hover {
+    background: var(--color-accent);
+    color: var(--color-black);
+    transform: translateY(-2px);
+}
+
+@media (max-width: 1023px) {
+    .promo-banner__image img { min-height: 40vh; }
+}
+
+@media (max-width: 767px) {
+    .promo-banner__content {
+        padding: clamp(2rem, 4vw, 3rem);
+    }
+    .promo-banner__headline {
+        font-size: clamp(1.5rem, 6vw, 2rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .promo-banner__image img { transition: none !important; }
+}

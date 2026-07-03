@@ -1,0 +1,152 @@
+/* ============================================
+   SYAFRA Newsletter — Minimal Luxury
+   ============================================ */
+
+.newsletter-section {
+    background: var(--color-white);
+    padding: clamp(4rem, 8vw, 7rem) 0;
+    border-top: 1px solid var(--color-gray-100);
+}
+
+.newsletter-inner {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 clamp(1.5rem, 4vw, 4rem);
+    text-align: center;
+}
+
+.newsletter-overline {
+    display: block;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 0.75rem;
+}
+
+.newsletter-title {
+    font-family: var(--font-family-serif);
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 400;
+    color: var(--color-black);
+    line-height: 1.15;
+    margin: 0 0 0.75rem;
+}
+
+.newsletter-text {
+    font-family: var(--font-family);
+    font-size: var(--type-body);
+    color: var(--color-gray-500);
+    line-height: var(--leading-body);
+    margin-bottom: 2rem;
+}
+
+.newsletter-form {
+    display: flex;
+    gap: 0;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+@media (max-width: 479px) {
+    .newsletter-form { flex-direction: column; }
+}
+
+.newsletter-input-wrapper {
+    flex: 1;
+    position: relative;
+}
+
+.newsletter-input {
+    width: 100%;
+    padding: 1rem 1.25rem;
+    font-family: var(--font-family);
+    font-size: var(--type-caption);
+    letter-spacing: var(--letter-spacing-wide);
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-right: none;
+    color: var(--color-black);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.newsletter-input:focus {
+    outline: none;
+    border-color: var(--color-black);
+    box-shadow: 0 0 0 1px var(--color-black);
+}
+
+.newsletter-input::placeholder {
+    color: var(--color-gray-400);
+}
+
+.newsletter-btn {
+    padding: 1rem 2rem;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    background: var(--color-accent);
+    color: var(--color-black);
+    border: 1px solid var(--color-accent);
+    cursor: pointer;
+    transition: all 0.3s var(--ease-luxury);
+    white-space: nowrap;
+}
+
+.newsletter-btn:hover {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+    transform: translateY(-1px);
+}
+
+.newsletter-btn:active {
+    transform: translateY(0);
+}
+
+.newsletter-message {
+    margin-top: 1rem;
+    font-family: var(--font-family);
+    font-size: var(--type-caption);
+    transition: opacity 0.4s var(--ease-luxury);
+}
+
+.newsletter-message.is-success {
+    color: #059669;
+}
+
+.newsletter-message.is-error {
+    color: #dc2626;
+}
+
+.newsletter-message.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+@keyframes newsletter-success {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.newsletter-success-anim {
+    animation: newsletter-success 0.5s var(--ease-out-expo) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .newsletter-input, .newsletter-btn { transition: none !important; }
+    .newsletter-success-anim { animation: none !important; }
+}
+
+@media (max-width: 479px) {
+    .newsletter-input {
+        border-right: 1px solid var(--color-gray-200);
+    }
+    .newsletter-input:focus {
+        border-color: var(--color-black);
+    }
+}

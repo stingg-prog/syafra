@@ -1,0 +1,133 @@
+/* ============================================
+   SYAFRA Instagram Feed — Premium Grid
+   ============================================ */
+
+.instagram-section {
+    background: var(--color-black);
+    padding: clamp(4rem, 8vw, 8rem) 0;
+}
+
+.instagram-header {
+    text-align: center;
+    margin-bottom: clamp(2.5rem, 4vw, 3.5rem);
+}
+
+.instagram-overline {
+    display: block;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 0.75rem;
+}
+
+.instagram-title {
+    font-family: var(--font-family-serif);
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 400;
+    color: var(--color-white);
+    line-height: 1.15;
+    margin: 0 0 0.75rem;
+}
+
+.instagram-subtitle {
+    font-family: var(--font-family);
+    font-size: var(--type-caption);
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: var(--letter-spacing-wide);
+}
+
+.instagram-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+    .instagram-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.instagram-card {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1;
+    background: var(--color-gray-950);
+}
+
+.instagram-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s var(--ease-out-expo);
+}
+
+.instagram-card:hover img {
+    transform: scale(1.06);
+}
+
+.instagram-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.4s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+}
+
+.instagram-card:hover .instagram-overlay {
+    background: rgba(0, 0, 0, 0.35);
+    opacity: 1;
+}
+
+.instagram-overlay svg {
+    width: 28px;
+    height: 28px;
+    color: var(--color-white);
+}
+
+.instagram-fallback {
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--color-gray-950);
+}
+
+.instagram-follow {
+    text-align: center;
+    margin-top: clamp(2rem, 3vw, 3rem);
+}
+
+.instagram-follow-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem 2.25rem;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--color-white);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s var(--ease-luxury);
+}
+
+.instagram-follow-btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    transform: translateY(-1px);
+}
+
+.instagram-follow-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .instagram-card img { transition: none !important; }
+}

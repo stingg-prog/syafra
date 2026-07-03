@@ -4,55 +4,55 @@
 {% block title %}{{ product.name }} - SYAFRA{% endblock %}
 
 {% block content %}
-<!-- Product Detail Section -->
-<section class="pt-24 pb-16 px-6 bg-white">
-    <div class="max-w-7xl mx-auto">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-            <!-- Product Image Gallery -->
-            <div class="relative">
+<section class="pdp">
+    <div class="container-max">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+            <!-- Gallery -->
+            <div class="pdp-gallery">
                 {% if primary_image_url %}
-                <div class="aspect-[3/4] bg-gray-100 flex items-center justify-center overflow-hidden rounded-lg">
-                    <img id="mainImage" 
-                         src="{{ primary_image_url|cloudinary_normalize }}" 
-                         alt="{{ product.name }}" 
-                         decoding="async" width="900" height="1200"
-                         class="w-full h-full object-contain bg-white transition-all duration-500 hover:scale-105 {% if product.stock == 0 %}opacity-50{% endif %}">
+                <div class="pdp-gallery__main {% if product.stock == 0 %}pdp-gallery__main--sold-out{% endif %}">
+                    <img id="mainImage"
+                         src="{{ primary_image_url|cloudinary_normalize }}"
+                         alt="{{ product.name }}"
+                         decoding="async" width="900" height="1125"
+                         fetchpriority="high">
                     {% if product.stock == 0 %}
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <span class="bg-black text-white px-6 py-3 text-xl tracking-wider font-bold">SOLD OUT</span>
+                    <div class="pdp-gallery__sold-out">
+                        <span>SOLD OUT</span>
                     </div>
                     {% endif %}
                 </div>
-                
+
                 {% if gallery_images %}
-                <div class="flex gap-3 mt-4 overflow-x-auto pb-2">
+                <div class="pdp-gallery__thumbs">
                     {% if product.image %}
-                    <img src="{{ product.image.url|cloudinary_normalize }}" 
-                         alt="{{ product.name }} thumbnail" 
-                         loading="lazy" decoding="async" width="80" height="80"
-                         class="w-20 h-20 object-contain bg-white cursor-pointer border-2 border-black rounded-lg hover:opacity-100 transition-all duration-300 thumbnail active"
-                         onclick="changeImage(this, '{{ product.image.url|cloudinary_normalize }}')">
+                    <button type="button" class="pdp-gallery__thumb active"
+                            onclick="changeImage(this, '{{ product.image.url|cloudinary_normalize }}')">
+                        <img src="{{ product.image.url|cloudinary_normalize }}"
+                             alt="{{ product.name }} thumbnail"
+                             loading="lazy" decoding="async" width="72" height="72">
+                    </button>
                     {% endif %}
                     {% for img in gallery_images %}
-                    <img src="{{ img.image.url|cloudinary_normalize }}" 
-                         alt="{{ product.name }} gallery image {{ forloop.counter }}" 
-                         loading="lazy" decoding="async" width="80" height="80"
-                         class="w-20 h-20 object-contain bg-white cursor-pointer border-2 {% if not product.image and forloop.first %}border-black active{% else %}border-gray-300{% endif %} rounded-lg hover:border-black hover:opacity-100 transition-all duration-300 thumbnail"
-                         onclick="changeImage(this, '{{ img.image.url|cloudinary_normalize }}')">
+                    <button type="button" class="pdp-gallery__thumb {% if not product.image and forloop.first %}active{% endif %}"
+                            onclick="changeImage(this, '{{ img.image.url|cloudinary_normalize }}')">
+                        <img src="{{ img.image.url|cloudinary_normalize }}"
+                             alt="{{ product.name }} gallery {{ forloop.counter }}"
+                             loading="lazy" decoding="async" width="72" height="72">
+                    </button>
                     {% endfor %}
                 </div>
                 {% endif %}
-                
+
                 {% else %}
-                <div class="aspect-[3/4] bg-gray-100 flex items-center justify-center overflow-hidden rounded-lg">
-                    <img id="mainImage" 
-                         src="{% static 'images/default.jpg' %}" 
-                         alt="No image available" 
-                         decoding="async" width="900" height="1200"
-                         class="w-full h-full object-contain bg-white transition-all duration-500 hover:scale-105 {% if product.stock == 0 %}opacity-50{% endif %}">
+                <div class="pdp-gallery__main {% if product.stock == 0 %}pdp-gallery__main--sold-out{% endif %}">
+                    <img id="mainImage"
+                         src="{% static 'images/default.jpg' %}"
+                         alt="No image available"
+                         decoding="async" width="900" height="1125">
                     {% if product.stock == 0 %}
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <span class="bg-black text-white px-4 py-2 text-lg tracking-wider font-bold">SOLD OUT</span>
+                    <div class="pdp-gallery__sold-out">
+                        <span>SOLD OUT</span>
                     </div>
                     {% endif %}
                 </div>
@@ -60,106 +60,115 @@
             </div>
 
             <!-- Product Info -->
-            <div class="flex flex-col justify-center lg:py-12">
-                <div class="mb-6">
+            <div class="pdp-info">
+                <div>
                     {% if product.condition == 'new' %}
-                    <span class="inline-block bg-black text-white text-xs px-3 py-1 tracking-wider mb-4">NEW</span>
+                    <span class="pdp-info__badge">New</span>
                     {% elif product.condition == 'used' %}
-                    <span class="inline-block bg-gray-800 text-white text-xs px-3 py-1 tracking-wider mb-4">VINTAGE</span>
+                    <span class="pdp-info__badge pdp-info__badge--vintage">Vintage</span>
                     {% else %}
-                    <span class="inline-block bg-syafra-beige text-black text-xs px-3 py-1 tracking-wider mb-4">REFURBISHED</span>
+                    <span class="pdp-info__badge pdp-info__badge--refurb">Refurbished</span>
                     {% endif %}
+
+                    <h1 class="pdp-info__name">{{ product.name }}</h1>
+                    <p class="pdp-info__brand">{{ product.brand }}</p>
+                    <p class="pdp-info__price">{{ currency }}{{ product.price|floatformat:2 }}</p>
                 </div>
-                
-                <h1 class="text-4xl md:text-5xl font-bold tracking-tight mb-2">{{ product.name }}</h1>
-                <p class="text-gray-500 tracking-wider text-sm mb-6">{{ product.brand }}</p>
-                
-                <div class="text-3xl font-bold mb-8">{{ currency }}{{ product.price|floatformat:2 }}</div>
-                
-                <div class="space-y-4 mb-8">
-                    <div class="flex items-center justify-between py-3 border-b border-gray-200">
-                        <span class="text-gray-500 text-sm tracking-wider">CONDITION</span>
-                        <span class="font-medium">{{ product.get_condition_display }}</span>
+
+                <div class="pdp-details">
+                    <div class="pdp-details__row">
+                        <span class="pdp-details__label">Condition</span>
+                        <span class="pdp-details__value">{{ product.get_condition_display }}</span>
                     </div>
+
                     {% if product.has_sizes %}
-                    <div class="py-3 border-b border-gray-200">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-gray-500 text-sm tracking-wider">SIZE</span>
-                            <span id="selected-size-display" class="text-sm font-medium text-gray-400"></span>
+                    <div class="pdp-sizes">
+                        <div class="pdp-sizes__header">
+                            <span class="pdp-sizes__label">Size</span>
+                            <span id="selected-size-display" class="pdp-sizes__selected"></span>
                         </div>
-                        <div class="flex flex-wrap gap-2" id="size-selector">
+                        <div class="pdp-sizes__grid" id="size-selector">
                             {% for s in product.sizes.all %}
-                            <button type="button" 
-                                    onclick="selectSize('{{ s.size }}')"
-                                    class="size-btn px-4 py-2 border border-gray-300 text-sm tracking-wider hover:border-black transition-colors
-                                    {% if s.stock == 0 %}opacity-50 cursor-not-allowed{% endif %}"
+                            <button type="button"
+                                    class="pdp-size-btn {% if s.stock == 0 %}disabled{% endif %}"
                                     data-size="{{ s.size }}"
                                     data-stock="{{ s.stock }}"
+                                    onclick="selectSize('{{ s.size }}')"
                                     {% if s.stock == 0 %}disabled{% endif %}>
                                 {{ s.size|upper }}
                             </button>
                             {% endfor %}
                         </div>
-                        <p id="size-stock-display" class="mt-2 text-sm font-medium"></p>
+                        <p id="size-stock-display" class="pdp-size-stock"></p>
                     </div>
                     {% endif %}
-                    <div class="flex items-center justify-between py-3 border-b border-gray-200">
-                        <span class="text-gray-500 text-sm tracking-wider">CATEGORY</span>
-                        <span class="font-medium">{{ product.category.name }}</span>
+
+                    <div class="pdp-details__row">
+                        <span class="pdp-details__label">Category</span>
+                        <span class="pdp-details__value">{{ product.category.name }}</span>
                     </div>
-                    <div class="flex items-center justify-between py-3 border-b border-gray-200">
-                        <span class="text-gray-500 text-sm tracking-wider">STOCK</span>
+                    <div class="pdp-details__row">
+                        <span class="pdp-details__label">Stock</span>
                         {% if product.stock > 0 %}
-                        <span class="text-green-600 font-medium">In Stock ({{ product.stock }} available)</span>
+                        <span class="pdp-details__value pdp-details__value--success">In Stock ({{ product.stock }})</span>
                         {% else %}
-                        <span class="text-red-600 font-medium">Sold Out</span>
+                        <span class="pdp-details__value pdp-details__value--danger">Sold Out</span>
                         {% endif %}
                     </div>
                 </div>
-                
+
                 {% if product.description %}
-                <div class="mb-8">
-                    <h3 class="text-sm tracking-wider text-gray-500 mb-3">DESCRIPTION</h3>
-                    <p class="text-gray-700 leading-relaxed">{{ product.description }}</p>
+                <div class="pdp-description">
+                    <h3 class="pdp-description__title">Description</h3>
+                    <p class="pdp-description__text">{{ product.description }}</p>
                 </div>
                 {% endif %}
-                
-                {% if product.stock > 0 %}
-                <button onclick="addToCart({{ product.id }})" id="add-to-cart-btn" class="w-full bg-black text-white py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
-                    ADD TO CART
-                </button>
-                {% else %}
-                <button class="w-full bg-gray-300 text-gray-500 py-4 text-sm tracking-wider font-semibold cursor-not-allowed" disabled>
-                    SOLD OUT
-                </button>
-                {% endif %}
+
+                <div class="pdp-actions">
+                    {% if product.stock > 0 %}
+                    <button onclick="addToCart({{ product.id }})" id="add-to-cart-btn" class="pdp-add-to-cart">
+                        Add to Bag
+                    </button>
+                    {% else %}
+                    <button disabled class="pdp-add-to-cart">
+                        Sold Out
+                    </button>
+                    {% endif %}
+                    <button type="button" class="pdp-wishlist-btn" onclick="toggleWishlist({{ product.id }}, this)">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                        </svg>
+                        <span>Add to Wishlist</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Related Products Section -->
 {% if related_products %}
-<section class="py-16 px-6 bg-gray-100">
-    <div class="max-w-7xl mx-auto">
-        <h2 class="text-3xl font-bold tracking-tight mb-12 text-center">YOU MAY ALSO LIKE</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+<section class="pdp-related">
+    <div class="container-max">
+        <h2 class="pdp-related__title">You May Also Like</h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {% for related in related_products %}
             <a href="{% url 'products:product_detail' related.pk %}" class="product-card group block">
-                <div class="relative overflow-hidden bg-white aspect-[3/4] mb-4">
+                <div class="product-card__image">
                     {% if related.image %}
-                    <img src="{{ related.image.url|cloudinary_normalize }}" alt="{{ related.name }}" loading="lazy" decoding="async" width="600" height="800"
-                         class="product-image w-full h-full object-contain bg-white transition-transform duration-500">
+                    <img src="{{ related.image.url|cloudinary_normalize }}" alt="{{ related.name }}"
+                         loading="lazy" decoding="async" width="600" height="750"
+                         class="product-card__img">
                     {% else %}
-                    <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="800"
-                         class="product-image w-full h-full object-contain bg-white transition-transform duration-500">
+                    <img src="{% static 'images/default.jpg' %}" alt="No image available"
+                         loading="lazy" decoding="async" width="600" height="750"
+                         class="product-card__img">
                     {% endif %}
-                    <div class="product-overlay absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 opacity-0"></div>
                 </div>
-                <div class="space-y-1">
-                    <h3 class="font-semibold text-sm tracking-wide">{{ related.name }}</h3>
-                    <p class="text-gray-500 text-xs tracking-wider">{{ related.brand }}</p>
-                    <p class="font-semibold">{{ currency }}{{ related.price|floatformat:2 }}</p>
+                <div class="product-card__info">
+                    <h3 class="product-card__name">{{ related.name }}</h3>
+                    <p class="product-card__brand">{{ related.brand }}</p>
+                    <p class="product-card__price">{{ currency }}{{ related.price|floatformat:2 }}</p>
                 </div>
             </a>
             {% endfor %}
@@ -168,13 +177,13 @@
 </section>
 {% endif %}
 
-<!-- Back to Shop -->
-<section class="py-12 px-6 bg-white">
-    <div class="max-w-7xl mx-auto text-center">
-        <a href="{% url 'products:shop' %}" class="inline-block text-sm tracking-wider text-gray-500 hover:text-black transition-colors">
-            ← BACK TO SHOP
-        </a>
-    </div>
+<section class="pdp-back">
+    <a href="{% url 'products:shop' %}" class="pdp-back__link">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Back to Shop
+    </a>
 </section>
 
 <script>
@@ -182,30 +191,27 @@ let selectedSize = '';
 
 function selectSize(size) {
     selectedSize = size;
-    document.querySelectorAll('.size-btn').forEach(btn => {
-        btn.classList.remove('bg-black', 'text-white', 'border-black');
-        btn.classList.add('border-gray-300');
+    document.querySelectorAll('.pdp-size-btn').forEach(btn => {
+        btn.classList.remove('active');
     });
     const clickedBtn = document.querySelector(`[data-size="${size}"]`);
     if (clickedBtn) {
-        clickedBtn.classList.add('bg-black', 'text-white', 'border-black');
-        clickedBtn.classList.remove('border-gray-300');
+        clickedBtn.classList.add('active');
     }
     document.getElementById('selected-size-display').textContent = size;
-    
-    // Update stock display
+
     const stockDisplay = document.getElementById('size-stock-display');
     const stock = clickedBtn ? clickedBtn.getAttribute('data-stock') : 0;
     if (stock !== null && stock !== undefined) {
         if (stock == 0) {
             stockDisplay.textContent = 'Out of Stock';
-            stockDisplay.className = 'mt-2 text-sm font-medium text-red-600';
+            stockDisplay.className = 'pdp-size-stock pdp-size-stock--out';
         } else if (stock <= 3) {
-            stockDisplay.textContent = `Only ${stock} left in stock`;
-            stockDisplay.className = 'mt-2 text-sm font-medium text-orange-600';
+            stockDisplay.textContent = `Only ${stock} left`;
+            stockDisplay.className = 'pdp-size-stock pdp-size-stock--low';
         } else {
-            stockDisplay.textContent = `${stock} available in stock`;
-            stockDisplay.className = 'mt-2 text-sm font-medium text-green-600';
+            stockDisplay.textContent = `${stock} available`;
+            stockDisplay.className = 'pdp-size-stock pdp-size-stock--in';
         }
     }
 }
@@ -213,28 +219,23 @@ function selectSize(size) {
 function changeImage(thumbnail, imageUrl) {
     const mainImage = document.getElementById('mainImage');
     mainImage.src = imageUrl;
-    
-    document.querySelectorAll('.thumbnail').forEach(thumb => {
-        thumb.classList.remove('border-black');
-        thumb.classList.add('border-gray-300');
+
+    document.querySelectorAll('.pdp-gallery__thumb').forEach(thumb => {
         thumb.classList.remove('active');
     });
-    
-    thumbnail.classList.remove('border-gray-300');
-    thumbnail.classList.add('border-black');
     thumbnail.classList.add('active');
 }
 
 function addToCart(productId) {
     const btn = document.getElementById('add-to-cart-btn');
     const sizeSelector = document.getElementById('size-selector');
-    const hasSizes = sizeSelector && sizeSelector.querySelectorAll('.size-btn').length > 0;
-    
+    const hasSizes = sizeSelector && sizeSelector.querySelectorAll('.pdp-size-btn').length > 0;
+
     if (hasSizes && !selectedSize) {
-        showToast('Please select a size before adding to cart.', 'error');
+        showToast('Please select a size.', 'error');
         return;
     }
-    
+
     if (selectedSize) {
         const sizeBtn = document.querySelector(`[data-size="${selectedSize}"]`);
         if (sizeBtn && sizeBtn.disabled) {
@@ -242,16 +243,16 @@ function addToCart(productId) {
             return;
         }
     }
-    
+
     btn.textContent = 'ADDING...';
     btn.disabled = true;
-    
+
     const formData = new URLSearchParams();
     formData.append('quantity', '1');
     if (selectedSize) {
         formData.append('size', selectedSize);
     }
-    
+
     fetch(`/cart/add/${productId}/`, {
         method: 'POST',
         headers: {
@@ -269,70 +270,40 @@ function addToCart(productId) {
     })
     .then(data => {
         if (!data) return;
-        
+
         if (data.success) {
-            if (data.is_updated) {
-                btn.textContent = 'QUANTITY UPDATED!';
-            } else {
-                btn.textContent = 'ADDED!';
-            }
-            btn.classList.remove('bg-black', 'hover:bg-gray-800');
-            btn.classList.add('bg-green-600');
-            
+            btn.textContent = data.is_updated ? 'UPDATED!' : 'ADDED!';
+            btn.classList.add('pdp-add-to-cart--added');
+
             const cartLink = document.querySelector('a[href*="cart"]');
             if (cartLink) {
                 let badge = cartLink.querySelector('.cart-badge');
                 if (!badge) {
                     badge = document.createElement('span');
-                    badge.className = 'cart-badge absolute -top-2 -right-4 bg-syafra-beige text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center';
-                    // Find the CART text span and add badge after it
+                    badge.className = 'cart-badge';
                     const cartText = cartLink.querySelector('span');
-                    if (cartText) {
-                        cartText.appendChild(badge);
-                    }
+                    if (cartText) cartText.appendChild(badge);
                 }
                 badge.textContent = data.cart_count;
             }
-            showToast('Item added to cart.', 'success');
-            
+            showToast('Added to bag.', 'success');
+
             setTimeout(() => {
-                btn.textContent = 'ADD TO CART';
-                btn.classList.remove('bg-green-600');
-                btn.classList.add('bg-black', 'hover:bg-gray-800');
+                btn.textContent = 'ADD TO BAG';
+                btn.classList.remove('pdp-add-to-cart--added');
                 btn.disabled = false;
             }, 2000);
         } else {
-            showToast(data.error || 'Unable to add item to cart.', 'error');
-            btn.textContent = data.error || 'ERROR';
-            setTimeout(() => {
-                btn.textContent = 'ADD TO CART';
-                btn.disabled = false;
-            }, 2000);
+            showToast(data.error || 'Unable to add item.', 'error');
+            btn.textContent = 'ADD TO BAG';
+            btn.disabled = false;
         }
     })
-    .catch(error => {
-        showToast('Network error while adding to cart.', 'error');
-        btn.textContent = 'ERROR';
-        setTimeout(() => {
-            btn.textContent = 'ADD TO CART';
-            btn.disabled = false;
-        }, 2000);
+    .catch(() => {
+        showToast('Network error.', 'error');
+        btn.textContent = 'ADD TO BAG';
+        btn.disabled = false;
     });
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
 }
 </script>
 {% endblock %}

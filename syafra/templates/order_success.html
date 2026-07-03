@@ -1,108 +1,101 @@
 {% extends 'base.html' %}
 {% load static cloudinary_filters %}
 
-{% block title %}ORDER CONFIRMED - SYAFRA{% endblock %}
+{% block title %}Order Confirmed - SYAFRA{% endblock %}
 
 {% block content %}
-<section class="pt-32 pb-16 px-6 bg-black text-white">
-    <div class="max-w-7xl mx-auto text-center">
-        <svg class="w-20 h-20 mx-auto mb-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">ORDER CONFIRMED</h1>
-        <p class="text-syafra-beige tracking-wider text-sm">Thank you for your purchase!</p>
-    </div>
-</section>
-
-<section class="py-16 px-6 bg-white min-h-screen">
-    <div class="max-w-3xl mx-auto">
-        <div class="bg-gray-100 p-8 mb-8">
-            <div class="text-center mb-8">
-                <p class="text-gray-500 tracking-wider text-sm mb-2">ORDER NUMBER</p>
-                <p class="text-2xl font-bold">#{{ order.id }}</p>
+<section class="success-page">
+    <div class="container-max" style="max-width: 768px;">
+        <div class="success-hero">
+            <div class="success-hero__icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
             </div>
-            
-            <div class="grid grid-cols-2 gap-8 text-center">
-                <div>
-                    <p class="text-gray-500 tracking-wider text-xs mb-2">DATE</p>
-                    <p class="font-medium">{{ order.created_at|date:"F j, Y" }}</p>
+            <h1 class="success-hero__title">Order Confirmed</h1>
+            <p class="success-hero__subtitle">Thank you for your purchase</p>
+        </div>
+
+        <div class="success-card">
+            <div class="success-info-grid">
+                <div class="success-info-grid__item">
+                    <span class="success-info-grid__label">Order Number</span>
+                    <span class="success-info-grid__value">#{{ order.id }}</span>
                 </div>
-                <div>
-                    <p class="text-gray-500 tracking-wider text-xs mb-2">STATUS</p>
-                    <p class="font-medium uppercase">{{ order.status }}</p>
+                <div class="success-info-grid__item">
+                    <span class="success-info-grid__label">Date</span>
+                    <span class="success-info-grid__value">{{ order.created_at|date:"F j, Y" }}</span>
                 </div>
-                <div>
-                    <p class="text-gray-500 tracking-wider text-xs mb-2">EMAIL</p>
-                    <p class="font-medium">{{ order.email }}</p>
+                <div class="success-info-grid__item">
+                    <span class="success-info-grid__label">Status</span>
+                    <span class="success-info-grid__value" style="text-transform: uppercase;">{{ order.status }}</span>
                 </div>
-                <div>
-                    <p class="text-gray-500 tracking-wider text-xs mb-2">PHONE</p>
-                    <p class="font-medium">{{ order.phone_number }}</p>
+                <div class="success-info-grid__item">
+                    <span class="success-info-grid__label">Email</span>
+                    <span class="success-info-grid__value">{{ order.email }}</span>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white border border-gray-200 p-8 mb-8">
-            <h2 class="text-xl font-bold tracking-tight mb-6">ORDER ITEMS</h2>
-            <div class="space-y-4">
-                {% for item in items %}
-                <div class="flex justify-between items-center py-4 border-b border-gray-100 last:border-0">
-                    <div class="flex items-center gap-4">
-                        {% if item.product.image %}
-                        <img src="{{ item.product.image.url|cloudinary_resize:'64x80' }}" alt="{{ item.product.name }}" loading="lazy" decoding="async" width="64" height="80"
-                             class="w-16 h-20 object-contain bg-white">
-                        {% else %}
-                        <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="64" height="80"
-                             class="w-16 h-20 object-contain bg-white">
-                        {% endif %}
-                        <div>
-                            <p class="font-medium">{{ item.product.name }}</p>
-                            {% if item.size %}<p class="text-gray-500 text-sm">Size: {{ item.size|upper }}</p>{% endif %}
-                            <p class="text-gray-500 text-sm">Qty: {{ item.quantity }}</p>
-                        </div>
+        <div class="success-items">
+            <h2 class="success-card__title">Order Items</h2>
+            {% for item in items %}
+            <div class="success-item">
+                <div class="success-item__left">
+                    {% if item.product.image %}
+                    <img src="{{ item.product.image.url|cloudinary_resize:'112x140' }}"
+                         alt="{{ item.product.name }}"
+                         loading="lazy" decoding="async" width="56" height="70"
+                         class="success-item__img">
+                    {% else %}
+                    <img src="{% static 'images/default.jpg' %}"
+                         alt="No image available"
+                         loading="lazy" decoding="async" width="56" height="70"
+                         class="success-item__img">
+                    {% endif %}
+                    <div>
+                        <p class="success-item__name">{{ item.product.name }}</p>
+                        <p class="success-item__meta">
+                            {% if item.size %}Size: {{ item.size|upper }} | {% endif %}Qty: {{ item.quantity }}
+                        </p>
                     </div>
-                    <p class="font-semibold">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
                 </div>
-                {% endfor %}
+                <p class="success-item__price">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="success-total">
+            <div class="success-total__row">
+                <span>Subtotal</span>
+                <span>{{ currency }}{{ order.total_price|floatformat:2 }}</span>
+            </div>
+            <div class="success-total__row">
+                <span>Shipping</span>
+                <span>Free</span>
+            </div>
+            <div class="success-total__final">
+                <span class="success-total__final-label">Total</span>
+                <span class="success-total__final-value">{{ currency }}{{ order.total_price|floatformat:2 }}</span>
             </div>
         </div>
 
-        <div class="bg-black text-white p-8 mb-8">
-            <div class="space-y-4">
-                <div class="flex justify-between text-sm text-gray-400">
-                    <span>Subtotal</span>
-                    <span>{{ currency }}{{ order.total_price|floatformat:2 }}</span>
-                </div>
-                <div class="flex justify-between text-sm text-gray-400">
-                    <span>Shipping</span>
-                    <span>Free</span>
-                </div>
-                <div class="border-t border-gray-700 pt-4 flex justify-between">
-                    <span class="font-semibold">Total</span>
-                    <span class="text-xl font-bold">{{ currency }}{{ order.total_price|floatformat:2 }}</span>
-                </div>
-            </div>
+        <div class="success-address">
+            <h2 class="success-address__title">Shipping Address</h2>
+            <p class="success-address__text">{{ order.shipping_address }}</p>
         </div>
 
-        <div class="bg-gray-100 p-8 mb-8">
-            <h2 class="text-xl font-bold tracking-tight mb-6">SHIPPING ADDRESS</h2>
-            <p class="text-gray-600 whitespace-pre-line">{{ order.shipping_address }}</p>
-        </div>
+        <p style="text-align: center; color: var(--color-gray-500); font-size: var(--type-body); margin-bottom: var(--space-6);">
+            A confirmation email has been sent to <strong>{{ order.email }}</strong>
+        </p>
 
-        <div class="text-center space-y-4">
-            <p class="text-gray-500 text-sm">
-                A confirmation email has been sent to <strong>{{ order.email }}</strong>
-            </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="{% url 'products:shop' %}" 
-                   class="inline-block bg-black text-white px-10 py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
-                    CONTINUE SHOPPING
-                </a>
-                <a href="{% url 'orders:order_history' %}" 
-                   class="inline-block border border-black text-black px-10 py-4 text-sm tracking-wider font-semibold hover:bg-gray-100 transition-colors">
-                    VIEW ORDERS
-                </a>
-            </div>
+        <div class="success-actions">
+            <a href="{% url 'products:shop' %}" class="success-actions__primary">
+                Continue Shopping
+            </a>
+            <a href="{% url 'orders:order_history' %}" class="success-actions__secondary">
+                View Orders
+            </a>
         </div>
     </div>
 </section>

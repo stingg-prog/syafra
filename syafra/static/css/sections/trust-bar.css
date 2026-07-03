@@ -1,0 +1,122 @@
+/* ============================================
+   SYAFRA Trust Bar — Premium Luxury
+   ============================================ */
+
+.trust-bar {
+    padding: clamp(3rem, 5vw, 5rem) 0;
+    border-top: 1px solid var(--color-gray-100);
+    border-bottom: 1px solid var(--color-gray-100);
+    background: var(--color-white);
+}
+
+.trust-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 0 clamp(1.5rem, 4vw, 4rem);
+}
+
+.trust-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0 2rem;
+    position: relative;
+    transition: transform 0.4s var(--ease-luxury);
+}
+
+.trust-item:hover {
+    transform: translateY(-2px);
+}
+
+.trust-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 10%;
+    height: 80%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, var(--color-gray-200), transparent);
+}
+
+.trust-icon {
+    width: 28px;
+    height: 28px;
+    color: var(--color-accent);
+    margin-bottom: 1.25rem;
+    flex-shrink: 0;
+    transition: transform 0.4s var(--ease-luxury), color 0.3s ease;
+}
+
+.trust-item:hover .trust-icon {
+    transform: scale(1.1);
+}
+
+.trust-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke-width: 1;
+    fill: none;
+    stroke: currentColor;
+}
+
+.trust-title {
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--color-black);
+    margin-bottom: 0.5rem;
+}
+
+.trust-description {
+    font-family: var(--font-family);
+    font-size: var(--type-caption);
+    color: var(--color-gray-400);
+    line-height: var(--leading-body);
+    max-width: 200px;
+}
+
+@media (max-width: 1023px) {
+    .trust-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2.5rem 0;
+    }
+    .trust-item:nth-child(2)::after,
+    .trust-item:nth-child(1)::after,
+    .trust-item:nth-child(3)::after { display: none; }
+    .trust-item:nth-child(1),
+    .trust-item:nth-child(2) {
+        padding-bottom: 2.5rem;
+        border-bottom: 1px solid var(--color-gray-100);
+    }
+}
+
+@media (max-width: 767px) {
+    .trust-bar { padding: 2.5rem 0; }
+    .trust-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+        padding: 0 1.25rem;
+    }
+    .trust-item::after { display: none !important; }
+    .trust-item {
+        flex-direction: row;
+        text-align: left;
+        gap: 1rem;
+        padding: 1.25rem 0;
+        border-bottom: 1px solid var(--color-gray-100);
+    }
+    .trust-item:last-child { border-bottom: none; }
+    .trust-icon { margin-bottom: 0; }
+    .trust-title { margin-bottom: 0.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .trust-item { transition: none !important; }
+    .trust-icon { transition: none !important; }
+}

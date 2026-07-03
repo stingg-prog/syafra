@@ -1,0 +1,84 @@
+/* ============================================
+   SYAFRA Animations & Keyframes
+   ============================================ */
+
+/* ---- Fade In ---- */
+.fade-in {
+    animation: fadeIn 0.8s var(--ease-out-expo) both;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Scroll Reveal ---- */
+.reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+}
+
+.reveal.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ---- Stagger Delays ---- */
+.stagger-1 { transition-delay: 0.08s; }
+.stagger-2 { transition-delay: 0.16s; }
+.stagger-3 { transition-delay: 0.24s; }
+.stagger-4 { transition-delay: 0.32s; }
+.stagger-5 { transition-delay: 0.40s; }
+.stagger-6 { transition-delay: 0.48s; }
+
+/* ---- Hero Animations ---- */
+.hero-animate {
+    transition: all 0.8s var(--ease-luxury);
+}
+
+.hero-animate.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.delay-200 { transition-delay: 0.2s; }
+.delay-300 { transition-delay: 0.3s; }
+.delay-400 { transition-delay: 0.4s; }
+.delay-700 { transition-delay: 0.7s; }
+
+/* ---- Loading Bar ---- */
+@keyframes loading {
+    0%   { width: 0; }
+    50%  { width: 70%; }
+    100% { width: 100%; }
+}
+
+/* ---- Pulse ---- */
+@keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.7; }
+}
+
+/* ---- Slide Up ---- */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Scale In ---- */
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* ---- Reduced Motion ---- */
+@media (prefers-reduced-motion: reduce) {
+    .fade-in, .reveal, .hero-animate {
+        animation: none !important;
+        transition: opacity 0.2s ease !important;
+        transform: none !important;
+    }
+    .reveal { opacity: 1; }
+    .hero-animate { opacity: 1; }
+}

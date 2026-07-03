@@ -6,7 +6,9 @@
   "scripts": {
     "build:css": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./assets/css/input.css -o ./static/css/output.css",
     "build:css:minify": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./assets/css/input.css -o ./static/css/output.css --minify",
-    "watch:css": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./assets/css/input.css -o ./static/css/output.css --watch"
+    "watch:css": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./assets/css/input.css -o ./static/css/output.css --watch",
+    "bundle:css": "node scripts/bundle-css.js",
+    "build:prod": "npm run build:css:minify && npm run bundle:css"
   },
   "keywords": [],
   "author": "",

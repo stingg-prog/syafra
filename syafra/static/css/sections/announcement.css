@@ -1,0 +1,143 @@
+/* ============================================
+   SYAFRA Announcement Bar — Luxury Strip
+   ============================================ */
+
+.announcement-bar {
+    position: relative;
+    width: 100%;
+    height: var(--announcement-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-black);
+    color: var(--color-white);
+    overflow: hidden;
+    transition: height 0.5s var(--ease-luxury), opacity 0.4s var(--ease-luxury), transform 0.5s var(--ease-luxury);
+    z-index: calc(var(--z-fixed) + 2);
+    border-bottom: 1px solid rgba(201, 169, 110, 0.15);
+}
+
+.announcement-bar.is-dismissed {
+    height: 0;
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+}
+
+/* ---- Three Info Blocks ---- */
+.announcement-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.announcement-block {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex: 1;
+    text-align: center;
+    padding: 0 1.25rem;
+}
+
+.announcement-block:not(:last-child) {
+    border-right: 1px solid rgba(201, 169, 110, 0.2);
+}
+
+.announcement-block svg {
+    width: 12px;
+    height: 12px;
+    color: var(--color-accent);
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.announcement-text {
+    font-family: var(--font-family);
+    font-size: 0.5625rem;
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    font-weight: 400;
+    line-height: var(--announcement-height);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(255, 255, 255, 0.6);
+    transition: color 0.3s ease;
+}
+
+.announcement-block:hover .announcement-text {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* ---- Close Button ---- */
+.announcement-close {
+    position: absolute;
+    right: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.25);
+    transition: color 0.3s ease, transform 0.3s var(--ease-luxury);
+    padding: 0;
+}
+
+.announcement-close:hover {
+    color: var(--color-accent);
+    transform: translateY(-50%) rotate(90deg);
+}
+
+.announcement-close svg {
+    width: 10px;
+    height: 10px;
+    stroke-width: 2;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 767px) {
+    .announcement-content {
+        flex-direction: column;
+        gap: 0;
+        padding: 0 2.5rem;
+    }
+
+    .announcement-block {
+        padding: 0.0625rem 0;
+        flex: none;
+    }
+
+    .announcement-block:not(:last-child) {
+        border-right: none;
+    }
+
+    .announcement-text {
+        font-size: 0.5rem;
+        line-height: 1.4;
+    }
+
+    .announcement-close {
+        right: 0.625rem;
+    }
+}
+
+/* ---- Reduced Motion ---- */
+@media (prefers-reduced-motion: reduce) {
+    .announcement-bar {
+        transition: height 0.1s ease, opacity 0.1s ease, transform 0.1s ease !important;
+    }
+    .announcement-close {
+        transition: color 0.1s ease !important;
+    }
+}

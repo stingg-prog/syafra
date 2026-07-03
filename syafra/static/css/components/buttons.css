@@ -1,0 +1,121 @@
+/* ============================================
+   SYAFRA Buttons — Premium Luxury System
+   ============================================ */
+
+/* ---- Primary Button ---- */
+.btn-primary {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s var(--ease-out-expo);
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transition: left 0.5s;
+}
+
+.btn-primary:hover::before {
+    left: 100%;
+}
+
+/* ---- Outline Button ---- */
+.btn-outline {
+    transition: all var(--transition-base);
+}
+
+.btn-outline:hover {
+    background: var(--color-white);
+    color: var(--color-black);
+}
+
+/* ---- Text Button ---- */
+.btn-text {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-wider);
+    text-transform: uppercase;
+    color: var(--color-black);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.btn-text::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.4s var(--ease-out-expo);
+}
+
+.btn-text:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+}
+
+.btn-text svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.3s var(--ease-out-expo);
+}
+
+.btn-text:hover svg {
+    transform: translateX(3px);
+}
+
+/* ---- Section CTA ---- */
+.btn-section-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-wider);
+    text-transform: uppercase;
+    color: var(--color-black);
+    background: transparent;
+    border: 1px solid var(--color-black);
+    cursor: pointer;
+    transition: all 0.4s var(--ease-out-expo);
+}
+
+.btn-section-cta:hover {
+    background: var(--color-black);
+    color: var(--color-white);
+}
+
+.btn-section-cta svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.3s var(--ease-out-expo);
+}
+
+.btn-section-cta:hover svg {
+    transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn-primary::before, .btn-text::after, .btn-text svg, .btn-section-cta svg {
+        transition: none !important;
+    }
+}

@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddConstraint(
             model_name='cartitem',
-            constraint=models.CheckConstraint(check=models.Q(('quantity__gt', 0)), name='cart_items_quantity_gt_0'),
+            constraint=models.CheckConstraint(condition=models.Q(('quantity__gt', 0)), name='cart_items_quantity_gt_0'),
         ),
     ]

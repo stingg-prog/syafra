@@ -1,0 +1,35 @@
+/* ============================================
+   SYAFRA Product Collections — Luxury Editorial
+   ============================================ */
+
+.collection-section {
+    background: var(--color-white);
+    padding: clamp(4rem, 6vw, 6rem) 0;
+}
+
+@media (max-width: 767px) {
+    .collection-section {
+        padding: clamp(2.5rem, 5vw, 3.5rem) 0;
+    }
+}
+
+/* ---- Section CTA ---- */
+.collection-cta {
+    text-align: center;
+    margin-top: clamp(2rem, 3vw, 3rem);
+}
+
+/* ---- Empty State ---- */
+.collection-empty {
+    text-align: center;
+    padding: clamp(3rem, 5vw, 5rem) 0;
+    color: var(--color-gray-400);
+    font-family: var(--font-family);
+    font-size: var(--type-caption);
+    letter-spacing: var(--letter-spacing-wider);
+    text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .collection-section { animation: none !important; }
+}

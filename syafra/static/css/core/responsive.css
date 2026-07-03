@@ -1,0 +1,49 @@
+/* ============================================
+   SYAFRA Responsive Breakpoints
+   ============================================ */
+
+/* ---- Tablet (768px - 1023px) ---- */
+@media (max-width: 1023px) {
+    :root {
+        --container-max: 100%;
+    }
+}
+
+/* ---- Mobile (max 767px) ---- */
+@media (max-width: 767px) {
+    :root {
+        --container-max: 100%;
+    }
+
+    html {
+        font-size: 15px;
+    }
+}
+
+/* ---- Small Mobile (max 479px) ---- */
+@media (max-width: 479px) {
+    html {
+        font-size: 14px;
+    }
+}
+
+/* ---- Prefers Reduced Motion ---- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .reveal {
+        opacity: 1;
+        transform: none;
+    }
+
+    .hero-animate {
+        opacity: 1;
+        transform: none;
+    }
+}

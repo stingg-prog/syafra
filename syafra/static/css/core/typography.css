@@ -1,0 +1,27 @@
+/* ============================================
+   SYAFRA Typography
+   ============================================ */
+
+.logo-spacing {
+    letter-spacing: var(--letter-spacing-widest);
+}
+
+.tracking-widest {
+    letter-spacing: var(--letter-spacing-widest);
+}
+
+.tracking-wider {
+    letter-spacing: var(--letter-spacing-wider);
+}
+
+.tracking-wide {
+    letter-spacing: var(--letter-spacing-wide);
+}
+
+.tracking-hero {
+    letter-spacing: var(--letter-spacing-hero);
+}
+
+.text-balance {
+    text-wrap: balance;
+}

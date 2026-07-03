@@ -1,0 +1,171 @@
+/* ============================================
+   SYAFRA Shop By Category — Editorial Luxury
+   ============================================ */
+
+.categories-section {
+    background: var(--color-white);
+    padding: clamp(4rem, 6vw, 6rem) 0;
+}
+
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+    .categories-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---- Category Card ---- */
+.category-card {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+@media (max-width: 640px) {
+    .category-card { aspect-ratio: 4 / 5; }
+}
+
+.category-card__image {
+    position: absolute;
+    inset: 0;
+}
+
+.category-card__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.8s var(--ease-out-expo);
+}
+
+.category-card:hover .category-card__image img {
+    transform: scale(1.08);
+}
+
+/* Desktop/Mobile image swap */
+.category-card__image-desktop { display: block; }
+.category-card__image-mobile { display: none; }
+
+@media (max-width: 767px) {
+    .category-card__image-desktop { display: none; }
+    .category-card__image-mobile { display: block; }
+}
+
+/* Overlay */
+.category-card__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.15) 40%, transparent 70%);
+    transition: opacity 0.5s ease;
+    z-index: 1;
+}
+
+.category-card:hover .category-card__overlay {
+    opacity: 0.85;
+}
+
+/* Content */
+.category-card__content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: clamp(1.5rem, 3vw, 2.5rem);
+    color: var(--color-white);
+    z-index: 2;
+}
+
+.category-card__headline {
+    display: block;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    font-weight: 400;
+    color: var(--color-accent);
+    margin-bottom: 0.5rem;
+}
+
+.category-card__name {
+    font-family: var(--font-family-serif);
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    font-weight: 400;
+    color: var(--color-white);
+    line-height: 1.15;
+    margin-bottom: 1rem;
+}
+
+.category-card__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    letter-spacing: var(--letter-spacing-wider);
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--color-white);
+    opacity: 0.7;
+    transition: opacity 0.3s ease, gap 0.3s var(--ease-out-expo);
+}
+
+.category-card:hover .category-card__cta {
+    opacity: 1;
+    gap: 0.75rem;
+}
+
+.category-card__cta svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.3s var(--ease-out-expo);
+}
+
+.category-card:hover .category-card__cta svg {
+    transform: translateX(4px);
+}
+
+/* ---- Collection Header (shared) ---- */
+.collection-header {
+    text-align: center;
+    margin-bottom: clamp(2.5rem, 4vw, 4rem);
+}
+
+.collection-header__overline {
+    display: block;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-widest);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 0.75rem;
+}
+
+.collection-header__title {
+    font-family: var(--font-family-serif);
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 400;
+    color: var(--color-black);
+    line-height: 1.15;
+    margin: 0;
+}
+
+.collection-header__subtitle {
+    font-family: var(--font-family);
+    font-size: var(--type-body);
+    color: var(--color-gray-500);
+    margin-top: 0.75rem;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .category-card__image img { transition: none !important; }
+}

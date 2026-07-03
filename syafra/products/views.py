@@ -25,7 +25,7 @@ def home(request):
         if st == 'hero_slider':
             data['slides'] = list(section.hero_slides.filter(is_active=True).order_by('display_order'))
 
-        elif st == 'product_collection':
+        elif st in ('product_collection', 'womens_tops', 'trending_now', 'best_sellers'):
             if section.collection:
                 data['products'] = list(
                     section.collection.products.filter(stock__gt=0)
@@ -45,7 +45,7 @@ def home(request):
                 .exclude(image='').exclude(image__isnull=True)[:max_items]
             )
 
-        section_data[section.section_type] = data
+        section_data[section.id] = data
 
     payment_settings = PaymentSettings.get_settings()
     currency = payment_settings.currency_symbol if payment_settings else '₹'

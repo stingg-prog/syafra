@@ -135,6 +135,11 @@ class HomepageSectionAdmin(admin.ModelAdmin):
                 'fields': ('collection',),
                 'description': 'Select a Product Collection to display in this section.',
             }))
+        elif section_type in ('womens_tops', 'trending_now', 'best_sellers'):
+            base.append(('Collection', {
+                'fields': ('collection',),
+                'description': 'Select a Product Collection to display in this section.',
+            }))
         elif section_type == 'promotional_banner':
             base.append(('Content', {
                 'fields': ('config_headline', 'config_description', 'config_button_text', 'config_button_url', ('config_bg_color', 'config_text_color')),
