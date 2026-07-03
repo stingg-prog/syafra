@@ -164,9 +164,8 @@ class Command(BaseCommand):
 
         # Section 5: Featured Jackets (Product Collection)
         featured_collection, _ = ProductCollection.objects.get_or_create(
-            slug='featured-jackets',
+            name='Featured Jackets',
             defaults={
-                'name': 'Featured Jackets',
                 'description': 'Handpicked premium vintage jackets',
             }
         )
