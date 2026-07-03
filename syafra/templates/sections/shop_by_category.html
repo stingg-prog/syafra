@@ -1,0 +1,47 @@
+{% load static cloudinary_filters %}
+<section class="py-24 px-6 bg-black text-white">
+    <div class="max-w-7xl mx-auto">
+        {% if section.title or section.subtitle %}
+        <div class="text-center mb-16 reveal">
+            {% if section.title %}
+            <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">{{ section.title }}</h2>
+            {% endif %}
+            {% if section.subtitle %}
+            <p class="text-syafra-beige tracking-wider text-sm">{{ section.subtitle }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {% for item in section.category_items.filter %}
+            {% if item.is_active %}
+            <a href="{% url 'products:category_detail' item.category.slug %}" class="relative overflow-hidden aspect-square group block reveal stagger-{{ forloop.counter }} img-zoom rounded-lg">
+                {% if item.desktop_image %}
+                <img src="{{ item.desktop_image.url }}" alt="{{ item.category.name }}"
+                     class="absolute inset-0 w-full h-full object-cover hidden md:block">
+                {% endif %}
+                {% if item.mobile_image %}
+                <img src="{{ item.mobile_image.url }}" alt="{{ item.category.name }}"
+                     class="absolute inset-0 w-full h-full object-cover md:hidden">
+                {% elif not item.desktop_image %}
+                <img src="{% static 'images/default.jpg' %}" alt="{{ item.category.name }}"
+                     class="absolute inset-0 w-full h-full object-cover">
+                {% endif %}
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10"></div>
+                <div class="absolute inset-0 flex items-end justify-center pb-12 z-20">
+                    <div class="text-center">
+                        {% if item.headline %}
+                        <p class="text-syafra-beige text-xs tracking-[0.3em] mb-2">{{ item.headline }}</p>
+                        {% endif %}
+                        <h3 class="text-3xl font-bold mb-4">{{ item.category.name }}</h3>
+                        <span class="inline-block border border-white px-6 py-2 text-xs tracking-wider group-hover:bg-white group-hover:text-black transition-colors duration-300">
+                            {{ item.label|default:'EXPLORE' }}
+                        </span>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</section>

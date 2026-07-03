@@ -1,0 +1,22 @@
+{% load static %}
+{% with config=section.config %}
+<section class="py-16 px-6" style="background-color: {{ config.bg_color|default:'#E8DCC4' }};">
+    <div class="max-w-4xl mx-auto text-center reveal">
+        {% if config.headline %}
+        <h2 class="text-2xl md:text-3xl font-bold tracking-tight mb-4" style="color: {{ config.text_color|default:'#000000' }};">{{ config.headline }}</h2>
+        {% endif %}
+        {% if config.description %}
+        <p class="text-base leading-relaxed max-w-2xl mx-auto" style="color: {{ config.text_color|default:'#000000' }}; opacity: 0.8;">
+            {{ config.description }}
+        </p>
+        {% endif %}
+        {% if config.button_text %}
+        <div class="mt-8">
+            <a href="{{ config.button_url|default:'/shop/' }}" class="inline-block bg-black text-white px-8 py-3 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors btn-primary">
+                {{ config.button_text }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endwith %}

@@ -1,0 +1,20 @@
+{% load static %}
+<section class="bg-gray-100 py-12">
+    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
+        {% for item in section.trust_items.filter %}
+        {% if item.is_active %}
+        <div class="flex flex-col items-center reveal stagger-{{ forloop.counter }}">
+            {% if item.icon_svg %}
+            <svg class="w-8 h-8 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="{{ item.icon_svg }}"></path>
+            </svg>
+            {% endif %}
+            <h3 class="text-sm font-semibold tracking-widest uppercase">{{ item.title }}</h3>
+            {% if item.description %}
+            <p class="text-gray-500 text-sm mt-2">{{ item.description }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</section>

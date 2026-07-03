@@ -1,0 +1,53 @@
+{% load static %}
+{% with config=section.config %}
+<section class="py-16 px-6" style="background-color: {{ config.bg_color|default:'#000000' }};">
+    <div class="max-w-2xl mx-auto text-center">
+        {% if config.headline or section.title %}
+        <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-white mb-4">
+            {{ config.headline|default:section.title|default:'STAY IN THE LOOP' }}
+        </h2>
+        {% endif %}
+        {% if config.description or section.subtitle %}
+        <p class="text-gray-400 text-sm tracking-wider mb-8">
+            {{ config.description|default:section.subtitle|default:'Subscribe for exclusive drops, new arrivals, and insider updates.' }}
+        </p>
+        {% endif %}
+        <form id="newsletter-form" class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto" onsubmit="return submitNewsletter(event)">
+            <input type="email" name="email" required
+                   placeholder="{{ config.placeholder|default:'Enter your email' }}"
+                   class="flex-1 px-4 py-3 bg-gray-900 border border-gray-700 text-white text-sm tracking-wider focus:outline-none focus:border-syafra-beige transition-colors">
+            <button type="submit"
+                    class="px-8 py-3 bg-white text-black text-sm tracking-wider font-semibold hover:bg-syafra-beige transition-colors">
+                {{ config.button_text|default:'SUBSCRIBE' }}
+            </button>
+        </form>
+        <p id="newsletter-message" class="text-sm mt-4 hidden"></p>
+    </div>
+</section>
+<script>
+function submitNewsletter(e) {
+    e.preventDefault();
+    var form = document.getElementById('newsletter-form');
+    var msg = document.getElementById('newsletter-message');
+    var formData = new FormData(form);
+    fetch('{% url "products:newsletter_subscribe" %}', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        msg.classList.remove('hidden', 'text-red-400', 'text-green-400');
+        msg.classList.add(data.success ? 'text-green-400' : 'text-red-400');
+        msg.textContent = data.message || data.error;
+        if (data.success) form.reset();
+    })
+    .catch(function() {
+        msg.classList.remove('hidden');
+        msg.classList.add('text-red-400');
+        msg.textContent = 'Something went wrong. Please try again.';
+    });
+    return false;
+}
+</script>
+{% endwith %}

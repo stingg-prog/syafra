@@ -1,0 +1,49 @@
+{% load static cloudinary_filters %}
+<section class="py-24 px-6 bg-white">
+    <div class="max-w-7xl mx-auto">
+        {% if section.title or section.subtitle %}
+        <div class="text-center mb-16 reveal">
+            {% if section.title %}
+            <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">{{ section.title }}</h2>
+            {% endif %}
+            {% if section.subtitle %}
+            <p class="text-gray-500 tracking-wider text-sm">{{ section.subtitle }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% with products=section_data.product_collection.products %}
+        {% if products %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {% for product in products %}
+            <a href="{% url 'products:product_detail' product.pk %}" class="product-card group block reveal stagger-{{ forloop.counter }}">
+                <div class="relative overflow-hidden bg-gray-100 aspect-[3/4] mb-4 img-zoom">
+                    {% if product.image %}
+                    <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="800"
+                         class="product-image w-full h-full object-contain bg-white">
+                    {% else %}
+                    <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="800"
+                         class="product-image w-full h-full object-contain bg-white">
+                    {% endif %}
+                    <div class="product-overlay absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 opacity-0 flex items-center justify-center">
+                        <span class="bg-white text-black px-6 py-2 text-xs tracking-wider font-semibold transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                            VIEW PRODUCT
+                        </span>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <h3 class="font-semibold text-sm tracking-wide">{{ product.name }}</h3>
+                    <p class="text-gray-500 text-xs tracking-wider">{{ product.brand }}</p>
+                    <p class="font-semibold">{{ currency }}{{ product.price|floatformat:2 }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-20">
+            <p class="text-gray-500 tracking-wider">No products in this collection yet.</p>
+        </div>
+        {% endif %}
+        {% endwith %}
+    </div>
+</section>

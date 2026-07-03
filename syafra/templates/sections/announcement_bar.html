@@ -1,0 +1,15 @@
+{% load static %}
+{% with config=section.config ds=section.device_settings %}
+{% if config.text %}
+<section class="py-3 px-6 text-center text-sm tracking-wider"
+         style="background-color: {{ config.bg_color|default:'#000000' }}; color: {{ config.text_color|default:'#E8DCC4' }};">
+    <div class="max-w-7xl mx-auto">
+        {% if config.link_url %}
+        <a href="{{ config.link_url }}" class="hover:underline">{{ config.text }}</a>
+        {% else %}
+        <span>{{ config.text }}</span>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+{% endwith %}

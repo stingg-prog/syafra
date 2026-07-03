@@ -33,14 +33,14 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='order',
-            constraint=models.CheckConstraint(condition=models.Q(('confirmation_email_sent', False), ('confirmation_email_claimed_at__isnull', True), _connector='OR'), name='orders_conf_email_claim_cleared'),
+            constraint=models.CheckConstraint(check=models.Q(('confirmation_email_sent', False), ('confirmation_email_claimed_at__isnull', True), _connector='OR'), name='orders_conf_email_claim_cleared'),
         ),
         migrations.AddConstraint(
             model_name='order',
-            constraint=models.CheckConstraint(condition=models.Q(('payment_email_sent', False), ('payment_email_claimed_at__isnull', True), _connector='OR'), name='orders_payment_email_claim_cleared'),
+            constraint=models.CheckConstraint(check=models.Q(('payment_email_sent', False), ('payment_email_claimed_at__isnull', True), _connector='OR'), name='orders_payment_email_claim_cleared'),
         ),
         migrations.AddConstraint(
             model_name='order',
-            constraint=models.CheckConstraint(condition=models.Q(('payment_retry_reserved_at__isnull', True), ('payment_status', 'pending'), _connector='OR'), name='orders_retry_reservation_pending_only'),
+            constraint=models.CheckConstraint(check=models.Q(('payment_retry_reserved_at__isnull', True), ('payment_status', 'pending'), _connector='OR'), name='orders_retry_reservation_pending_only'),
         ),
     ]

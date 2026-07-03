@@ -159,6 +159,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "products.middleware.MaintenanceModeMiddleware",
 ]
 
 ROOT_URLCONF = "syafra.urls"
@@ -177,6 +178,8 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "cart.context_processors.cart_context",
                 "syafra.context_processors.global_context",
+                "syafra.context_processors.theme_context",
+                "syafra.context_processors.website_context",
             ],
         },
     },
@@ -221,7 +224,6 @@ AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 CLOUDINARY_STORAGE = {
     "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME"),
     "API_KEY": os.getenv("CLOUDINARY_API_KEY"),
@@ -229,10 +231,9 @@ CLOUDINARY_STORAGE = {
     "SECURE": True,
     "PREFIX": "",
 }
-DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 STORAGES = {
     "default": {
-        "BACKEND": DEFAULT_FILE_STORAGE,
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",

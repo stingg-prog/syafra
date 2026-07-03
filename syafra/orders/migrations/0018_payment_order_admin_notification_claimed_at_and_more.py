@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='order',
-            constraint=models.CheckConstraint(condition=models.Q(('admin_notification_sent', False), ('admin_notification_claimed_at__isnull', True), _connector='OR'), name='orders_admin_email_claim_cleared'),
+            constraint=models.CheckConstraint(check=models.Q(('admin_notification_sent', False), ('admin_notification_claimed_at__isnull', True), _connector='OR'), name='orders_admin_email_claim_cleared'),
         ),
         migrations.AddField(
             model_name='payment',
@@ -63,7 +63,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='payment',
-            constraint=models.CheckConstraint(condition=models.Q(('amount__gte', 0)), name='payments_amount_gte_0'),
+            constraint=models.CheckConstraint(check=models.Q(('amount__gte', 0)), name='payments_amount_gte_0'),
         ),
         migrations.AddConstraint(
             model_name='payment',

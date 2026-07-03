@@ -31,15 +31,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='order',
-            constraint=models.CheckConstraint(condition=models.Q(('total_price__gte', 0)), name='orders_total_price_gte_0'),
+            constraint=models.CheckConstraint(check=models.Q(('total_price__gte', 0)), name='orders_total_price_gte_0'),
         ),
         migrations.AddConstraint(
             model_name='order',
-            constraint=models.CheckConstraint(condition=models.Q(('stock_reduced', False), ('payment_status', 'paid'), _connector='OR'), name='orders_stock_reduced_requires_paid'),
+            constraint=models.CheckConstraint(check=models.Q(('stock_reduced', False), ('payment_status', 'paid'), _connector='OR'), name='orders_stock_reduced_requires_paid'),
         ),
         migrations.AddConstraint(
             model_name='order',
-            constraint=models.CheckConstraint(condition=models.Q(('payment_confirmed_at__isnull', True), ('payment_status', 'paid'), _connector='OR'), name='orders_confirmed_at_requires_paid'),
+            constraint=models.CheckConstraint(check=models.Q(('payment_confirmed_at__isnull', True), ('payment_status', 'paid'), _connector='OR'), name='orders_confirmed_at_requires_paid'),
         ),
         migrations.AddConstraint(
             model_name='order',
@@ -51,11 +51,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='orderitem',
-            constraint=models.CheckConstraint(condition=models.Q(('quantity__gt', 0)), name='order_items_quantity_gt_0'),
+            constraint=models.CheckConstraint(check=models.Q(('quantity__gt', 0)), name='order_items_quantity_gt_0'),
         ),
         migrations.AddConstraint(
             model_name='orderitem',
-            constraint=models.CheckConstraint(condition=models.Q(('price__gte', 0)), name='order_items_price_gte_0'),
+            constraint=models.CheckConstraint(check=models.Q(('price__gte', 0)), name='order_items_price_gte_0'),
         ),
         migrations.AddConstraint(
             model_name='orderitem',

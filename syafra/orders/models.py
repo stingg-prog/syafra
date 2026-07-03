@@ -189,15 +189,15 @@ class Order(models.Model):
         ]
         constraints = [
             models.CheckConstraint(
-                condition=Q(total_price__gte=0),
+                check=Q(total_price__gte=0),
                 name='orders_total_price_gte_0',
             ),
             models.CheckConstraint(
-                condition=Q(stock_reduced=False) | Q(payment_status='paid'),
+                check=Q(stock_reduced=False) | Q(payment_status='paid'),
                 name='orders_stock_reduced_requires_paid',
             ),
             models.CheckConstraint(
-                condition=Q(payment_confirmed_at__isnull=True) | Q(payment_status='paid'),
+                check=Q(payment_confirmed_at__isnull=True) | Q(payment_status='paid'),
                 name='orders_confirmed_at_requires_paid',
             ),
             models.UniqueConstraint(
@@ -211,19 +211,19 @@ class Order(models.Model):
                 name='orders_unique_razorpay_payment_id',
             ),
             models.CheckConstraint(
-                condition=Q(confirmation_email_sent=False) | Q(confirmation_email_claimed_at__isnull=True),
+                check=Q(confirmation_email_sent=False) | Q(confirmation_email_claimed_at__isnull=True),
                 name='orders_conf_email_claim_cleared',
             ),
             models.CheckConstraint(
-                condition=Q(payment_email_sent=False) | Q(payment_email_claimed_at__isnull=True),
+                check=Q(payment_email_sent=False) | Q(payment_email_claimed_at__isnull=True),
                 name='orders_payment_email_claim_cleared',
             ),
             models.CheckConstraint(
-                condition=Q(admin_notification_sent=False) | Q(admin_notification_claimed_at__isnull=True),
+                check=Q(admin_notification_sent=False) | Q(admin_notification_claimed_at__isnull=True),
                 name='orders_admin_email_claim_cleared',
             ),
             models.CheckConstraint(
-                condition=Q(payment_retry_reserved_at__isnull=True) | Q(payment_status='pending'),
+                check=Q(payment_retry_reserved_at__isnull=True) | Q(payment_status='pending'),
                 name='orders_retry_reservation_pending_only',
             ),
         ]
@@ -277,7 +277,7 @@ class Payment(models.Model):
         ordering = ['-created_at']
         constraints = [
             models.CheckConstraint(
-                condition=Q(amount__gte=0),
+                check=Q(amount__gte=0),
                 name='payments_amount_gte_0',
             ),
             models.UniqueConstraint(
@@ -318,11 +318,11 @@ class OrderItem(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                condition=Q(quantity__gt=0),
+                check=Q(quantity__gt=0),
                 name='order_items_quantity_gt_0',
             ),
             models.CheckConstraint(
-                condition=Q(price__gte=0),
+                check=Q(price__gte=0),
                 name='order_items_price_gte_0',
             ),
             models.UniqueConstraint(
