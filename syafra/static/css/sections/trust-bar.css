@@ -110,12 +110,27 @@
         flex-direction: row;
         text-align: left;
         gap: 1rem;
-        padding: 1.25rem 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 1.125rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
     .trust-item:last-child { border-bottom: none; }
-    .trust-icon { margin-bottom: 0; }
-    .trust-title { margin-bottom: 0.25rem; }
+    .trust-icon {
+        width: 24px;
+        height: 24px;
+        color: #FFFFFF;
+        margin-bottom: 0;
+    }
+    .trust-title {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.125rem;
+    }
+    .trust-description {
+        font-size: 13px;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.72);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

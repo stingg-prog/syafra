@@ -106,14 +106,6 @@
 @media (max-width: 640px) {
     .product-grid {
         grid-template-columns: repeat(3, 1fr);
-        column-gap: 0.625rem;
-        row-gap: 1.25rem;
-    }
-}
-
-@media (max-width: 479px) {
-    .product-grid {
-        grid-template-columns: repeat(2, 1fr);
         column-gap: 0.5rem;
         row-gap: 1rem;
     }
@@ -139,13 +131,7 @@
 @media (max-width: 640px) {
     .product-grid--triple {
         grid-template-columns: repeat(3, 1fr);
-        column-gap: 0.625rem;
-    }
-}
-
-@media (max-width: 479px) {
-    .product-grid--triple {
-        grid-template-columns: repeat(2, 1fr);
+        column-gap: 0.5rem;
     }
 }
 
@@ -193,14 +179,6 @@
 @media (max-width: 640px) {
     .product-grid--homepage-six {
         grid-template-columns: repeat(3, 1fr);
-        column-gap: 0.625rem;
-        row-gap: 1.25rem;
-    }
-}
-
-@media (max-width: 479px) {
-    .product-grid--homepage-six {
-        grid-template-columns: repeat(2, 1fr);
         column-gap: 0.5rem;
         row-gap: 1rem;
     }
@@ -299,12 +277,6 @@
     .product-grid--dual-panel {
         grid-template-columns: repeat(3, 1fr);
         column-gap: 0.5rem;
-    }
-}
-
-@media (max-width: 479px) {
-    .product-grid--dual-panel {
-        grid-template-columns: repeat(2, 1fr);
     }
 }
 
