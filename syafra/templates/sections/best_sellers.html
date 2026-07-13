@@ -11,8 +11,8 @@
         {% with data=section_data|get_by_key:section.id %}
         {% with products=data.products %}
         {% if products %}
-        <div class="product-grid">
-            {% for product in products|slice:":4" %}
+        <div class="product-grid product-grid--triple">
+            {% for product in products|slice:":3" %}
             <div class="product-card reveal stagger-{{ forloop.counter }}" data-product-id="{{ product.pk }}" data-product-url="{% url 'products:product_detail' product.pk %}">
                 <div class="product-card__image">
                     {% if product.image %}

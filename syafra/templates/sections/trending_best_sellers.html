@@ -14,7 +14,7 @@
             {% with products=trending_data.products %}
             {% if products %}
             <div class="product-grid product-grid--dual-panel">
-                {% for product in products|slice:":4" %}
+                {% for product in products|slice:":3" %}
                 <div class="product-card reveal stagger-{{ forloop.counter }}" data-product-id="{{ product.pk }}" data-product-url="{% url 'products:product_detail' product.pk %}">
                     <div class="product-card__image">
                         {% if product.image %}
@@ -83,7 +83,7 @@
             {% with products=best_sellers_data.products %}
             {% if products %}
             <div class="product-grid product-grid--dual-panel">
-                {% for product in products|slice:":4" %}
+                {% for product in products|slice:":3" %}
                 <div class="product-card reveal stagger-{{ forloop.counter }}" data-product-id="{{ product.pk }}" data-product-url="{% url 'products:product_detail' product.pk %}">
                     <div class="product-card__image">
                         {% if product.image %}

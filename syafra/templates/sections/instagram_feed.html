@@ -14,7 +14,7 @@
 
         {% if posts %}
         <div class="instagram-grid">
-            {% for post in posts|slice:":8" %}
+            {% for post in posts|slice:":6" %}
             <a href="{{ post.link }}" target="_blank" rel="noopener noreferrer" class="instagram-card reveal stagger-{{ forloop.counter }}">
                 {% if post.image %}
                 <img src="{{ post.image.url }}" alt="Instagram post" loading="lazy" decoding="async">
@@ -34,7 +34,7 @@
         </div>
         {% else %}
         <div class="instagram-grid">
-            {% for i in "12345678" %}
+            {% for i in "123456" %}
             <div class="instagram-card instagram-fallback">
                 <div class="instagram-overlay">
                     <svg fill="currentColor" viewBox="0 0 24 24" width="22" height="22">
