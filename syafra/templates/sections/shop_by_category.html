@@ -1,54 +1,42 @@
 {% load static cloudinary_filters %}
+{% with cat_data=section_data|get_by_key:section.id %}
+{% with items=cat_data.category_items %}
+{% if items %}
 <section class="categories-section">
-    <div class="max-w-7xl mx-auto px-6">
-        {% if section.title or section.subtitle %}
-        <div class="collection-header reveal">
-            {% if section.title %}
-            <span class="collection-header__overline">Explore</span>
-            <h2 class="collection-header__title">{{ section.title }}</h2>
-            {% endif %}
-            {% if section.subtitle %}
-            <p class="collection-header__subtitle">{{ section.subtitle }}</p>
-            {% endif %}
+    <div class="categories-container">
+        <div class="categories-heading reveal">
+            <h2 class="categories-heading__title">{{ section.title|default:'Shop by Category' }}</h2>
         </div>
-        {% endif %}
 
         <div class="categories-grid">
-            {% for item in section.category_items.filter %}
-            {% if item.is_active %}
+            {% for item in items %}
             <a href="{% url 'products:category_detail' item.category.slug %}" class="category-card reveal stagger-{{ forloop.counter }}">
-                <div class="category-card__image category-card__image-desktop">
+                <div class="category-card__image">
                     {% if item.desktop_image %}
-                    <img src="{{ item.desktop_image.url }}" alt="{{ item.category.name }}" loading="lazy" decoding="async" width="900" height="1200">
+                    <img src="{{ item.desktop_image.url }}" alt="{{ item.category.name }}" loading="lazy" decoding="async">
                     {% else %}
-                    <img src="{% static 'images/default.jpg' %}" alt="{{ item.category.name }}" loading="lazy" decoding="async" width="900" height="1200">
+                    <img src="{% static 'images/default.jpg' %}" alt="{{ item.category.name }}" loading="lazy" decoding="async">
                     {% endif %}
                 </div>
-                <div class="category-card__image category-card__image-mobile">
-                    {% if item.mobile_image %}
-                    <img src="{{ item.mobile_image.url }}" alt="{{ item.category.name }}" loading="lazy" decoding="async" width="600" height="750">
-                    {% elif item.desktop_image %}
-                    <img src="{{ item.desktop_image.url }}" alt="{{ item.category.name }}" loading="lazy" decoding="async" width="600" height="750">
-                    {% else %}
-                    <img src="{% static 'images/default.jpg' %}" alt="{{ item.category.name }}" loading="lazy" decoding="async" width="600" height="750">
-                    {% endif %}
-                </div>
-
                 <div class="category-card__overlay"></div>
-
                 <div class="category-card__content">
                     {% if item.headline %}
                     <span class="category-card__headline">{{ item.headline }}</span>
                     {% endif %}
                     <h3 class="category-card__name">{{ item.category.name }}</h3>
+                    {% if item.category.description %}
+                    <p class="category-card__description">{{ item.category.description }}</p>
+                    {% endif %}
                     <span class="category-card__cta">
-                        {{ item.label|default:'EXPLORE' }}
+                        {{ item.label|default:'SHOP NOW' }}
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </span>
                 </div>
             </a>
-            {% endif %}
             {% endfor %}
         </div>
     </div>
 </section>
+{% endif %}
+{% endwith %}
+{% endwith %}

@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MaxValueValidator
 from django.urls import reverse
 from cloudinary.models import CloudinaryField
 
@@ -130,6 +131,52 @@ class Testimonial(models.Model):
 
 
 # =============================================================================
+# CMS Content Page
+# =============================================================================
+
+
+class ContentPage(models.Model):
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True)
+    overline = models.CharField(max_length=200, blank=True, default='')
+    summary = models.TextField(blank=True, default='')
+    content = models.TextField(blank=True, default='')
+    meta_title = models.CharField(max_length=200, blank=True, default='')
+    meta_description = models.TextField(blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    display_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['display_order', 'title']
+
+    def __str__(self):
+        return self.title
+
+
+# =============================================================================
+# Contact Message
+# =============================================================================
+
+
+class ContactMessage(models.Model):
+    name = models.CharField(max_length=200)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20, blank=True, default='')
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} - {self.subject}"
+
+
+# =============================================================================
 # Homepage CMS Models
 # =============================================================================
 
@@ -187,6 +234,7 @@ class HomepageSection(models.Model):
     section_type = models.CharField(max_length=50, choices=SECTION_TYPE_CHOICES, unique=True)
     title = models.CharField(max_length=200, blank=True, default='')
     subtitle = models.CharField(max_length=300, blank=True, default='')
+    overline = models.CharField(max_length=100, blank=True, default='', help_text='Small label above the title (e.g. "NEW ARRIVALS", "THE EDIT")')
     collection = models.ForeignKey(
         ProductCollection, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='sections', help_text='Required for Product Collection sections.'
@@ -229,6 +277,8 @@ class HeroSlide(models.Model):
     desktop_image = models.ImageField(upload_to='homepage/hero/desktop/', blank=True)
     mobile_image = models.ImageField(upload_to='homepage/hero/mobile/', blank=True)
     overlay_opacity = models.PositiveIntegerField(default=60, help_text='Overlay darkness 0-100')
+    image_position_x = models.PositiveSmallIntegerField(default=60, validators=[MaxValueValidator(100)], help_text='Image horizontal focal point: 0=left, 50=center, 100=right')
+    image_position_y = models.PositiveSmallIntegerField(default=50, validators=[MaxValueValidator(100)], help_text='Image vertical focal point: 0=top, 50=center, 100=bottom')
     display_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 
@@ -302,6 +352,21 @@ class NewsletterSubscriber(models.Model):
         return self.email
 
 
+class PromotionalBannerConfig(models.Model):
+    section = models.OneToOneField(HomepageSection, on_delete=models.CASCADE, related_name='promo_config')
+    desktop_image = models.ImageField(upload_to='homepage/promo/', blank=True)
+    mobile_image = models.ImageField(upload_to='homepage/promo/', blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Promotional Banner Image'
+        verbose_name_plural = 'Promotional Banner Images'
+
+    def __str__(self):
+        name = self.section.title or 'Promotional Banner'
+        return f"Promo: {name}"
+
+
 # =============================================================================
 # Theme & Website Settings (Singleton Pattern)
 # =============================================================================
@@ -359,8 +424,8 @@ class WebsiteSettings(models.Model):
         max_length=500, default='We are currently undergoing maintenance. Please check back later.'
     )
     seo_title = models.CharField(max_length=70, default='SYAFRA - Fashion-Forward Vintage Streetwear')
-    seo_description = models.CharField(max_length=160, default='Curated vintage jackets and streetwear. Authentic pieces, modern style.')
-    seo_keywords = models.CharField(max_length=255, default='vintage jackets, streetwear, fashion, thrift')
+    seo_description = models.CharField(max_length=160, default='Discover curated fashion, distinctive silhouettes, and modern essentials at SYAFRA. Explore new arrivals and collections designed for everyday expression.')
+    seo_keywords = models.CharField(max_length=255, default='curated fashion, modern style, new arrivals, streetwear, designer pieces, fashion brand')
     og_image = models.ImageField(upload_to='theme/', blank=True)
     google_search_console_verification = models.CharField(max_length=100, blank=True, default='')
     google_analytics_id = models.CharField(max_length=50, blank=True, default='')

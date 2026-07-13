@@ -271,10 +271,11 @@ else:
         default=not _manage_py_runserver,
     )
     SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = _env_int("SECURE_HSTS_SECONDS", 31536000)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    SECURE_HSTS_PRELOAD = False
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
     PERMISSIONS_POLICY = {
         "geolocation": [],
@@ -557,6 +558,14 @@ if not DEBUG:
         warnings.warn(
             "SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY is not set. SendGrid event webhooks cannot be signature-verified "
             "until you configure the public key from SendGrid Mail Settings.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    if not RAZORPAY_WEBHOOK_SECRET:
+        warnings.warn(
+            "RAZORPAY_WEBHOOK_SECRET is not set. Razorpay payment webhooks cannot be verified "
+            "until you configure the webhook secret. This is required for reliable payment status updates.",
             UserWarning,
             stacklevel=2,
         )

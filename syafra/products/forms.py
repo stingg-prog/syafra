@@ -16,6 +16,10 @@ class HomepageSectionAdminForm(forms.ModelForm):
     config_button_text = forms.CharField(required=False, label='Button Text', widget=forms.TextInput(attrs={'class': 'vTextField'}))
     config_button_url = forms.CharField(required=False, label='Button URL', widget=forms.TextInput(attrs={'class': 'vTextField'}))
 
+    # Hero Secondary CTA fields
+    config_secondary_cta_label = forms.CharField(required=False, label='Secondary CTA Label', widget=forms.TextInput(attrs={'class': 'vTextField'}))
+    config_secondary_cta_url = forms.CharField(required=False, label='Secondary CTA URL', widget=forms.TextInput(attrs={'class': 'vTextField'}))
+
     # Review/Feed sections
     config_max_items = forms.IntegerField(required=False, label='Max Items to Show', min_value=1, max_value=20, widget=forms.NumberInput(attrs={'class': 'vSmallIntegerField'}))
 
@@ -62,6 +66,10 @@ class HomepageSectionAdminForm(forms.ModelForm):
             self.fields['config_button_text'].initial = config.get('button_text', '')
             self.fields['config_button_url'].initial = config.get('button_url', '')
 
+            # Hero Secondary CTA
+            self.fields['config_secondary_cta_label'].initial = config.get('secondary_cta_label', '')
+            self.fields['config_secondary_cta_url'].initial = config.get('secondary_cta_url', '')
+
             # Reviews/Feed
             self.fields['config_max_items'].initial = config.get('max_items', 3)
 
@@ -83,6 +91,11 @@ class HomepageSectionAdminForm(forms.ModelForm):
                 'link_url': cleaned_data.get('config_link_url', ''),
                 'bg_color': cleaned_data.get('config_bg_color', ''),
                 'text_color': cleaned_data.get('config_text_color', ''),
+            }
+        elif section_type == 'hero_slider':
+            config = {
+                'secondary_cta_label': cleaned_data.get('config_secondary_cta_label', ''),
+                'secondary_cta_url': cleaned_data.get('config_secondary_cta_url', ''),
             }
         elif section_type == 'promotional_banner':
             config = {
@@ -128,3 +141,11 @@ class HomepageSectionAdminForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class ContactForm(forms.Form):
+    name = forms.CharField(max_length=200, widget=forms.TextInput(attrs={'placeholder': 'Your Name'}))
+    email = forms.EmailField(widget=forms.EmailInput(attrs={'placeholder': 'your@email.com'}))
+    phone = forms.CharField(max_length=20, required=False, widget=forms.TextInput(attrs={'placeholder': 'Optional'}))
+    subject = forms.CharField(max_length=200, widget=forms.TextInput(attrs={'placeholder': 'How can we help?'}))
+    message = forms.CharField(widget=forms.Textarea(attrs={'placeholder': 'Tell us more...', 'rows': 5}))

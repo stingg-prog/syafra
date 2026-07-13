@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Checkout - SYAFRA{% endblock %}
+{% block title %}Checkout - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
 {% block content %}
 <section class="checkout-page">
@@ -272,9 +272,9 @@
             amount: paymentData.amount,
             currency: paymentData.currency,
             order_id: paymentData.razorpay_order_id,
-            name: 'SYAFRA',
+            name: '{{ theme.store_name|default:"SYAFRA"|escapejs }}',
             description: 'Order #' + paymentData.order_id,
-            image: '{% static "images/syafra_logo.png" %}',
+            image: '{% if theme.logo %}{{ theme.logo.url }}{% else %}{% static "images/syafra_logo.png" %}{% endif %}',
             handler: function(response) {
                 if (paymentHandled) return;
                 paymentHandled = true;

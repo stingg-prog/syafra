@@ -7,6 +7,7 @@ Usage:
 {% endcomment %}
 
 {% if button_type == "floating" %}
+{% if website.whatsapp_number %}
 <style>
 .whatsapp-float {
     position: fixed;
@@ -95,15 +96,17 @@ Usage:
 }
 </style>
 
-<a href="https://wa.me/919037626684?text=Hi%2C%20I%20am%20interested%20in%20your%20products.%20Please%20share%20more%20details." 
+<a href="https://wa.me/{{ website.whatsapp_number }}?text={{ website.whatsapp_default_message|default:'Hi, I am interested in your products. Please share more details.'|urlencode }}" 
    class="whatsapp-float" 
    target="_blank" 
    rel="noopener noreferrer"
    aria-label="Chat on WhatsApp">
     <i class="fab fa-whatsapp"></i>
 </a>
+{% endif %}
 
 {% elif button_type == "enquiry" %}
+{% if website.whatsapp_number %}
 <style>
 .whatsapp-enquiry-btn {
     display: inline-flex;
@@ -158,12 +161,13 @@ Usage:
 }
 </style>
 
-<a href="https://wa.me/919037626684?text=Hi%2C%20I%20am%20interested%20in%20{{ product.name|urlencode }}.%20Can%20you%20share%20more%20details%3F" 
+<a href="https://wa.me/{{ website.whatsapp_number }}?text=Hi%2C%20I%20am%20interested%20in%20{{ product.name|urlencode }}.%20Can%20you%20share%20more%20details%3F" 
    class="whatsapp-enquiry-btn" 
    target="_blank" 
    rel="noopener noreferrer">
     <i class="fab fa-whatsapp"></i>
     <span>ENQUIRE ON WHATSAPP</span>
 </a>
+{% endif %}
 
 {% endif %}

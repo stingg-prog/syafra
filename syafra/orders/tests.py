@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.test.client import RequestFactory
 from django.utils import timezone
 from unittest import mock
+import razorpay
 from accounts.models import EmailLog
 from products.models import Category, Product
 from cart.models import Cart, CartItem
@@ -1143,6 +1144,215 @@ class RazorpayPaymentFlowTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('no-cache', response['Cache-Control'])
+
+    @override_settings(
+        RAZORPAY_KEY_ID='price_key',
+        RAZORPAY_KEY_SECRET='price_secret',
+        RAZORPAY_WEBHOOK_SECRET='webhook_secret',
+    )
+    def test_manipulated_frontend_price_cannot_lower_order_total(self):
+        PaymentSettings.objects.create(
+            razorpay_key_id='test_key',
+            razorpay_key_secret='test_secret',
+            is_active=True,
+            currency='INR',
+            currency_symbol='₹',
+        )
+        category = Category.objects.create(name='Price Cat', slug='price-cat')
+        product = Product.objects.create(name='Price Product', brand='Price Brand',
+            category=category, price=150.00, stock=5)
+        self.client.login(username='payuser', password='testpass123')
+        cart = Cart.get_for_user(self.user)
+        CartItem.objects.create(cart=cart, product=product, quantity=2)
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client_cls.return_value.order.create.return_value = {
+                'id': 'order_price_123', 'amount': 30000, 'currency': 'INR', 'status': 'created',
+            }
+            response = self.client.post(
+                reverse('orders:checkout'),
+                {'customer_name': 'User', 'email': 'u@e.com', 'phone_number': '9876543210',
+                 'pincode': '560001', 'shipping_address': 'Addr', 'payment_method': 'razorpay',
+                 'total_price': '1.00'},
+                HTTP_ACCEPT='application/json',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['amount'], 30000)
+        order = Order.objects.get(user=self.user)
+        self.assertEqual(order.total_price, 300.00)
+        item = order.items.first()
+        self.assertEqual(item.price, 150.00)
+        self.assertEqual(item.quantity, 2)
+
+    @override_settings(
+        RAZORPAY_KEY_ID='sig_key',
+        RAZORPAY_KEY_SECRET='sig_secret',
+    )
+    def test_invalid_payment_signature_cannot_mark_order_paid(self):
+        PaymentSettings.objects.create(
+            razorpay_key_id='test_key',
+            razorpay_key_secret='test_secret',
+            is_active=True,
+            currency='INR',
+            currency_symbol='₹',
+        )
+        order = Order.objects.create(
+            user=self.user, total_price=100.00, customer_name='User',
+            email='u@e.com', phone_number='9876543210',
+            shipping_address='Addr', status='pending', payment_status='pending',
+            razorpay_order_id='order_sig_123',
+        )
+        self.client.login(username='payuser', password='testpass123')
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client = client_cls.return_value
+            client.utility.verify_payment_signature.side_effect = razorpay.errors.SignatureVerificationError('bad sig')
+            response = self.client.post(
+                reverse('orders:verify_payment'),
+                {'razorpay_order_id': 'order_sig_123', 'razorpay_payment_id': 'pay_sig_123',
+                 'razorpay_signature': 'bad_signature'},
+                HTTP_ACCEPT='application/json',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+        self.assertEqual(response.status_code, 400)
+        order.refresh_from_db()
+        self.assertEqual(order.payment_status, 'failed')
+        self.assertEqual(order.status, 'failed')
+
+    @override_settings(
+        RAZORPAY_KEY_ID='gw_key',
+        RAZORPAY_KEY_SECRET='gw_secret',
+    )
+    def test_gateway_order_id_mismatch_is_rejected(self):
+        PaymentSettings.objects.create(
+            razorpay_key_id='test_key',
+            razorpay_key_secret='test_secret',
+            is_active=True,
+            currency='INR',
+            currency_symbol='₹',
+        )
+        order = Order.objects.create(
+            user=self.user, total_price=100.00, customer_name='User',
+            email='u@e.com', phone_number='9876543210',
+            shipping_address='Addr', status='pending', payment_status='pending',
+            razorpay_order_id='order_gw_123',
+        )
+        self.client.login(username='payuser', password='testpass123')
+        with mock.patch('orders.views.razorpay.Client') as client_cls:
+            client = client_cls.return_value
+            client.utility.verify_payment_signature.return_value = None
+            client.payment.fetch.return_value = {
+                'id': 'pay_gw_123',
+                'order_id': 'order_WRONG_456',
+                'amount': 10000,
+                'currency': 'INR',
+                'status': 'captured',
+                'captured': True,
+            }
+            response = self.client.post(
+                reverse('orders:verify_payment'),
+                {'razorpay_order_id': 'order_gw_123', 'razorpay_payment_id': 'pay_gw_123',
+                 'razorpay_signature': 'sig_gw_123'},
+                HTTP_ACCEPT='application/json',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+        self.assertEqual(response.status_code, 400)
+        order.refresh_from_db()
+        self.assertEqual(order.payment_status, 'failed')
+
+    @override_settings(
+        RAZORPAY_KEY_ID='dup_key',
+        RAZORPAY_KEY_SECRET='dup_secret',
+        RAZORPAY_WEBHOOK_SECRET='dup_wh_secret',
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        DEFAULT_FROM_EMAIL='SYAFRA <noreply@syafra.com>',
+    )
+    def test_duplicate_verified_webhook_does_not_reduce_stock_twice(self):
+        PaymentSettings.objects.create(
+            razorpay_key_id='test_key',
+            razorpay_key_secret='test_secret',
+            is_active=True,
+            currency='INR',
+            currency_symbol='₹',
+        )
+        category = Category.objects.create(name='Dup Cat', slug='dup-cat')
+        product = Product.objects.create(name='Dup Product', brand='Dup Brand',
+            category=category, price=100.00, stock=10)
+        order = Order.objects.create(
+            user=self.user, total_price=100.00, customer_name='User',
+            email='dup@e.com', phone_number='9876543210',
+            shipping_address='Addr', status='pending', payment_status='pending',
+            razorpay_order_id='order_dup_123',
+        )
+        OrderItem.objects.create(order=order, product=product, quantity=1, price=100.00)
+        payload = {
+            'event': 'payment.captured',
+            'payload': {
+                'payment': {
+                    'entity': {
+                        'id': 'pay_dup_123',
+                        'order_id': 'order_dup_123',
+                        'currency': 'INR',
+                        'status': 'captured',
+                    }
+                }
+            }
+        }
+        body = json.dumps(payload).encode('utf-8')
+        signature = hmac.new(b'dup_wh_secret', body, hashlib.sha256).hexdigest()
+        def post_webhook():
+            return self.client.post(
+                reverse('orders:razorpay_webhook'),
+                data=body, content_type='application/json',
+                HTTP_X_RAZORPAY_SIGNATURE=signature,
+            )
+        response1 = post_webhook()
+        self.assertEqual(response1.status_code, 200)
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 9)
+        response2 = post_webhook()
+        self.assertEqual(response2.status_code, 200)
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 9)
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        DEFAULT_FROM_EMAIL='SYAFRA <noreply@syafra.com>',
+    )
+    def test_stock_cannot_become_negative(self):
+        from django.core.exceptions import ValidationError
+        category = Category.objects.create(name='Neg Cat', slug='neg-cat')
+        product = Product.objects.create(name='Neg Product', brand='Neg Brand',
+            category=category, price=50.00, stock=1)
+        self.client.login(username='payuser', password='testpass123')
+        cart = Cart.get_for_user(self.user)
+        CartItem.objects.create(cart=cart, product=product, quantity=2)
+        response = self.client.post(
+            reverse('orders:checkout'),
+            {'customer_name': 'User', 'email': 'u@e.com', 'phone_number': '9876543210',
+             'pincode': '560001', 'shipping_address': 'Addr', 'payment_method': 'razorpay'},
+            HTTP_ACCEPT='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Order.objects.filter(user=self.user).exists())
+
+    def test_orderitem_price_snapshot_independent_of_product_price_change(self):
+        category = Category.objects.create(name='Snap Cat', slug='snap-cat')
+        product = Product.objects.create(name='Snap Product', brand='Snap Brand',
+            category=category, price=200.00, stock=10)
+        order = Order.objects.create(
+            user=self.user, total_price=200.00, customer_name='User',
+            email='snap@e.com', phone_number='9876543210',
+            shipping_address='Addr', status='pending', payment_status='pending',
+        )
+        item = OrderItem.objects.create(order=order, product=product, quantity=1, price=product.price)
+        original_price = item.price
+        product.price = 999.99
+        product.save()
+        item.refresh_from_db()
+        self.assertEqual(item.price, original_price)
+        self.assertNotEqual(item.price, product.price)
 
 
 class OrderSuccessViewTest(TestCase):

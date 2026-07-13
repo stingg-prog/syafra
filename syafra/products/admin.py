@@ -5,7 +5,8 @@ from .models import (
     Category, Product, ProductSize, ProductImage, InstagramPost, Testimonial,
     HomepageSection, HeroSlide, TrustBarItem, ShopByCategoryItem,
     ProductCollection, FooterLink, NewsletterSubscriber,
-    ThemeSettings, WebsiteSettings,
+    PromotionalBannerConfig, ThemeSettings, WebsiteSettings,
+    ContentPage, ContactMessage,
 )
 
 
@@ -75,7 +76,7 @@ class ProductCollectionAdmin(admin.ModelAdmin):
 class HeroSlideInline(admin.TabularInline):
     model = HeroSlide
     extra = 1
-    fields = ('display_order', 'is_active', 'title', 'subtitle', 'button_text', 'button_url', 'desktop_image', 'mobile_image', 'overlay_opacity')
+    fields = ('display_order', 'is_active', 'title', 'subtitle', 'button_text', 'button_url', 'desktop_image', 'mobile_image', 'overlay_opacity', 'image_position_x', 'image_position_y')
     ordering = ['display_order']
 
 
@@ -100,11 +101,22 @@ class FooterLinkInline(admin.TabularInline):
     ordering = ['display_order']
 
 
+class PromotionalBannerConfigInline(admin.StackedInline):
+    model = PromotionalBannerConfig
+    extra = 0
+    max_num = 1
+    fields = ('is_active', 'desktop_image', 'mobile_image')
+    verbose_name = 'Promotional Banner Image'
+    verbose_name_plural = 'Promotional Banner Image'
+    can_delete = False
+
+
 @admin.register(HomepageSection)
 class HomepageSectionAdmin(admin.ModelAdmin):
     list_display = ('section_type', 'title', 'display_order', 'is_active')
-    list_filter = ('is_active',)
+    list_filter = ('section_type', 'is_active')
     list_editable = ('display_order', 'is_active')
+    search_fields = ('title', 'subtitle', 'overline')
     ordering = ['display_order']
     save_on_top = True
 
@@ -116,7 +128,7 @@ class HomepageSectionAdmin(admin.ModelAdmin):
     def get_fieldsets(self, request, obj=None):
         section_type = self._get_section_type(request, obj)
         base = [
-            (None, {'fields': ('section_type', 'title', 'subtitle')}),
+            (None, {'fields': ('section_type', 'title', 'overline', 'subtitle')}),
             ('Visibility', {'fields': ('display_order', 'is_active')}),
         ]
 
@@ -125,7 +137,10 @@ class HomepageSectionAdmin(admin.ModelAdmin):
                 'fields': ('config_text', 'config_link_url', ('config_bg_color', 'config_text_color')),
             }))
         elif section_type == 'hero_slider':
-            pass  # Content managed via HeroSlide inline
+            base.append(('Secondary Call-to-Action', {
+                'fields': ('config_secondary_cta_label', 'config_secondary_cta_url'),
+                'description': 'Optional secondary button below the main slide CTA.',
+            }))
         elif section_type == 'trust_bar':
             pass  # Content managed via TrustBarItem inline
         elif section_type == 'shop_by_category':
@@ -193,6 +208,8 @@ class HomepageSectionAdmin(admin.ModelAdmin):
             return [TrustBarItemInline]
         if section_type == 'shop_by_category':
             return [ShopByCategoryItemInline]
+        if section_type == 'promotional_banner':
+            return [PromotionalBannerConfigInline]
         if section_type == 'footer':
             return [FooterLinkInline]
         return []
@@ -291,3 +308,42 @@ class WebsiteSettingsAdmin(admin.ModelAdmin):
         from django.shortcuts import redirect
         obj = WebsiteSettings.get_settings()
         return redirect(reverse('admin:products_websitesettings_change', args=[obj.pk]))
+
+
+@admin.register(ContentPage)
+class ContentPageAdmin(admin.ModelAdmin):
+    list_display = ('title', 'slug', 'is_active', 'display_order')
+    list_filter = ('is_active',)
+    list_editable = ('display_order',)
+    search_fields = ('title', 'slug')
+    ordering = ['display_order', 'title']
+    prepopulated_fields = {'slug': ('title',)}
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'slug', 'overline'),
+        }),
+        ('Content', {
+            'fields': ('summary', 'content'),
+        }),
+        ('SEO', {
+            'fields': ('meta_title', 'meta_description'),
+        }),
+        ('Settings', {
+            'fields': ('is_active', 'display_order'),
+        }),
+    )
+    save_on_top = True
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'subject', 'is_read', 'created_at')
+    list_filter = ('is_read',)
+    search_fields = ('name', 'email', 'subject')
+    readonly_fields = ('name', 'email', 'phone', 'subject', 'message', 'created_at')
+    list_editable = ('is_read',)
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+
+    def has_add_permission(self, request):
+        return False

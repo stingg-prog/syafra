@@ -1,5 +1,5 @@
 /**
- * Hero - Parallax, slideshow, Ken Burns, numbered dots, prev/next arrows
+ * Hero - Slideshow, Ken Burns, numbered dots, prev/next arrows, parallax
  */
 (function () {
     'use strict';
@@ -30,15 +30,14 @@
             observer.observe(hero);
         }
 
-        // ---- Parallax Effect ----
-        var heroImage = hero.querySelector('.hero-image');
-        if (heroImage) {
+        // ---- Parallax Effect (applied to wrapper so it doesn't conflict with Ken Burns) ----
+        var heroImageWrapper = hero.querySelector('.hero-image-wrapper');
+        if (heroImageWrapper) {
             var parallaxHandler = function () {
                 var scrolled = window.pageYOffset;
-                var heroRect = hero.getBoundingClientRect();
-                if (heroRect.bottom > 0 && scrolled < hero.offsetHeight) {
-                    var translateY = scrolled * 0.15;
-                    heroImage.style.transform = 'translateY(' + translateY + 'px) scale(1)';
+                if (scrolled < hero.offsetHeight) {
+                    var translateY = scrolled * 0.12;
+                    heroImageWrapper.style.transform = 'translateY(' + translateY + 'px)';
                 }
             };
 
@@ -75,15 +74,16 @@
             if (isTransitioning || index === current) return;
             isTransitioning = true;
 
-            // Hide current slide
             var currentSlide = slides[current];
             var nextSlide = slides[index];
 
             currentSlide.classList.remove('is-active');
-            currentSlide.querySelector('.hero-image').classList.remove('ken-burns');
+            var currentImg = currentSlide.querySelector('.hero-image');
+            if (currentImg) currentImg.classList.remove('ken-burns');
 
             nextSlide.classList.add('is-active');
-            nextSlide.querySelector('.hero-image').classList.add('ken-burns');
+            var nextImg = nextSlide.querySelector('.hero-image');
+            if (nextImg) nextImg.classList.add('ken-burns');
 
             // Update dots
             dots.forEach(function (d) {

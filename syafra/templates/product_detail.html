@@ -1,96 +1,99 @@
 {% extends 'base.html' %}
 {% load static cloudinary_filters %}
 
-{% block title %}{{ product.name }} - SYAFRA{% endblock %}
+{% block title %}{{ product.name }} - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pages/product-detail.css' %}">
+{% endblock %}
 
 {% block content %}
 <section class="pdp">
-    <div class="container-max">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
-            <!-- Gallery -->
-            <div class="pdp-gallery">
-                {% if primary_image_url %}
-                <div class="pdp-gallery__main {% if product.stock == 0 %}pdp-gallery__main--sold-out{% endif %}">
-                    <img id="mainImage"
-                         src="{{ primary_image_url|cloudinary_normalize }}"
-                         alt="{{ product.name }}"
-                         decoding="async" width="900" height="1125"
-                         fetchpriority="high">
-                    {% if product.stock == 0 %}
-                    <div class="pdp-gallery__sold-out">
-                        <span>SOLD OUT</span>
-                    </div>
-                    {% endif %}
-                </div>
+    <div class="pdp-container">
+        <div class="pdp-layout">
 
-                {% if gallery_images %}
+            <!-- Image Gallery -->
+            <div class="pdp-gallery">
                 <div class="pdp-gallery__thumbs">
                     {% if product.image %}
-                    <button type="button" class="pdp-gallery__thumb active"
-                            onclick="changeImage(this, '{{ product.image.url|cloudinary_normalize }}')">
-                        <img src="{{ product.image.url|cloudinary_normalize }}"
-                             alt="{{ product.name }} thumbnail"
-                             loading="lazy" decoding="async" width="72" height="72">
+                    <button type="button" class="pdp-gallery__thumb is-active" onclick="changeImage(this, '{{ product.image.url|cloudinary_normalize }}')">
+                        <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="eager" decoding="async" width="64" height="80">
                     </button>
                     {% endif %}
                     {% for img in gallery_images %}
-                    <button type="button" class="pdp-gallery__thumb {% if not product.image and forloop.first %}active{% endif %}"
-                            onclick="changeImage(this, '{{ img.image.url|cloudinary_normalize }}')">
-                        <img src="{{ img.image.url|cloudinary_normalize }}"
-                             alt="{{ product.name }} gallery {{ forloop.counter }}"
-                             loading="lazy" decoding="async" width="72" height="72">
+                    <button type="button" class="pdp-gallery__thumb{% if not product.image and forloop.first %} is-active{% endif %}" onclick="changeImage(this, '{{ img.image.url|cloudinary_normalize }}')">
+                        <img src="{{ img.image.url|cloudinary_normalize }}" alt="{{ product.name }} {{ forloop.counter }}" loading="lazy" decoding="async" width="64" height="80">
                     </button>
                     {% endfor %}
                 </div>
-                {% endif %}
 
-                {% else %}
-                <div class="pdp-gallery__main {% if product.stock == 0 %}pdp-gallery__main--sold-out{% endif %}">
+                <div class="pdp-gallery__main{% if product.stock == 0 %} pdp-gallery__main--sold-out{% endif %}">
                     <img id="mainImage"
-                         src="{% static 'images/default.jpg' %}"
-                         alt="No image available"
-                         decoding="async" width="900" height="1125">
+                         src="{{ primary_image_url|cloudinary_normalize }}"
+                         alt="{{ product.name }}"
+                         fetchpriority="high"
+                         decoding="async"
+                         width="900" height="1125">
                     {% if product.stock == 0 %}
                     <div class="pdp-gallery__sold-out">
                         <span>SOLD OUT</span>
                     </div>
                     {% endif %}
                 </div>
-                {% endif %}
             </div>
 
-            <!-- Product Info -->
-            <div class="pdp-info">
-                <div>
-                    {% if product.condition == 'new' %}
-                    <span class="pdp-info__badge">New</span>
-                    {% elif product.condition == 'used' %}
-                    <span class="pdp-info__badge pdp-info__badge--vintage">Vintage</span>
-                    {% else %}
-                    <span class="pdp-info__badge pdp-info__badge--refurb">Refurbished</span>
+            <!-- Product Details -->
+            <div class="pdp-details">
+                <div class="pdp-details__inner">
+
+                    <p class="pdp-brand">{{ product.brand }}</p>
+                    <h1 class="pdp-title">{{ product.name }}</h1>
+                    <p class="pdp-price">{{ currency }}{{ product.price|floatformat:0 }}</p>
+
+                    {% if product.description %}
+                    <p class="pdp-desc">{{ product.description }}</p>
                     {% endif %}
 
-                    <h1 class="pdp-info__name">{{ product.name }}</h1>
-                    <p class="pdp-info__brand">{{ product.brand }}</p>
-                    <p class="pdp-info__price">{{ currency }}{{ product.price|floatformat:2 }}</p>
-                </div>
-
-                <div class="pdp-details">
-                    <div class="pdp-details__row">
-                        <span class="pdp-details__label">Condition</span>
-                        <span class="pdp-details__value">{{ product.get_condition_display }}</span>
+                    <!-- Meta Grid -->
+                    <div class="pdp-meta">
+                        <div class="pdp-meta__item">
+                            <span class="pdp-meta__label">Condition</span>
+                            <span class="pdp-meta__value">{{ product.get_condition_display }}</span>
+                        </div>
+                        <div class="pdp-meta__item">
+                            <span class="pdp-meta__label">Category</span>
+                            <span class="pdp-meta__value">{{ product.category.name }}</span>
+                        </div>
+                        <div class="pdp-meta__item">
+                            <span class="pdp-meta__label">Stock</span>
+                            <span class="pdp-meta__value
+                                {% if product.stock > 3 %}pdp-meta__value--in
+                                {% elif product.stock > 0 %}pdp-meta__value--low
+                                {% else %}pdp-meta__value--out{% endif %}">
+                                {% if product.stock > 3 %}In Stock
+                                {% elif product.stock > 0 %}Only {{ product.stock }} left
+                                {% else %}Sold Out{% endif %}
+                            </span>
+                        </div>
+                        {% if product.pk %}
+                        <div class="pdp-meta__item">
+                            <span class="pdp-meta__label">SKU</span>
+                            <span class="pdp-meta__value">#{{ product.pk|stringformat:"04d" }}</span>
+                        </div>
+                        {% endif %}
                     </div>
 
+                    <!-- Size Selection -->
                     {% if product.has_sizes %}
-                    <div class="pdp-sizes">
-                        <div class="pdp-sizes__header">
-                            <span class="pdp-sizes__label">Size</span>
-                            <span id="selected-size-display" class="pdp-sizes__selected"></span>
+                    <div class="pdp-size">
+                        <div class="pdp-size__header">
+                            <span class="pdp-size__label">Size</span>
+                            <span class="pdp-size__selected" id="selected-size-display"></span>
                         </div>
-                        <div class="pdp-sizes__grid" id="size-selector">
+                        <div class="pdp-size__grid" id="size-selector">
                             {% for s in product.sizes.all %}
                             <button type="button"
-                                    class="pdp-size-btn {% if s.stock == 0 %}disabled{% endif %}"
+                                    class="pdp-size__btn{% if s.stock == 0 %} disabled{% endif %}"
                                     data-size="{{ s.size }}"
                                     data-stock="{{ s.stock }}"
                                     onclick="selectSize('{{ s.size }}')"
@@ -99,211 +102,123 @@
                             </button>
                             {% endfor %}
                         </div>
-                        <p id="size-stock-display" class="pdp-size-stock"></p>
+                        <p id="size-stock-display" class="pdp-size__stock"></p>
                     </div>
                     {% endif %}
 
-                    <div class="pdp-details__row">
-                        <span class="pdp-details__label">Category</span>
-                        <span class="pdp-details__value">{{ product.category.name }}</span>
+                    <!-- Quantity -->
+                    <div class="pdp-qty">
+                        <span class="pdp-qty__label">Quantity</span>
+                        <div class="pdp-qty__selector">
+                            <button type="button" class="pdp-qty__btn" onclick="decrementQty()" aria-label="Decrease quantity">−</button>
+                            <span class="pdp-qty__value" id="qty-value">1</span>
+                            <button type="button" class="pdp-qty__btn" onclick="incrementQty()" aria-label="Increase quantity">+</button>
+                        </div>
                     </div>
-                    <div class="pdp-details__row">
-                        <span class="pdp-details__label">Stock</span>
+
+                    <!-- Actions -->
+                    <div class="pdp-actions">
                         {% if product.stock > 0 %}
-                        <span class="pdp-details__value pdp-details__value--success">In Stock ({{ product.stock }})</span>
+                        <button onclick="addToCart({{ product.id }})" id="add-to-cart-btn" class="pdp-btn pdp-btn--primary">
+                            ADD TO CART
+                        </button>
+                        <button onclick="buyNow({{ product.id }})" id="buy-now-btn" class="pdp-btn pdp-btn--secondary">
+                            BUY NOW
+                        </button>
                         {% else %}
-                        <span class="pdp-details__value pdp-details__value--danger">Sold Out</span>
+                        <button disabled class="pdp-btn pdp-btn--primary">SOLD OUT</button>
                         {% endif %}
                     </div>
-                </div>
 
-                {% if product.description %}
-                <div class="pdp-description">
-                    <h3 class="pdp-description__title">Description</h3>
-                    <p class="pdp-description__text">{{ product.description }}</p>
-                </div>
-                {% endif %}
+                    <!-- Info Accordion -->
+                    <div class="pdp-accordion">
+                        <div class="pdp-accordion__item is-open">
+                            <button type="button" class="pdp-accordion__header" onclick="toggleAccordion(this)" aria-expanded="true">
+                                Product Details
+                                <span class="pdp-accordion__icon"></span>
+                            </button>
+                            <div class="pdp-accordion__body">
+                                <div class="pdp-accordion__content">
+                                    {% if product.description %}
+                                    {{ product.description }}
+                                    {% else %}
+                                    Premium vintage and contemporary pieces, curated for the modern wardrobe. Each item is selected for its quality, fit, and timeless appeal.
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
 
-                <div class="pdp-actions">
-                    {% if product.stock > 0 %}
-                    <button onclick="addToCart({{ product.id }})" id="add-to-cart-btn" class="pdp-add-to-cart">
-                        Add to Bag
-                    </button>
-                    {% else %}
-                    <button disabled class="pdp-add-to-cart">
-                        Sold Out
-                    </button>
-                    {% endif %}
-                    <button type="button" class="pdp-wishlist-btn" onclick="toggleWishlist({{ product.id }}, this)">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                        </svg>
-                        <span>Add to Wishlist</span>
-                    </button>
+                        <div class="pdp-accordion__item">
+                            <button type="button" class="pdp-accordion__header" onclick="toggleAccordion(this)" aria-expanded="false">
+                                Shipping
+                                <span class="pdp-accordion__icon"></span>
+                            </button>
+                            <div class="pdp-accordion__body">
+                                <div class="pdp-accordion__content">
+                                    Free shipping on orders over ₹1,000. Standard delivery takes 3–7 business days. Express shipping available at checkout.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pdp-accordion__item">
+                            <button type="button" class="pdp-accordion__header" onclick="toggleAccordion(this)" aria-expanded="false">
+                                Returns &amp; Exchanges
+                                <span class="pdp-accordion__icon"></span>
+                            </button>
+                            <div class="pdp-accordion__body">
+                                <div class="pdp-accordion__content">
+                                    Free returns within 14 days of delivery. Items must be unworn with tags attached. Exchange requests processed within 48 hours.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pdp-accordion__item">
+                            <button type="button" class="pdp-accordion__header" onclick="toggleAccordion(this)" aria-expanded="false">
+                                Care Instructions
+                                <span class="pdp-accordion__icon"></span>
+                            </button>
+                            <div class="pdp-accordion__body">
+                                <div class="pdp-accordion__content">
+                                    Dry clean recommended. Store in a cool, dry place away from direct sunlight. Handle with care to preserve fabric quality.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
+
         </div>
     </div>
 </section>
 
 {% if related_products %}
 <section class="pdp-related">
-    <div class="container-max">
-        <h2 class="pdp-related__title">You May Also Like</h2>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {% for related in related_products %}
-            <a href="{% url 'products:product_detail' related.pk %}" class="product-card group block">
-                <div class="product-card__image">
-                    {% if related.image %}
-                    <img src="{{ related.image.url|cloudinary_normalize }}" alt="{{ related.name }}"
-                         loading="lazy" decoding="async" width="600" height="750"
-                         class="product-card__img">
-                    {% else %}
-                    <img src="{% static 'images/default.jpg' %}" alt="No image available"
-                         loading="lazy" decoding="async" width="600" height="750"
-                         class="product-card__img">
-                    {% endif %}
+    <h2 class="pdp-related__title">You May Also Like</h2>
+    <div class="pdp-related__grid">
+        {% for related in related_products %}
+        <a href="{% url 'products:product_detail' related.pk %}" class="product-card">
+            <div class="product-card__image">
+                {% if related.image %}
+                <img src="{{ related.image.url|cloudinary_normalize }}" alt="{{ related.name }}" loading="lazy" decoding="async" width="600" height="750">
+                {% else %}
+                <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750">
+                {% endif %}
+            </div>
+            <div class="product-card__info">
+                <span class="product-card__brand">{{ related.brand }}</span>
+                <h3 class="product-card__name">{{ related.name }}</h3>
+                <div class="product-card__price">
+                    <span class="product-card__price-current">{{ currency }}{{ related.price|floatformat:0 }}</span>
                 </div>
-                <div class="product-card__info">
-                    <h3 class="product-card__name">{{ related.name }}</h3>
-                    <p class="product-card__brand">{{ related.brand }}</p>
-                    <p class="product-card__price">{{ currency }}{{ related.price|floatformat:2 }}</p>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
+            </div>
+        </a>
+        {% endfor %}
     </div>
 </section>
 {% endif %}
-
-<section class="pdp-back">
-    <a href="{% url 'products:shop' %}" class="pdp-back__link">
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-        </svg>
-        Back to Shop
-    </a>
-</section>
-
-<script>
-let selectedSize = '';
-
-function selectSize(size) {
-    selectedSize = size;
-    document.querySelectorAll('.pdp-size-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    const clickedBtn = document.querySelector(`[data-size="${size}"]`);
-    if (clickedBtn) {
-        clickedBtn.classList.add('active');
-    }
-    document.getElementById('selected-size-display').textContent = size;
-
-    const stockDisplay = document.getElementById('size-stock-display');
-    const stock = clickedBtn ? clickedBtn.getAttribute('data-stock') : 0;
-    if (stock !== null && stock !== undefined) {
-        if (stock == 0) {
-            stockDisplay.textContent = 'Out of Stock';
-            stockDisplay.className = 'pdp-size-stock pdp-size-stock--out';
-        } else if (stock <= 3) {
-            stockDisplay.textContent = `Only ${stock} left`;
-            stockDisplay.className = 'pdp-size-stock pdp-size-stock--low';
-        } else {
-            stockDisplay.textContent = `${stock} available`;
-            stockDisplay.className = 'pdp-size-stock pdp-size-stock--in';
-        }
-    }
-}
-
-function changeImage(thumbnail, imageUrl) {
-    const mainImage = document.getElementById('mainImage');
-    mainImage.src = imageUrl;
-
-    document.querySelectorAll('.pdp-gallery__thumb').forEach(thumb => {
-        thumb.classList.remove('active');
-    });
-    thumbnail.classList.add('active');
-}
-
-function addToCart(productId) {
-    const btn = document.getElementById('add-to-cart-btn');
-    const sizeSelector = document.getElementById('size-selector');
-    const hasSizes = sizeSelector && sizeSelector.querySelectorAll('.pdp-size-btn').length > 0;
-
-    if (hasSizes && !selectedSize) {
-        showToast('Please select a size.', 'error');
-        return;
-    }
-
-    if (selectedSize) {
-        const sizeBtn = document.querySelector(`[data-size="${selectedSize}"]`);
-        if (sizeBtn && sizeBtn.disabled) {
-            showToast('This size is out of stock.', 'error');
-            return;
-        }
-    }
-
-    btn.textContent = 'ADDING...';
-    btn.disabled = true;
-
-    const formData = new URLSearchParams();
-    formData.append('quantity', '1');
-    if (selectedSize) {
-        formData.append('size', selectedSize);
-    }
-
-    fetch(`/cart/add/${productId}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: formData.toString()
-    })
-    .then(response => {
-        if (response.redirected) {
-            window.location.href = response.url;
-            return null;
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (!data) return;
-
-        if (data.success) {
-            btn.textContent = data.is_updated ? 'UPDATED!' : 'ADDED!';
-            btn.classList.add('pdp-add-to-cart--added');
-
-            const cartLink = document.querySelector('a[href*="cart"]');
-            if (cartLink) {
-                let badge = cartLink.querySelector('.cart-badge');
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'cart-badge';
-                    const cartText = cartLink.querySelector('span');
-                    if (cartText) cartText.appendChild(badge);
-                }
-                badge.textContent = data.cart_count;
-            }
-            showToast('Added to bag.', 'success');
-
-            setTimeout(() => {
-                btn.textContent = 'ADD TO BAG';
-                btn.classList.remove('pdp-add-to-cart--added');
-                btn.disabled = false;
-            }, 2000);
-        } else {
-            showToast(data.error || 'Unable to add item.', 'error');
-            btn.textContent = 'ADD TO BAG';
-            btn.disabled = false;
-        }
-    })
-    .catch(() => {
-        showToast('Network error.', 'error');
-        btn.textContent = 'ADD TO BAG';
-        btn.disabled = false;
-    });
-}
-</script>
 {% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/product-detail.js' %}"></script>
+{% endblock extra_js %}

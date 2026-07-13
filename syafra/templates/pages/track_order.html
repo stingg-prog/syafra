@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ meta_title }} | {{ theme.store_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<main class="page-content">
+    <div class="page-content__container page-content__container--narrow">
+        <h1 class="page-content__title">Track Order</h1>
+
+        <form method="post" class="track-form">
+            {% csrf_token %}
+            <div class="track-form__field">
+                <label for="order_number">Order Number</label>
+                <input type="text" name="order_number" id="order_number" required placeholder="e.g. 12345">
+            </div>
+            <div class="track-form__field">
+                <label for="email">Email Address</label>
+                <input type="email" name="email" id="email" required placeholder="email used during checkout">
+            </div>
+            <button type="submit" class="track-form__submit">Track Order</button>
+        </form>
+
+        {% if result is not None %}
+        <div class="track-result">
+            <div class="track-result__header">
+                <span class="track-result__status track-result__status--{{ result.status }}">{{ result.get_status_display }}</span>
+            </div>
+            <div class="track-result__details">
+                <div class="track-result__row">
+                    <span class="track-result__label">Order Number</span>
+                    <span class="track-result__value">#{{ result.pk }}</span>
+                </div>
+                <div class="track-result__row">
+                    <span class="track-result__label">Order Date</span>
+                    <span class="track-result__value">{{ result.created_at|date:"F j, Y" }}</span>
+                </div>
+                <div class="track-result__row">
+                    <span class="track-result__label">Payment Status</span>
+                    <span class="track-result__value">{{ result.get_payment_status_display }}</span>
+                </div>
+                <div class="track-result__row">
+                    <span class="track-result__label">Total</span>
+                    <span class="track-result__value">{{ currency }} {{ result.total_price|floatformat:2 }}</span>
+                </div>
+                {% if result.tracking_id %}
+                <div class="track-result__row">
+                    <span class="track-result__label">Tracking ID</span>
+                    <span class="track-result__value">{{ result.tracking_id }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% if result.items.exists %}
+            <div class="track-result__items">
+                <h3>Items</h3>
+                <ul>
+                    {% for item in result.items.all %}
+                    <li class="track-result__item">
+                        <span class="track-result__item-name">{{ item.product.name }}</span>
+                        <span class="track-result__item-meta">
+                            {% if item.size %}Size: {{ item.size }} · {% endif %}
+                            Qty: {{ item.quantity }} · {{ currency }}{{ item.price|floatformat:2 }} each
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        {% elif request.method == 'POST' %}
+        <div class="track-result track-result--not-found">
+            <p>We couldn't find an order matching the details provided. Please check your order number and email address and try again.</p>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

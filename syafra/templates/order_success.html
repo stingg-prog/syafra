@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static cloudinary_filters %}
 
-{% block title %}Order Confirmed - SYAFRA{% endblock %}
+{% block title %}Order Confirmed - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
 {% block content %}
 <section class="success-page">

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ meta_title }}{% endblock %}
+{% block meta_description %}{{ meta_description }}{% endblock %}
+
+{% block canonical %}
+<link rel="canonical" href="{{ request.build_absolute_uri }}">
+{% endblock %}
+
+{% block content %}
+<main class="page-content">
+    <div class="page-content__container">
+        {% if page.overline %}
+        <span class="page-content__overline">{{ page.overline }}</span>
+        {% endif %}
+        <h1 class="page-content__title">{{ page.title }}</h1>
+        {% if page.summary %}
+        <p class="page-content__summary">{{ page.summary }}</p>
+        {% endif %}
+        {% if page.content %}
+        <div class="page-content__body">{{ page.content|safe }}</div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

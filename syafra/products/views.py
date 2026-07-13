@@ -10,12 +10,15 @@ import re
 from .models import (
     Product, Category, InstagramPost, Testimonial,
     HomepageSection, NewsletterSubscriber, ProductCollection,
+    ShopByCategoryItem, ContentPage, ContactMessage,
+    ThemeSettings, WebsiteSettings,
 )
+from .forms import ContactForm
 from orders.models import PaymentSettings
 
 
 def home(request):
-    sections = HomepageSection.objects.filter(is_active=True).order_by('display_order')
+    sections = list(HomepageSection.objects.filter(is_active=True).order_by('display_order'))
 
     section_data = {}
     for section in sections:
@@ -24,6 +27,8 @@ def home(request):
 
         if st == 'hero_slider':
             data['slides'] = list(section.hero_slides.filter(is_active=True).order_by('display_order'))
+            data['secondary_cta_label'] = section.config.get('secondary_cta_label', '')
+            data['secondary_cta_url'] = section.config.get('secondary_cta_url', '')
 
         elif st in ('product_collection', 'womens_tops', 'trending_now', 'best_sellers'):
             if section.collection:
@@ -33,6 +38,13 @@ def home(request):
                 )
             else:
                 data['products'] = []
+
+        elif st == 'shop_by_category':
+            data['category_items'] = list(
+                section.category_items.filter(is_active=True)
+                .select_related('category')
+                .order_by('display_order')[:2]
+            )
 
         elif st == 'customer_reviews':
             max_items = section.config.get('max_items', 3)
@@ -46,6 +58,12 @@ def home(request):
             )
 
         section_data[section.id] = data
+
+    _COLLECTION_TYPES = frozenset({'product_collection', 'womens_tops', 'trending_now', 'best_sellers'})
+    hide_ids = {s.id for s in sections
+                if s.section_type in _COLLECTION_TYPES
+                and not section_data.get(s.id, {}).get('products')}
+    sections = [s for s in sections if s.id not in hide_ids]
 
     payment_settings = PaymentSettings.get_settings()
     currency = payment_settings.currency_symbol if payment_settings else '₹'
@@ -198,3 +216,89 @@ def category_detail(request, slug):
         'selected_category': slug,
         'currency': currency,
     })
+
+
+def content_page(request, slug):
+    page = get_object_or_404(ContentPage, slug=slug, is_active=True)
+    meta_title = page.meta_title or f"{page.title} | {ThemeSettings.get_settings().store_name}"
+    meta_description = page.meta_description or page.summary or WebsiteSettings.get_settings().seo_description or ''
+    return render(request, 'pages/content_page.html', {
+        'page': page,
+        'meta_title': meta_title,
+        'meta_description': meta_description,
+    })
+
+
+def contact(request):
+    page = ContentPage.objects.filter(slug='contact-us', is_active=True).first()
+    website = WebsiteSettings.get_settings()
+    contact_details = {
+        'email': website.contact_email,
+        'phone': website.contact_phone,
+        'address': website.business_address,
+        'hours': website.business_hours,
+        'whatsapp': website.whatsapp_number,
+    }
+    form = ContactForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        message = ContactMessage.objects.create(
+            name=form.cleaned_data['name'],
+            email=form.cleaned_data['email'],
+            phone=form.cleaned_data.get('phone', ''),
+            subject=form.cleaned_data['subject'],
+            message=form.cleaned_data['message'],
+        )
+        _send_contact_notification(message)
+        from django.contrib import messages
+        messages.success(request, 'Thank you! Your message has been received.')
+        return redirect('products:contact')
+    meta_title = 'Contact Us'
+    if page:
+        meta_title = page.meta_title or f"{page.title} | {ThemeSettings.get_settings().store_name}"
+    return render(request, 'pages/contact.html', {
+        'page': page,
+        'form': form,
+        'contact_details': {k: v for k, v in contact_details.items() if v},
+        'meta_title': meta_title,
+        'meta_description': page.meta_description if page else '',
+    })
+
+
+def track_order(request):
+    result = None
+    from orders.models import Order, PaymentSettings
+    payment_settings = PaymentSettings.get_settings()
+    currency = payment_settings.currency_symbol if payment_settings else '₹'
+    if request.method == 'POST':
+        order_number = request.POST.get('order_number', '').strip()
+        email = request.POST.get('email', '').strip()
+        try:
+            order = Order.objects.prefetch_related('items__product').get(pk=order_number, email=email)
+            result = order
+        except (Order.DoesNotExist, ValueError):
+            result = None
+    return render(request, 'pages/track_order.html', {
+        'result': result,
+        'currency': currency,
+        'meta_title': 'Track Order',
+        'meta_description': '',
+    })
+
+
+def _send_contact_notification(message):
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        from django.core.mail import send_mail
+        from django.conf import settings
+        website = WebsiteSettings.get_settings()
+        if website.contact_email:
+            send_mail(
+                subject=f"Contact Form: {message.subject}",
+                message=f"From: {message.name} ({message.email})\nPhone: {message.phone or 'Not provided'}\n\n{message.message}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[website.contact_email],
+                fail_silently=False,
+            )
+    except Exception as e:
+        logger.error(f"Failed to send contact notification for message {message.pk}: {e}")

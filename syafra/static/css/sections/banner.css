@@ -3,29 +3,51 @@
    ============================================ */
 
 .promo-banner {
+    width: calc(100% - (2 * clamp(1.5rem, 3vw, 3rem)));
+    margin-inline: auto;
+    margin-bottom: clamp(56px, 6vw, 88px);
+    box-sizing: border-box;
     position: relative;
     overflow: hidden;
 }
 
+.promo-banner__container {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+    padding-inline: 0;
+    box-sizing: border-box;
+}
+
 .promo-banner__inner {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    min-height: 70vh;
-    align-items: center;
+    position: relative;
+    width: 100%;
+    min-height: 240px;
+}
+
+@media (min-width: 1024px) {
+    .promo-banner__inner {
+        height: 320px;
+        min-height: 0;
+        max-height: 320px;
+    }
 }
 
 @media (max-width: 1023px) {
     .promo-banner__inner {
-        grid-template-columns: 1fr;
-        min-height: auto;
+        min-height: 40vh;
     }
 }
 
 .promo-banner__content {
-    padding: clamp(3rem, 6vw, 8rem);
+    position: relative;
+    z-index: 2;
+    padding: 0.75rem clamp(1.5rem, 3vw, 3rem);
     display: flex;
     flex-direction: column;
     justify-content: center;
+    height: 100%;
+    box-sizing: border-box;
 }
 
 .promo-banner__overline {
@@ -35,7 +57,7 @@
     text-transform: uppercase;
     font-weight: 500;
     color: var(--color-accent);
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.25rem;
 }
 
 .promo-banner__headline {
@@ -43,30 +65,44 @@
     font-size: clamp(2rem, 3.5vw, 3.5rem);
     line-height: 1.1;
     font-weight: 400;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.25rem;
 }
 
 .promo-banner__text {
     font-family: var(--font-family);
     font-size: var(--type-body);
     line-height: var(--leading-body);
-    margin-bottom: 2.5rem;
+    margin-bottom: 0.5rem;
     max-width: 420px;
     opacity: 0.75;
 }
 
 .promo-banner__image {
-    position: relative;
+    position: absolute;
+    inset: 0;
     overflow: hidden;
+}
+
+.promo-banner__image picture {
+    display: block;
+    width: 100%;
     height: 100%;
 }
 
 .promo-banner__image img {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    min-height: 50vh;
     transition: transform 0.8s var(--ease-out-expo);
+}
+
+.promo-banner__image::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.20));
+    z-index: 1;
 }
 
 .promo-banner:hover .promo-banner__image img {
@@ -98,10 +134,6 @@
     background: var(--color-accent);
     color: var(--color-black);
     transform: translateY(-2px);
-}
-
-@media (max-width: 1023px) {
-    .promo-banner__image img { min-height: 40vh; }
 }
 
 @media (max-width: 767px) {

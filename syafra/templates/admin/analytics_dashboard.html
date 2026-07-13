@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Analytics - SYAFRA{% endblock %}
+{% block title %}Admin Analytics - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
 {% block navbar %}
 <header class="fixed top-0 left-0 right-0 z-50 bg-black text-white border-b border-white/10">

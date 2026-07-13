@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Payment - SYAFRA{% endblock %}
+{% block title %}Payment - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
 {% block content %}
 <section class="pt-32 pb-16 px-6 bg-black text-white">
@@ -176,9 +176,9 @@ var options = {
     "amount": Number("{{ amount }}"),
     "currency": "{{ currency_code|escapejs }}",
     "order_id": "{{ razorpay_order_id|escapejs }}",
-    "name": "SYAFRA",
+    "name": "{{ theme.store_name|default:'SYAFRA'|escapejs }}",
     "description": "Order #{{ order.id }}",
-    "image": "{% static 'images/syafra_logo.png' %}",
+    "image": "{% if theme.logo %}{{ theme.logo.url }}{% else %}{% static 'images/syafra_logo.png' %}{% endif %}",
     "handler": function (response) {
         if (paymentHandled) {
             return;

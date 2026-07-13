@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static cloudinary_filters %}
 
-{% block title %}Shopping Bag - SYAFRA{% endblock %}
+{% block title %}Shopping Bag - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
 {% block content %}
 <section class="cart-page">

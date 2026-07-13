@@ -14,12 +14,17 @@
 
 /* ---- Scroll Reveal ---- */
 .reveal {
-    opacity: 0;
-    transform: translateY(30px);
+    opacity: 1;
+    transform: none;
     transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
 }
 
-.reveal.revealed {
+html.js-enabled .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+html.js-enabled .reveal.revealed {
     opacity: 1;
     transform: translateY(0);
 }

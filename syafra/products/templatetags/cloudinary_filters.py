@@ -37,6 +37,16 @@ def get_by_key(d, key):
 
 
 @register.filter
+def get_by_index(lst, index):
+    try:
+        if index < 0:
+            return None
+        return lst[index]
+    except (IndexError, TypeError, ValueError):
+        return None
+
+
+@register.filter
 def cloudinary_resize(url, size="600x800"):
     if not url:
         return ""

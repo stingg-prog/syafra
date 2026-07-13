@@ -10,6 +10,9 @@ class MaintenanceModeMiddleware:
         '/accounts/logout/',
         '/static/',
         '/media/',
+        '/orders/razorpay/webhook/',
+        '/orders/webhook-health/',
+        '/orders/webhook-test/',
     )
 
     def __init__(self, get_response):

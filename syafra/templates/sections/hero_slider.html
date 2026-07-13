@@ -16,10 +16,15 @@
                 {% if slide.description %}
                 <p class="hero-subtitle">{{ slide.description }}</p>
                 {% endif %}
-                <div class="hero-buttons">
+                <div class="hero-actions">
                     <a href="{{ slide.button_url|default:'/shop/' }}" class="hero-btn hero-btn-primary">
                         {{ slide.button_text|default:'SHOP NOW' }}
                     </a>
+                    {% with secondary_label=slides_data.secondary_cta_label secondary_url=slides_data.secondary_cta_url %}
+                    {% if secondary_label and secondary_url %}
+                    <a href="{{ secondary_url }}" class="hero-btn hero-btn-secondary">{{ secondary_label }}</a>
+                    {% endif %}
+                    {% endwith %}
                 </div>
             </div>
 
@@ -34,6 +39,7 @@
                     <img src="{{ slide.desktop_image.url }}"
                          alt="{{ slide.title|default:'SYAFRA' }}"
                          class="hero-image{% if forloop.first %} ken-burns{% endif %}"
+                         style="--hero-pos-x: {{ slide.image_position_x }}%; --hero-pos-y: {{ slide.image_position_y }}%;"
                          fetchpriority="{% if forloop.first %}high{% else %}low{% endif %}"
                          decoding="async"
                          loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
@@ -41,18 +47,20 @@
                     <img src="{{ slide.mobile_image.url }}"
                          alt="{{ slide.title|default:'SYAFRA' }}"
                          class="hero-image{% if forloop.first %} ken-burns{% endif %}"
+                         style="--hero-pos-x: {{ slide.image_position_x }}%; --hero-pos-y: {{ slide.image_position_y }}%;"
                          fetchpriority="{% if forloop.first %}high{% else %}low{% endif %}"
                          decoding="async"
                          loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
                     {% endif %}
                 </picture>
                 {% else %}
-                <img src="https://images.unsplash.com/photo-1551028719-00167b16eac5?w=1920&q=80"
+                <img src="{% static 'images/syafra-hero-fallback.png' %}"
                      alt="{{ slide.title|default:'SYAFRA' }}"
                      class="hero-image{% if forloop.first %} ken-burns{% endif %}"
+                     style="--hero-pos-x: {{ slide.image_position_x }}%; --hero-pos-y: {{ slide.image_position_y }}%;"
                      fetchpriority="{% if forloop.first %}high{% else %}low{% endif %}"
                      decoding="async"
-                     loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
+                     loading="{% if forloop.first %}eager{% else %}low{% endif %}">
                 {% endif %}
                 <div class="hero-overlay"></div>
             </div>
@@ -65,32 +73,36 @@
         </div>
 
         {% if slides|length > 1 %}
-        <div class="hero-dots" role="tablist" aria-label="Hero slides">
-            {% for slide in slides %}
-            <button class="hero-dot{% if forloop.first %} is-active{% endif %}"
-                    data-index="{{ forloop.counter0 }}"
-                    role="tab"
-                    aria-label="Slide {{ forloop.counter }}"
-                    aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
-                {{ forloop.counter|stringformat:"02d" }}
-            </button>
-            {% endfor %}
-        </div>
+        <div class="hero-controls">
+            <div class="hero-dots" role="tablist" aria-label="Hero slides">
+                {% for slide in slides %}
+                <button class="hero-dot{% if forloop.first %} is-active{% endif %}"
+                        data-index="{{ forloop.counter0 }}"
+                        role="tab"
+                        aria-label="Slide {{ forloop.counter }}"
+                        aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                    <span class="hero-dot-number">{{ forloop.counter|stringformat:"02d" }}</span>
+                </button>
+                {% endfor %}
+            </div>
 
-        <div class="hero-arrows">
-            <button class="hero-arrow hero-arrow-prev" aria-label="Previous slide">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </button>
-            <span class="hero-arrow-counter">
-                <span class="hero-current-slide">01</span> / {{ slides|length|stringformat:"02d" }}
-            </span>
-            <button class="hero-arrow hero-arrow-next" aria-label="Next slide">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
-                </svg>
-            </button>
+            <div class="hero-arrows">
+                <button class="hero-arrow hero-arrow-prev" aria-label="Previous slide">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <span class="hero-arrow-counter">
+                    <span class="hero-current-slide">01</span>
+                    <span class="hero-slash">/</span>
+                    <span class="hero-total-slides">{{ slides|length|stringformat:"02d" }}</span>
+                </span>
+                <button class="hero-arrow hero-arrow-next" aria-label="Next slide">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
         {% endif %}
     </div>
@@ -99,15 +111,21 @@
         <div class="hero-content">
             <p class="hero-overline">New Arrivals</p>
             <h1 class="hero-headline">{{ section.title|default:'SYAFRA' }}</h1>
-            <p class="hero-subtitle">{{ section.subtitle|default:'Curated vintage jackets and modern streetwear.' }}</p>
-            <div class="hero-buttons">
+            <p class="hero-subtitle">{{ section.subtitle|default:'Curated pieces. Distinctive silhouettes. Made for your everyday expression.' }}</p>
+            <div class="hero-actions">
                 <a href="{% url 'products:shop' %}" class="hero-btn hero-btn-primary">SHOP NOW</a>
+                {% with secondary_label=slides_data.secondary_cta_label secondary_url=slides_data.secondary_cta_url %}
+                {% if secondary_label and secondary_url %}
+                <a href="{{ secondary_url }}" class="hero-btn hero-btn-secondary">{{ secondary_label }}</a>
+                {% endif %}
+                {% endwith %}
             </div>
         </div>
         <div class="hero-image-wrapper">
-            <img src="https://images.unsplash.com/photo-1551028719-00167b16eac5?w=1920&q=80"
-                 alt="SYAFRA"
+            <img src="{% static 'images/syafra-hero-fallback.png' %}"
+                 alt="SYAFRA — Curated Fashion"
                  class="hero-image ken-burns"
+                 style="--hero-pos-x: 60%; --hero-pos-y: 50%;"
                  fetchpriority="high"
                  decoding="async">
             <div class="hero-overlay"></div>

@@ -1,23 +1,18 @@
 {% load static cloudinary_filters %}
 <section class="collection-section">
-    <div class="max-w-7xl mx-auto px-6">
-        {% if section.title or section.subtitle %}
-        <div class="collection-header reveal">
-            {% if section.title %}
-            <span class="collection-header__overline">The Collection</span>
-            <h2 class="collection-header__title">{{ section.title }}</h2>
-            {% endif %}
-            {% if section.subtitle %}
-            <p class="collection-header__subtitle">{{ section.subtitle }}</p>
-            {% endif %}
+    <div class="collection-container">
+        <div class="collection-compact-header">
+            <h2 class="collection-compact-header__title">FEATURED JACKETS</h2>
+            <a href="{% url 'products:shop' %}" class="collection-compact-header__view-all">
+                VIEW ALL <span aria-hidden="true">→</span>
+            </a>
         </div>
-        {% endif %}
 
         {% with data=section_data|get_by_key:section.id %}
         {% with products=data.products %}
         {% if products %}
-        <div class="product-grid">
-            {% for product in products %}
+        <div class="product-grid product-grid--homepage-six">
+            {% for product in products|slice:":6" %}
             <div class="product-card reveal stagger-{{ forloop.counter }}" data-product-id="{{ product.pk }}" data-product-url="{% url 'products:product_detail' product.pk %}">
                 <div class="product-card__image">
                     {% if product.image %}
@@ -36,12 +31,6 @@
                         <span class="badge badge-low-stock">Low Stock</span>
                         {% endif %}
                     </div>
-
-                    <button class="product-card__wishlist" aria-label="Add to wishlist">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                        </svg>
-                    </button>
 
                     {% if product.stock > 0 %}
                     <button class="product-card__quickview" aria-label="Quick view">
@@ -76,12 +65,6 @@
             {% endfor %}
         </div>
 
-        <div class="collection-cta reveal">
-            <a href="{% url 'products:product_list' %}" class="btn-section-cta">
-                View All
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </a>
-        </div>
         {% else %}
         <div class="collection-empty">No products in this collection yet.</div>
         {% endif %}

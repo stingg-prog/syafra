@@ -1,28 +1,48 @@
 {% load static %}
 {% with config=section.config %}
-<section class="promo-banner" style="background-color: {{ config.bg_color|default:'#E8DCC4' }};">
-    <div class="promo-banner__inner">
-        <div class="promo-banner__content reveal">
-            {% if config.headline %}
-            <span class="promo-banner__overline">Featured</span>
-            <h2 class="promo-banner__headline" style="color: {{ config.text_color|default:'#000000' }};">{{ config.headline }}</h2>
-            {% endif %}
-            {% if config.description %}
-            <p class="promo-banner__text" style="color: {{ config.text_color|default:'#000000' }};">
-                {{ config.description }}
-            </p>
-            {% endif %}
-            {% if config.button_text %}
-            <div>
-                <a href="{{ config.button_url|default:'/shop/' }}" class="promo-banner__btn promo-banner__btn-primary">
-                    {{ config.button_text }}
-                </a>
+{% with promo_config=section.promo_config %}
+<section class="promo-banner">
+    <div class="promo-banner__container">
+        <div class="promo-banner__inner">
+            <div class="promo-banner__image">
+                {% with desktop=promo_config.desktop_image mobile=promo_config.mobile_image %}
+                {% if desktop or mobile %}
+                <picture>
+                    {% if mobile %}
+                    <source media="(max-width: 767px)" srcset="{{ mobile.url }}">
+                    {% endif %}
+                    {% if desktop %}
+                    <source media="(min-width: 768px)" srcset="{{ desktop.url }}">
+                    <img src="{{ desktop.url }}" alt="{{ config.headline|default:'Featured' }}" loading="lazy" decoding="async">
+                    {% elif mobile %}
+                    <img src="{{ mobile.url }}" alt="{{ config.headline|default:'Featured' }}" loading="lazy" decoding="async">
+                    {% endif %}
+                </picture>
+                {% else %}
+                <img src="{% static 'images/default.jpg' %}" alt="{{ config.headline|default:'Featured' }}" loading="lazy" decoding="async">
+                {% endif %}
+                {% endwith %}
             </div>
-            {% endif %}
-        </div>
-        <div class="promo-banner__image">
-            <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=80" alt="Featured Collection" loading="lazy" decoding="async">
+            <div class="promo-banner__content reveal">
+                {% if config.headline %}
+                <span class="promo-banner__overline">{{ section.overline|default:'Featured' }}</span>
+                <h2 class="promo-banner__headline" style="color: {{ config.text_color|default:'#FFFFFF' }};">{{ config.headline }}</h2>
+                {% endif %}
+                {% if config.description %}
+                <p class="promo-banner__text" style="color: {{ config.text_color|default:'#FFFFFF' }};">
+                    {{ config.description }}
+                </p>
+                {% endif %}
+                {% if config.button_text %}
+                <div>
+                    <a href="{{ config.button_url|default:'/shop/' }}" class="promo-banner__btn promo-banner__btn-primary">
+                        {{ config.button_text }}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </section>
+{% endwith %}
 {% endwith %}

@@ -31,8 +31,8 @@ class Command(BaseCommand):
             'whatsapp_number': '919037626684',
             'whatsapp_default_message': 'Hi, I am interested in your products. Please share more details.',
             'seo_title': 'SYAFRA - Fashion-Forward Vintage Streetwear',
-            'seo_description': 'Curated vintage jackets and streetwear. Authentic pieces, modern style.',
-            'seo_keywords': 'vintage jackets, streetwear, fashion, thrift',
+            'seo_description': 'Discover curated fashion, distinctive silhouettes, and modern essentials at SYAFRA. Explore new arrivals and collections designed for everyday expression.',
+            'seo_keywords': 'curated fashion, modern style, new arrivals, streetwear, designer pieces, fashion brand',
             'copyright_text': '2026 SYAFRA. All rights reserved.',
             'instagram_url': 'https://www.instagram.com/syafra.thrift/',
         })
@@ -74,19 +74,19 @@ class Command(BaseCommand):
             # Create default hero slides
             slides_data = [
                 {
-                    'title': 'VINTAGE COLLECTION',
+                    'title': 'THE NEW EDIT',
                     'subtitle': 'NEW ARRIVALS',
-                    'description': 'Discover curated vintage jackets with modern style',
+                    'description': 'Curated pieces. Distinctive silhouettes.',
                     'button_text': 'SHOP NOW',
                     'button_url': '/shop/',
                     'overlay_opacity': 60,
                 },
                 {
-                    'title': 'PREMIUM LEATHER',
-                    'subtitle': 'HANDSELECTED',
-                    'description': 'Authentic leather jackets from iconic brands',
-                    'button_text': 'EXPLORE',
-                    'button_url': '/shop/?category=leather-jackets',
+                    'title': 'STYLE WITHOUT BOUNDARIES',
+                    'subtitle': 'DISCOVER SYAFRA',
+                    'description': 'Curated fashion for every expression.',
+                    'button_text': 'DISCOVER SYAFRA',
+                    'button_url': '/shop/',
                     'overlay_opacity': 60,
                 },
             ]
@@ -163,18 +163,18 @@ class Command(BaseCommand):
                 )
             self.stdout.write(f'Created: Shop By Category with {categories.count()} items')
 
-        # Section 5: Featured Jackets (Product Collection)
+        # Section 5: The Jacket Edit (Product Collection)
         featured_collection, _ = ProductCollection.objects.get_or_create(
-            name='Featured Jackets',
+            name='The Jacket Edit',
             defaults={
-                'description': 'Handpicked premium vintage jackets',
+                'description': 'Curated outerwear for every look.',
             }
         )
         featured_section, created = HomepageSection.objects.get_or_create(
             section_type='product_collection',
             defaults={
-                'title': 'Featured Jackets',
-                'subtitle': 'Handpicked Premium Vintage',
+                'title': 'The Jacket Edit',
+                'subtitle': 'Curated Outerwear',
                 'collection': featured_collection,
                 'display_order': 5,
                 'is_active': True,
@@ -186,7 +186,7 @@ class Command(BaseCommand):
             }
         )
         if created:
-            self.stdout.write('Created: Featured Jackets collection section')
+            self.stdout.write('Created: The Jacket Edit collection section')
 
         # Section 5b: Women's Tops (Product Collection)
         womens_collection, _ = ProductCollection.objects.get_or_create(
