@@ -29,6 +29,29 @@ def cloudinary_normalize(url):
     )
 
 
+@register.simple_tag(takes_context=True)
+def url_replace(context, **kwargs):
+    request = context.get('request')
+    if not request:
+        return ''
+    params = request.GET.copy()
+    for key, value in kwargs.items():
+        if value == '':
+            params.pop(key, None)
+        else:
+            params[key] = str(value)
+    return params.urlencode()
+
+@register.simple_tag(takes_context=True)
+def url_remove(context, *keys):
+    request = context.get('request')
+    if not request:
+        return ''
+    params = request.GET.copy()
+    for key in keys:
+        params.pop(key, None)
+    return params.urlencode()
+
 @register.filter
 def get_by_key(d, key):
     if isinstance(d, dict):

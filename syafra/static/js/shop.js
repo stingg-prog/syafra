@@ -1,75 +1,116 @@
 /* ============================================
-   SYAFRA Shop — Frontend Interactions
+   SYAFRA Shop — Premium Collection Interactions
    ============================================ */
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    const grid = document.getElementById('product-grid');
-    const gridBtns = document.querySelectorAll('.shop-topbar__grid-btn');
-    const sortSelect = document.getElementById('shop-sort');
-    const filterForm = document.getElementById('shop-filter-form');
-    const resetBtn = document.getElementById('shop-filter-reset');
-    const accordionHeaders = document.querySelectorAll('.shop-filters__header');
-    const colorBtns = document.querySelectorAll('.shop-filters__color');
-    const pricePresets = document.querySelectorAll('.shop-filters__price-preset');
-    const brandChecks = document.querySelectorAll('.shop-filter-brand');
+    var form = document.getElementById('shop-filter-form');
+    if (!form) return;
 
-    /* ---- Grid Toggle ---- */
-    if (grid && gridBtns.length) {
-        gridBtns.forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var cols = this.getAttribute('data-col');
-                gridBtns.forEach(function (b) { b.classList.remove('is-active'); });
-                this.classList.add('is-active');
-                grid.className = 'product-grid product-grid--' + cols;
-                localStorage.setItem('shopGridCols', cols);
-            });
+    var sortSelect = document.getElementById('shop-sort');
+    var sortSelectMobile = document.getElementById('shop-sort-mobile');
+    var searchInput = document.getElementById('shop-search-input');
+    var drawerOpen = document.getElementById('shop-drawer-open');
+    var drawerClose = document.getElementById('shop-drawer-close');
+    var drawerOverlay = document.getElementById('shop-drawer-overlay');
+    var drawer = document.getElementById('shop-drawer');
+    var dropdownBtns = document.querySelectorAll('.shop-filterbar__dropdown-btn');
+    var drawerGroupHeaders = document.querySelectorAll('.shop-drawer__group-header');
+    var productCards = document.querySelectorAll('.product-card');
+
+    /* ---- Desktop Dropdowns ---- */
+    dropdownBtns.forEach(function (btn) {
+        var dropdown = btn.closest('.shop-filterbar__dropdown');
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var isOpen = dropdown.classList.contains('is-open');
+
+            closeAllDropdowns();
+
+            if (!isOpen) {
+                dropdown.classList.add('is-open');
+                btn.setAttribute('aria-expanded', 'true');
+            }
         });
+    });
 
-        var savedCols = localStorage.getItem('shopGridCols') || '4';
-        var activeBtn = document.querySelector('.shop-topbar__grid-btn[data-col="' + savedCols + '"]');
-        if (activeBtn) {
-            gridBtns.forEach(function (b) { b.classList.remove('is-active'); });
-            activeBtn.classList.add('is-active');
-            grid.className = 'product-grid product-grid--' + savedCols;
-        }
+    function closeAllDropdowns() {
+        document.querySelectorAll('.shop-filterbar__dropdown.is-open').forEach(function (d) {
+            d.classList.remove('is-open');
+            d.querySelector('.shop-filterbar__dropdown-btn').setAttribute('aria-expanded', 'false');
+        });
     }
 
-    /* ---- Sort ---- */
-    if (sortSelect && grid) {
-        sortSelect.addEventListener('change', function () {
-            var cards = Array.from(grid.querySelectorAll('.product-card'));
-            var order = this.value;
+    document.addEventListener('click', function () {
+        closeAllDropdowns();
+    });
 
-            cards.sort(function (a, b) {
-                var valA, valB;
-                switch (order) {
-                    case 'price-asc':
-                        valA = parseFloat(a.getAttribute('data-price'));
-                        valB = parseFloat(b.getAttribute('data-price'));
-                        return valA - valB;
-                    case 'price-desc':
-                        valA = parseFloat(a.getAttribute('data-price'));
-                        valB = parseFloat(b.getAttribute('data-price'));
-                        return valB - valA;
-                    case 'alpha':
-                        valA = a.getAttribute('data-name').toLowerCase();
-                        valB = b.getAttribute('data-name').toLowerCase();
-                        return valA.localeCompare(valB);
-                    default:
-                        return 0;
+    /* ---- Auto-submit on Desktop Filter Change ---- */
+    var autoSubmitSelectors = [
+        '.shop-filterbar__dropdown input[type="radio"]',
+        '.shop-filterbar__dropdown input[type="checkbox"]',
+        '.shop-filterbar__dropdown input[type="number"]',
+    ];
+
+    autoSubmitSelectors.forEach(function (selector) {
+        form.querySelectorAll(selector).forEach(function (input) {
+            input.addEventListener('change', function () {
+                if (window.innerWidth >= 1025) {
+                    form.submit();
                 }
             });
+        });
+    });
 
-            var fragment = document.createDocumentFragment();
-            cards.forEach(function (card) { fragment.appendChild(card); });
-            grid.appendChild(fragment);
+    var priceInputs = form.querySelectorAll('.shop-filterbar__dropdown input[type="number"]');
+    priceInputs.forEach(function (input) {
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && window.innerWidth >= 1025) {
+                form.submit();
+            }
+        });
+    });
+
+    /* ---- Sort Sync (desktop ↔ mobile) ---- */
+    function syncSort(source, target) {
+        if (!source || !target) return;
+        source.addEventListener('change', function () {
+            target.value = this.value;
+            form.submit();
+        });
+        target.addEventListener('change', function () {
+            source.value = this.value;
+            form.submit();
         });
     }
 
-    /* ---- Accordion Filters ---- */
-    accordionHeaders.forEach(function (header) {
-        var group = header.closest('.shop-filters__group');
+    if (sortSelect && sortSelectMobile) {
+        sortSelectMobile.value = sortSelect.value;
+        syncSort(sortSelect, sortSelectMobile);
+    }
+
+    /* ---- Mobile Drawer ---- */
+    if (drawerOpen && drawer && drawerOverlay && drawerClose) {
+        drawerOpen.addEventListener('click', function () {
+            drawer.classList.add('is-open');
+            drawerOverlay.classList.add('is-visible');
+            document.body.style.overflow = 'hidden';
+        });
+
+        function closeDrawer() {
+            drawer.classList.remove('is-open');
+            drawerOverlay.classList.remove('is-visible');
+            document.body.style.overflow = '';
+        }
+
+        drawerClose.addEventListener('click', closeDrawer);
+        drawerOverlay.addEventListener('click', closeDrawer);
+    }
+
+    /* ---- Drawer Accordion ---- */
+    drawerGroupHeaders.forEach(function (header) {
+        var group = header.closest('.shop-drawer__group');
 
         header.addEventListener('click', function () {
             var isOpen = group.classList.contains('is-open');
@@ -78,102 +119,34 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    /* ---- Color Filter (visual only) ---- */
-    colorBtns.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            colorBtns.forEach(function (b) { b.classList.remove('is-active'); });
-            this.classList.add('is-active');
-        });
-    });
-
-    /* ---- Price Presets ---- */
-    pricePresets.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            pricePresets.forEach(function (b) { b.classList.remove('is-active'); });
-            this.classList.add('is-active');
-            var min = this.getAttribute('data-min');
-            var max = this.getAttribute('data-max');
-            filterByPrice(min, max);
-        });
-    });
-
-    function filterByPrice(min, max) {
-        if (!grid) return;
-        var cards = grid.querySelectorAll('.product-card');
-        cards.forEach(function (card) {
-            var price = parseFloat(card.getAttribute('data-price'));
-            var show = true;
-            if (min !== '' && price < parseFloat(min)) show = false;
-            if (max !== '' && price > parseFloat(max)) show = false;
-            card.style.display = show ? '' : 'none';
-        });
-    }
-
-    /* ---- Brand Filter (populated from products) ---- */
-    var brandContainer = document.getElementById('shop-filter-brands');
-    if (brandContainer && grid) {
-        var brandSet = {};
-        var cards = grid.querySelectorAll('.product-card');
-        cards.forEach(function (card) {
-            var brand = card.getAttribute('data-brand');
-            if (brand) brandSet[brand] = true;
-        });
-        var brands = Object.keys(brandSet).sort();
-        if (brands.length) {
-            brandContainer.innerHTML = '';
-            brands.forEach(function (brand) {
-                var label = document.createElement('label');
-                label.className = 'shop-filters__item';
-                label.innerHTML = '<input type="checkbox" name="brand" value="' + brand.replace(/"/g, '&quot;') + '" class="shop-filter-brand">'
-                    + '<span class="shop-filters__check"></span>'
-                    + '<span class="shop-filters__label">' + brand + '</span>';
-                brandContainer.appendChild(label);
-            });
-
-            brandChecks = brandContainer.querySelectorAll('.shop-filter-brand');
-            brandChecks.forEach(function (cb) {
-                cb.addEventListener('change', function () {
-                    filterByBrand();
-                });
-            });
+    /* ---- Search ---- */
+    if (searchInput) {
+        function submitSearch() {
+            var hidden = form.querySelector('input[name="search"]');
+            if (!hidden) {
+                hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'search';
+                form.appendChild(hidden);
+            }
+            hidden.value = searchInput.value;
+            form.submit();
         }
-    }
 
-    function filterByBrand() {
-        if (!grid) return;
-        var checked = [];
-        brandChecks.forEach(function (cb) {
-            if (cb.checked) checked.push(cb.value);
-        });
-        var allCards = grid.querySelectorAll('.product-card');
-        allCards.forEach(function (card) {
-            var brand = card.getAttribute('data-brand');
-            card.style.display = (!checked.length || checked.indexOf(brand) !== -1) ? '' : 'none';
+        searchInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitSearch();
+            }
         });
     }
 
-    /* ---- Auto-submit on backend filter change ---- */
-    var autoSubmitInputs = filterForm ? filterForm.querySelectorAll('input[name="category"], input[name="size"], input[name="stock"]') : [];
-    autoSubmitInputs.forEach(function (input) {
-        input.addEventListener('change', function () {
-            filterForm.submit();
-        });
-    });
-
-    /* ---- Reset Filters ---- */
-    if (resetBtn) {
-        resetBtn.addEventListener('click', function () {
-            window.location.href = resetBtn.closest('form').action;
-        });
-    }
-
-    /* ---- Product Card Click (handled by quickview.js modal) ---- */
-    var productCards = document.querySelectorAll('.product-card');
+    /* ---- Product Card Click ---- */
     productCards.forEach(function (card) {
         card.addEventListener('click', function (e) {
             if (e.target.closest('.product-card__quickview')) return;
-            var href = this.getAttribute('data-href');
-            if (href) window.location.href = href;
+            var url = this.getAttribute('data-product-url');
+            if (url) window.location.href = url;
         });
     });
 

@@ -10,348 +10,456 @@
 {% block content %}
 <div class="shop">
 
-    <!-- Top Bar -->
-    <div class="shop-topbar">
-        <div class="shop-topbar__left">
-            <h1 class="shop-topbar__title">COLLECTION</h1>
-            <span class="shop-topbar__count">{{ products.paginator.count }} Products</span>
-        </div>
-        <div class="shop-topbar__right">
-            <div class="shop-topbar__sort">
-                <select id="shop-sort" aria-label="Sort products">
-                    <option value="newest">Newest</option>
-                    <option value="price-asc">Price Low–High</option>
-                    <option value="price-desc">Price High–Low</option>
-                    <option value="alpha">Alphabetical</option>
-                </select>
+  <header class="shop-header">
+    <h1 class="shop-header__title">Shop</h1>
+    <p class="shop-header__subtitle">Discover our latest curated collections.</p>
+  </header>
+
+  <form method="GET" action="{% url 'products:shop' %}" id="shop-filter-form">
+
+    <div class="shop-filterbar" id="shop-filterbar">
+      <div class="shop-filterbar__inner">
+        <div class="shop-filterbar__filters">
+          <div class="shop-filterbar__dropdown" data-dropdown="category">
+            <button type="button" class="shop-filterbar__dropdown-btn" aria-expanded="false">
+              Category
+              <svg class="shop-filterbar__chevron" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <div class="shop-filterbar__dropdown-menu">
+              <label class="shop-filterbar__option">
+                <input type="radio" name="category" value="" {% if not selected_category %}checked{% endif %}>
+                <span class="shop-filterbar__option-check"></span>
+                <span class="shop-filterbar__option-label">All</span>
+              </label>
+              {% for cat in categories %}
+              <label class="shop-filterbar__option">
+                <input type="radio" name="category" value="{{ cat.slug }}" {% if cat.slug == selected_category %}checked{% endif %}>
+                <span class="shop-filterbar__option-check"></span>
+                <span class="shop-filterbar__option-label">{{ cat.name }}</span>
+              </label>
+              {% endfor %}
             </div>
-            <div class="shop-topbar__grid-toggle" role="group" aria-label="Grid columns">
-                <button class="shop-topbar__grid-btn" data-col="2" aria-label="2 columns" type="button">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <rect x="3" y="3" width="7" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="14" y="3" width="7" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="3" y="14" width="7" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="14" y="14" width="7" height="7" rx="0.5" stroke-width="1.5"/>
-                    </svg>
-                </button>
-                <button class="shop-topbar__grid-btn" data-col="3" aria-label="3 columns" type="button">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <rect x="2" y="2" width="5.5" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="9.25" y="2" width="5.5" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="16.5" y="2" width="5.5" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="2" y="11" width="5.5" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="9.25" y="11" width="5.5" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="16.5" y="11" width="5.5" height="7" rx="0.5" stroke-width="1.5"/>
-                    </svg>
-                </button>
-                <button class="shop-topbar__grid-btn is-active" data-col="4" aria-label="4 columns" type="button">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <rect x="2" y="2" width="4" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="7.33" y="2" width="4" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="12.67" y="2" width="4" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="18" y="2" width="4" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="2" y="11" width="4" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="7.33" y="11" width="4" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="12.67" y="11" width="4" height="7" rx="0.5" stroke-width="1.5"/>
-                        <rect x="18" y="11" width="4" height="7" rx="0.5" stroke-width="1.5"/>
-                    </svg>
-                </button>
+          </div>
+
+          <div class="shop-filterbar__dropdown" data-dropdown="brand">
+            <button type="button" class="shop-filterbar__dropdown-btn" aria-expanded="false">
+              Brand
+              <svg class="shop-filterbar__chevron" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <div class="shop-filterbar__dropdown-menu">
+              {% for brand in available_brands %}
+              <label class="shop-filterbar__option">
+                <input type="checkbox" name="brand" value="{{ brand }}" {% if brand in selected_brand_list %}checked{% endif %}>
+                <span class="shop-filterbar__option-check"></span>
+                <span class="shop-filterbar__option-label">{{ brand }}</span>
+              </label>
+              {% endfor %}
             </div>
-        </div>
-    </div>
+          </div>
 
-    <!-- Layout: Sidebar + Products -->
-    <div class="shop-layout">
-
-        <!-- Sidebar Filters -->
-        <aside class="shop-sidebar">
-            <div class="shop-filters">
-                <form method="GET" action="{% url 'products:shop' %}" id="shop-filter-form">
-
-                    <!-- Search -->
-                    <div class="shop-filters__search">
-                        <input type="text" name="search" value="{{ search_query }}" placeholder="Search…" id="shop-search-input">
-                        <button type="submit" class="shop-filters__search-submit" aria-label="Search">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <circle cx="11" cy="11" r="7" stroke-width="1.5"/>
-                                <path d="M16.5 16.5L21 21" stroke-width="1.5" stroke-linecap="round"/>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Category -->
-                    <div class="shop-filters__group is-open">
-                        <button type="button" class="shop-filters__header" aria-expanded="true">
-                            Category
-                            <span class="shop-filters__header-icon"></span>
-                        </button>
-                        <div class="shop-filters__body">
-                            <div class="shop-filters__body-inner">
-                                <label class="shop-filters__item">
-                                    <input type="radio" name="category" value="" {% if not selected_category %}checked{% endif %}>
-                                    <span class="shop-filters__check"></span>
-                                    <span class="shop-filters__label">All</span>
-                                </label>
-                                {% for category in categories %}
-                                <label class="shop-filters__item">
-                                    <input type="radio" name="category" value="{{ category.slug }}" {% if category.slug == selected_category %}checked{% endif %}>
-                                    <span class="shop-filters__check"></span>
-                                    <span class="shop-filters__label">{{ category.name }}</span>
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Brand (client-side filtering via JS) -->
-                    <div class="shop-filters__group is-open">
-                        <button type="button" class="shop-filters__header" aria-expanded="true">
-                            Brand
-                            <span class="shop-filters__header-icon"></span>
-                        </button>
-                        <div class="shop-filters__body">
-                            <div class="shop-filters__body-inner" id="shop-filter-brands">
-                                <span class="shop-filters__label" style="color:var(--color-gray-400);font-size:var(--type-caption);font-style:italic;">Select from products</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Size -->
-                    <div class="shop-filters__group">
-                        <button type="button" class="shop-filters__header" aria-expanded="false">
-                            Size
-                            <span class="shop-filters__header-icon"></span>
-                        </button>
-                        <div class="shop-filters__body">
-                            <div class="shop-filters__body-inner">
-                                <label class="shop-filters__item">
-                                    <input type="radio" name="size" value="" {% if not selected_size %}checked{% endif %}>
-                                    <span class="shop-filters__check"></span>
-                                    <span class="shop-filters__label">All</span>
-                                </label>
-                                {% for size in available_sizes %}
-                                <label class="shop-filters__item">
-                                    <input type="radio" name="size" value="{{ size }}" {% if size == selected_size %}checked{% endif %}>
-                                    <span class="shop-filters__check"></span>
-                                    <span class="shop-filters__label">{{ size }}</span>
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Color (visual only) -->
-                    <div class="shop-filters__group">
-                        <button type="button" class="shop-filters__header" aria-expanded="false">
-                            Color
-                            <span class="shop-filters__header-icon"></span>
-                        </button>
-                        <div class="shop-filters__body">
-                            <div class="shop-filters__body-inner">
-                                <div class="shop-filters__colors" id="shop-filter-colors">
-                                    <button type="button" class="shop-filters__color is-active" data-color="" style="background:#000000;border-color:#000000;" aria-label="All colors"></button>
-                                    <button type="button" class="shop-filters__color" data-color="black" style="background:#1a1a1a;" aria-label="Black"></button>
-                                    <button type="button" class="shop-filters__color" data-color="white" style="background:#ffffff;" aria-label="White"></button>
-                                    <button type="button" class="shop-filters__color" data-color="brown" style="background:#8B5E3C;" aria-label="Brown"></button>
-                                    <button type="button" class="shop-filters__color" data-color="beige" style="background:#D4C5A9;" aria-label="Beige"></button>
-                                    <button type="button" class="shop-filters__color" data-color="green" style="background:#4A6741;" aria-label="Green"></button>
-                                    <button type="button" class="shop-filters__color" data-color="blue" style="background:#2C4A6E;" aria-label="Blue"></button>
-                                    <button type="button" class="shop-filters__color" data-color="red" style="background:#8B2C2C;" aria-label="Red"></button>
-                                    <button type="button" class="shop-filters__color" data-color="gray" style="background:#6B7280;" aria-label="Gray"></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Availability -->
-                    <div class="shop-filters__group">
-                        <button type="button" class="shop-filters__header" aria-expanded="false">
-                            Availability
-                            <span class="shop-filters__header-icon"></span>
-                        </button>
-                        <div class="shop-filters__body">
-                            <div class="shop-filters__body-inner">
-                                <label class="shop-filters__item">
-                                    <input type="radio" name="stock" value="" {% if not selected_stock %}checked{% endif %}>
-                                    <span class="shop-filters__check"></span>
-                                    <span class="shop-filters__label">All</span>
-                                </label>
-                                <label class="shop-filters__item">
-                                    <input type="radio" name="stock" value="in_stock" {% if selected_stock == 'in_stock' %}checked{% endif %}>
-                                    <span class="shop-filters__check"></span>
-                                    <span class="shop-filters__label">In Stock</span>
-                                </label>
-                                <label class="shop-filters__item">
-                                    <input type="radio" name="stock" value="sold_out" {% if selected_stock == 'sold_out' %}checked{% endif %}>
-                                    <span class="shop-filters__check"></span>
-                                    <span class="shop-filters__label">Sold Out</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Price (visual only) -->
-                    <div class="shop-filters__group">
-                        <button type="button" class="shop-filters__header" aria-expanded="false">
-                            Price
-                            <span class="shop-filters__header-icon"></span>
-                        </button>
-                        <div class="shop-filters__body">
-                            <div class="shop-filters__body-inner">
-                                <div class="shop-filters__price">
-                                    <div class="shop-filters__price-presets" id="shop-filter-price-presets">
-                                        <button type="button" class="shop-filters__price-preset is-active" data-min="" data-max="">All</button>
-                                        <button type="button" class="shop-filters__price-preset" data-min="0" data-max="1000">Under {{ currency }}1,000</button>
-                                        <button type="button" class="shop-filters__price-preset" data-min="1000" data-max="3000">{{ currency }}1,000–{{ currency }}3,000</button>
-                                        <button type="button" class="shop-filters__price-preset" data-min="3000" data-max="5000">{{ currency }}3,000–{{ currency }}5,000</button>
-                                        <button type="button" class="shop-filters__price-preset" data-min="5000" data-max="">{{ currency }}5,000+</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Reset Filters -->
-                    <button type="button" class="shop-filters__reset" id="shop-filter-reset">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M4 7V4M4 7H7M4 7L6.5 4.5C8 3 10.1 2.3 12.3 2.8C16 3.7 18.8 7.1 18.9 11C19 15.2 15.7 18.7 11.5 18.9C7.3 19.1 3.8 15.9 3.5 11.8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Reset Filters
-                    </button>
-
-                </form>
+          <div class="shop-filterbar__dropdown" data-dropdown="size">
+            <button type="button" class="shop-filterbar__dropdown-btn" aria-expanded="false">
+              Size
+              <svg class="shop-filterbar__chevron" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <div class="shop-filterbar__dropdown-menu">
+              <label class="shop-filterbar__option">
+                <input type="radio" name="size" value="" {% if not selected_size %}checked{% endif %}>
+                <span class="shop-filterbar__option-check"></span>
+                <span class="shop-filterbar__option-label">All</span>
+              </label>
+              {% for size in available_sizes %}
+              <label class="shop-filterbar__option">
+                <input type="radio" name="size" value="{{ size }}" {% if size == selected_size %}checked{% endif %}>
+                <span class="shop-filterbar__option-check"></span>
+                <span class="shop-filterbar__option-label">{{ size }}</span>
+              </label>
+              {% endfor %}
             </div>
-        </aside>
+          </div>
 
-        <!-- Products Main Area -->
-        <main class="shop-main">
-
-            {% if products %}
-
-            <!-- Products Grid -->
-            <div class="product-grid product-grid--4" id="product-grid">
-                {% for product in products %}
-                <article class="product-card" data-name="{{ product.name }}" data-brand="{{ product.brand }}" data-price="{{ product.price }}" data-stock="{{ product.stock }}" data-href="{% url 'products:product_detail' product.pk %}">
-                    <div class="product-card__image">
-                        {% if product.image %}
-                        <img src="{{ product.image.url|cloudinary_normalize }}"
-                             alt="{{ product.name }}"
-                             loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
-                             decoding="async"
-                             width="600"
-                             height="750">
-                        {% else %}
-                        <img src="{% static 'images/default.jpg' %}"
-                             alt="No image available"
-                             loading="lazy"
-                             decoding="async"
-                             width="600"
-                             height="750">
-                        {% endif %}
-
-                        <!-- Badges -->
-                        <div class="product-card__badges">
-                            {% if product.condition == 'new' %}
-                            <span class="product-card__badge product-card__badge--new">NEW</span>
-                            {% elif product.condition == 'used' %}
-                            <span class="product-card__badge product-card__badge--vintage">VINTAGE</span>
-                            {% else %}
-                            <span class="product-card__badge product-card__badge--refurb">REFURB</span>
-                            {% endif %}
-                        </div>
-
-
-                        <!-- Sold Out -->
-                        {% if product.stock == 0 %}
-                        <div class="product-card__soldout">
-                            <span>SOLD OUT</span>
-                        </div>
-                        {% endif %}
-
-                        <!-- Quick View -->
-                        <button type="button" class="product-card__quickview" data-product-id="{{ product.pk }}">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="4" stroke-width="1.5"/>
-                                <path d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6z" stroke-width="1.5"/>
-                            </svg>
-                            Quick View
-                        </button>
-                    </div>
-
-                    <div class="product-card__info">
-                        {% if product.brand %}
-                        <span class="product-card__brand">{{ product.brand }}</span>
-                        {% endif %}
-                        <h3 class="product-card__name">{{ product.name }}</h3>
-                        <div class="product-card__price">
-                            <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
-                        </div>
-                        {% if product.has_sizes %}
-                        <div class="product-card__sizes">
-                            {% for s in product.sizes.all|dictsort:"size" %}
-                            <span class="product-card__size-dot">{{ s.size }}</span>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
-                </article>
-                {% endfor %}
-            </div>
-
-            <!-- Pagination -->
-            {% if products.paginator.num_pages > 1 %}
-            <nav class="shop-pagination" aria-label="Pagination">
-                {% if products.has_previous %}
-                <a href="?page={{ products.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_size %}&size={{ selected_size }}{% endif %}{% if selected_stock %}&stock={{ selected_stock }}{% endif %}"
-                   class="shop-pagination__link shop-pagination__prev" aria-label="Previous page">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path d="M15 19l-7-7 7-7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Prev
-                </a>
-                {% endif %}
-
-                {% for pg in products.paginator.page_range %}
-                    {% if pg == products.number %}
-                    <span class="shop-pagination__link is-active" aria-current="page">{{ pg }}</span>
-                    {% elif pg > products.number|add:'-3' and pg < products.number|add:'3' %}
-                    <a href="?page={{ pg }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_size %}&size={{ selected_size }}{% endif %}{% if selected_stock %}&stock={{ selected_stock }}{% endif %}"
-                       class="shop-pagination__link">{{ pg }}</a>
-                    {% endif %}
-                {% endfor %}
-
-                {% if products.has_next %}
-                <a href="?page={{ products.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_size %}&size={{ selected_size }}{% endif %}{% if selected_stock %}&stock={{ selected_stock }}{% endif %}"
-                   class="shop-pagination__link shop-pagination__next" aria-label="Next page">
-                    Next
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 5l7 7-7 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </a>
-                {% endif %}
-            </nav>
-            {% endif %}
-
-            {% else %}
-
-            <!-- Empty State -->
-            <div class="shop-empty">
-                <div class="shop-empty__illustration">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="11" cy="11" r="7" stroke-width="1"/>
-                        <path d="M16.5 16.5L21 21" stroke-width="1" stroke-linecap="round"/>
-                        <path d="M8 11h6" stroke-width="1" stroke-linecap="round"/>
-                        <path d="M11 8v6" stroke-width="1" stroke-linecap="round"/>
-                    </svg>
+          <div class="shop-filterbar__dropdown" data-dropdown="price">
+            <button type="button" class="shop-filterbar__dropdown-btn" aria-expanded="false">
+              Price
+              <svg class="shop-filterbar__chevron" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <div class="shop-filterbar__dropdown-menu shop-filterbar__dropdown-menu--wide">
+              <div class="shop-filterbar__price">
+                <div class="shop-filterbar__price-inputs">
+                  <div class="shop-filterbar__price-field">
+                    <input type="number" name="min_price" id="price-min" placeholder="{{ currency }}0" value="{{ min_price }}" min="0" step="1">
+                  </div>
+                  <span class="shop-filterbar__price-sep">—</span>
+                  <div class="shop-filterbar__price-field">
+                    <input type="number" name="max_price" id="price-max" placeholder="{{ currency }}{{ price_max }}" value="{{ max_price }}" min="0" step="1">
+                  </div>
                 </div>
-                <h2 class="shop-empty__heading">No Products Found</h2>
-                <p class="shop-empty__text">Try adjusting your search or filters to find what you're looking for.</p>
-                <a href="{% url 'products:shop' %}" class="shop-empty__button">View All Products</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="shop-filterbar__dropdown" data-dropdown="availability">
+            <button type="button" class="shop-filterbar__dropdown-btn" aria-expanded="false">
+              Availability
+              <svg class="shop-filterbar__chevron" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <div class="shop-filterbar__dropdown-menu">
+              <label class="shop-filterbar__option">
+                <input type="checkbox" name="in_stock" value="1" {% if in_stock == '1' %}checked{% endif %}>
+                <span class="shop-filterbar__option-check"></span>
+                <span class="shop-filterbar__option-label">In Stock</span>
+              </label>
+              <label class="shop-filterbar__option">
+                <input type="checkbox" name="out_of_stock" value="1" {% if out_of_stock == '1' %}checked{% endif %}>
+                <span class="shop-filterbar__option-check"></span>
+                <span class="shop-filterbar__option-label">Out of Stock</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="shop-filterbar__sort">
+          <label for="shop-sort" class="visually-hidden">Sort by</label>
+          <select name="sort" id="shop-sort">
+            <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest</option>
+            <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest</option>
+            <option value="price-asc" {% if sort_by == 'price-asc' %}selected{% endif %}>Price Low → High</option>
+            <option value="price-desc" {% if sort_by == 'price-desc' %}selected{% endif %}>Price High → Low</option>
+            <option value="best_selling" {% if sort_by == 'best_selling' %}selected{% endif %}>Best Selling</option>
+            <option value="popularity" {% if sort_by == 'popularity' %}selected{% endif %}>Popularity</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="shop-controls">
+      <button type="button" class="shop-controls__filter-btn" id="shop-drawer-open" aria-label="Open filters">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 6h16M8 12h8M12 18h4" stroke-linecap="round"/></svg>
+        Filters
+        {% if active_filter_count > 0 %}
+        <span class="shop-controls__badge">{{ active_filter_count }}</span>
+        {% endif %}
+      </button>
+      <div class="shop-controls__sort">
+        <label for="shop-sort-mobile" class="visually-hidden">Sort by</label>
+        <select name="sort" id="shop-sort-mobile">
+          <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest</option>
+          <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest</option>
+          <option value="price-asc" {% if sort_by == 'price-asc' %}selected{% endif %}>Price Low → High</option>
+          <option value="price-desc" {% if sort_by == 'price-desc' %}selected{% endif %}>Price High → Low</option>
+          <option value="best_selling" {% if sort_by == 'best_selling' %}selected{% endif %}>Best Selling</option>
+          <option value="popularity" {% if sort_by == 'popularity' %}selected{% endif %}>Popularity</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="shop-drawer-overlay" id="shop-drawer-overlay"></div>
+    <div class="shop-drawer" id="shop-drawer" role="dialog" aria-modal="true" aria-label="Filters">
+      <div class="shop-drawer__header">
+        <h2 class="shop-drawer__title">Filters</h2>
+        <button type="button" class="shop-drawer__close" id="shop-drawer-close" aria-label="Close filters">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="shop-drawer__body">
+
+        <div class="shop-drawer__group">
+          <button type="button" class="shop-drawer__group-header" aria-expanded="true">
+            Category
+            <svg class="shop-drawer__chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="shop-drawer__group-body">
+            <label class="shop-filterbar__option">
+              <input type="radio" name="category" value="" {% if not selected_category %}checked{% endif %}>
+              <span class="shop-filterbar__option-check"></span>
+              <span class="shop-filterbar__option-label">All</span>
+            </label>
+            {% for cat in categories %}
+            <label class="shop-filterbar__option">
+              <input type="radio" name="category" value="{{ cat.slug }}" {% if cat.slug == selected_category %}checked{% endif %}>
+              <span class="shop-filterbar__option-check"></span>
+              <span class="shop-filterbar__option-label">{{ cat.name }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="shop-drawer__group">
+          <button type="button" class="shop-drawer__group-header" aria-expanded="true">
+            Brand
+            <svg class="shop-drawer__chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="shop-drawer__group-body">
+            {% for brand in available_brands %}
+            <label class="shop-filterbar__option">
+              <input type="checkbox" name="brand" value="{{ brand }}" {% if brand in selected_brand_list %}checked{% endif %}>
+              <span class="shop-filterbar__option-check"></span>
+              <span class="shop-filterbar__option-label">{{ brand }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="shop-drawer__group">
+          <button type="button" class="shop-drawer__group-header" aria-expanded="true">
+            Size
+            <svg class="shop-drawer__chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="shop-drawer__group-body">
+            <label class="shop-filterbar__option">
+              <input type="radio" name="size" value="" {% if not selected_size %}checked{% endif %}>
+              <span class="shop-filterbar__option-check"></span>
+              <span class="shop-filterbar__option-label">All</span>
+            </label>
+            {% for size in available_sizes %}
+            <label class="shop-filterbar__option">
+              <input type="radio" name="size" value="{{ size }}" {% if size == selected_size %}checked{% endif %}>
+              <span class="shop-filterbar__option-check"></span>
+              <span class="shop-filterbar__option-label">{{ size }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="shop-drawer__group">
+          <button type="button" class="shop-drawer__group-header" aria-expanded="true">
+            Price
+            <svg class="shop-drawer__chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="shop-drawer__group-body">
+            <div class="shop-filterbar__price">
+              <div class="shop-filterbar__price-inputs">
+                <div class="shop-filterbar__price-field">
+                  <input type="number" name="min_price" id="price-min-mobile" placeholder="{{ currency }}0" value="{{ min_price }}" min="0" step="1">
+                </div>
+                <span class="shop-filterbar__price-sep">—</span>
+                <div class="shop-filterbar__price-field">
+                  <input type="number" name="max_price" id="price-max-mobile" placeholder="{{ currency }}{{ price_max }}" value="{{ max_price }}" min="0" step="1">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shop-drawer__group">
+          <button type="button" class="shop-drawer__group-header" aria-expanded="true">
+            Availability
+            <svg class="shop-drawer__chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="shop-drawer__group-body">
+            <label class="shop-filterbar__option">
+              <input type="checkbox" name="in_stock" value="1" {% if in_stock == '1' %}checked{% endif %}>
+              <span class="shop-filterbar__option-check"></span>
+              <span class="shop-filterbar__option-label">In Stock</span>
+            </label>
+            <label class="shop-filterbar__option">
+              <input type="checkbox" name="out_of_stock" value="1" {% if out_of_stock == '1' %}checked{% endif %}>
+              <span class="shop-filterbar__option-check"></span>
+              <span class="shop-filterbar__option-label">Out of Stock</span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+      <div class="shop-drawer__footer">
+        <a href="{% url 'products:shop' %}" class="shop-drawer__clear">Clear All</a>
+        <button type="submit" class="shop-drawer__apply">Apply</button>
+      </div>
+    </div>
+
+    <div class="shop-searchbar">
+      <div class="shop-searchbar__input-wrapper">
+        <svg class="shop-searchbar__icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21" stroke-linecap="round"/></svg>
+        <input type="text" value="{{ search_query }}" placeholder="Search products..." id="shop-search-input" class="shop-searchbar__input" autocomplete="off">
+        {% if search_query %}
+        <a href="{% url 'products:shop' %}" class="shop-searchbar__clear" aria-label="Clear search">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+        </a>
+        {% endif %}
+      </div>
+      <span class="shop-searchbar__count">
+        {% if total_count > 0 %}
+          {% if total_count > paginator.per_page %}
+            Showing {{ page_start }}–{{ page_end }} of {{ total_count }} Product{{ total_count|pluralize }}
+          {% else %}
+            {{ total_count }} Product{{ total_count|pluralize }}
+          {% endif %}
+        {% endif %}
+      </span>
+    </div>
+
+    {% if active_filters %}
+    <div class="shop-chips">
+      {% for filter in active_filters %}
+      <a href="{{ filter.url }}" class="shop-chips__chip">
+        {{ filter.label }}
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+      </a>
+      {% endfor %}
+      <a href="{% url 'products:shop' %}" class="shop-chips__clear">Clear All</a>
+    </div>
+    {% endif %}
+
+    <main class="shop-main">
+
+      {% if products %}
+
+      <div class="product-grid" id="product-grid">
+        {% for product in products %}
+        <article class="product-card" data-product-id="{{ product.pk }}" data-product-url="{% url 'products:product_detail' product.pk %}">
+          <div class="product-card__image">
+            {% if product.image %}
+            <img src="{{ product.image.url|cloudinary_normalize }}"
+                 alt="{{ product.name }}"
+                 loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+                 decoding="async"
+                 width="600"
+                 height="750">
+            {% else %}
+            <img src="{% static 'images/default.jpg' %}"
+                 alt="No image available"
+                 loading="lazy"
+                 decoding="async"
+                 width="600"
+                 height="750">
+            {% endif %}
+
+            <div class="product-card__badges">
+              {% if product.condition == 'new' %}
+              <span class="badge badge-new">New</span>
+              {% elif product.condition == 'refurbished' %}
+              <span class="badge badge-refurb">Refurb</span>
+              {% endif %}
+              {% if product.stock <= 5 and product.stock > 0 %}
+              <span class="badge badge-low-stock">Low Stock</span>
+              {% endif %}
             </div>
 
+            {% if product.stock > 0 %}
+            <button type="button" class="product-card__quickview" data-product-id="{{ product.pk }}" aria-label="Quick view">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              Quick View
+            </button>
+            {% else %}
+            <div class="product-card__soldout">
+              <span>Sold Out</span>
+            </div>
             {% endif %}
-        </main>
-    </div>
+          </div>
+
+          <div class="product-card__info">
+            {% if product.brand %}
+            <span class="product-card__brand">{{ product.brand }}</span>
+            {% endif %}
+            <h3 class="product-card__name">{{ product.name }}</h3>
+            <div class="product-card__price">
+              <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
+            </div>
+            {% if product.has_sizes %}
+            <div class="product-card__sizes">
+              {% for s in product.get_available_sizes %}
+              <span class="product-card__size-dot">{{ s }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+
+      {% if products.paginator.num_pages > 1 %}
+      <nav class="shop-pagination" aria-label="Pagination">
+        {% if products.has_previous %}
+        <a href="?{% url_replace page=products.previous_page_number %}" class="shop-pagination__link shop-pagination__prev" aria-label="Previous page">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Prev
+        </a>
+        {% endif %}
+
+        {% for pg in products.paginator.page_range %}
+          {% if pg == products.number %}
+          <span class="shop-pagination__link is-active" aria-current="page">{{ pg }}</span>
+          {% elif pg > products.number|add:'-3' and pg < products.number|add:'3' %}
+          <a href="?{% url_replace page=pg %}" class="shop-pagination__link">{{ pg }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if products.has_next %}
+        <a href="?{% url_replace page=products.next_page_number %}" class="shop-pagination__link shop-pagination__next" aria-label="Next page">
+          Next
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        {% endif %}
+      </nav>
+      {% endif %}
+
+      {% else %}
+
+      <div class="shop-empty">
+        <div class="shop-empty__icon">
+          <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21" stroke-linecap="round"/><path d="M8 11h6" stroke-linecap="round"/></svg>
+        </div>
+        <h2 class="shop-empty__heading">No products found.</h2>
+        <p class="shop-empty__text">Try changing your filters.</p>
+        <a href="{% url 'products:shop' %}" class="shop-empty__btn">Clear Filters</a>
+      </div>
+
+      {% if suggested_products %}
+      <section class="shop-suggested">
+        <h2 class="shop-suggested__title">You May Also Like</h2>
+        <div class="product-grid">
+          {% for product in suggested_products %}
+          <article class="product-card" data-product-id="{{ product.pk }}" data-product-url="{% url 'products:product_detail' product.pk %}">
+            <div class="product-card__image">
+              {% if product.image %}
+              <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="750">
+              {% else %}
+              <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750">
+              {% endif %}
+              <div class="product-card__badges">
+                {% if product.condition == 'new' %}
+                <span class="badge badge-new">New</span>
+                {% elif product.condition == 'refurbished' %}
+                <span class="badge badge-refurb">Refurb</span>
+                {% endif %}
+              </div>
+              {% if product.stock > 0 %}
+              <button type="button" class="product-card__quickview" data-product-id="{{ product.pk }}" aria-label="Quick view">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Quick View
+              </button>
+              {% else %}
+              <div class="product-card__soldout"><span>Sold Out</span></div>
+              {% endif %}
+            </div>
+            <div class="product-card__info">
+              <span class="product-card__brand">{{ product.brand }}</span>
+              <h3 class="product-card__name">{{ product.name }}</h3>
+              <div class="product-card__price">
+                <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
+              </div>
+              {% if product.has_sizes %}
+              <div class="product-card__sizes">
+                {% for s in product.get_available_sizes %}
+                <span class="product-card__size-dot">{{ s }}</span>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% endif %}
+    </main>
+
+  </form>
+
 </div>
 {% endblock %}
 
