@@ -87,12 +87,17 @@
               <div class="shop-filterbar__price">
                 <div class="shop-filterbar__price-inputs">
                   <div class="shop-filterbar__price-field">
-                    <input type="number" name="min_price" id="price-min" placeholder="{{ currency }}0" value="{{ min_price }}" min="0" step="1">
+                    <input type="number" name="min_price" id="price-min" placeholder="₹ Min" value="{{ min_price }}" min="0" step="1">
                   </div>
                   <span class="shop-filterbar__price-sep">—</span>
                   <div class="shop-filterbar__price-field">
-                    <input type="number" name="max_price" id="price-max" placeholder="{{ currency }}{{ price_max }}" value="{{ max_price }}" min="0" step="1">
+                    <input type="number" name="max_price" id="price-max" placeholder="₹ Max" value="{{ max_price }}" min="0" step="1">
                   </div>
+                </div>
+                <div class="shop-filterbar__price-error" id="price-error-desktop"></div>
+                <div class="shop-filterbar__price-actions">
+                  <button type="button" class="shop-filterbar__price-clear" id="price-clear-desktop">Clear</button>
+                  <button type="button" class="shop-filterbar__price-apply" id="price-apply-desktop">Apply</button>
                 </div>
               </div>
             </div>
@@ -230,12 +235,17 @@
             <div class="shop-filterbar__price">
               <div class="shop-filterbar__price-inputs">
                 <div class="shop-filterbar__price-field">
-                  <input type="number" name="min_price" id="price-min-mobile" placeholder="{{ currency }}0" value="{{ min_price }}" min="0" step="1">
+                  <input type="number" name="min_price" id="price-min-mobile" placeholder="₹ Min" value="{{ min_price }}" min="0" step="1">
                 </div>
                 <span class="shop-filterbar__price-sep">—</span>
                 <div class="shop-filterbar__price-field">
-                  <input type="number" name="max_price" id="price-max-mobile" placeholder="{{ currency }}{{ price_max }}" value="{{ max_price }}" min="0" step="1">
+                  <input type="number" name="max_price" id="price-max-mobile" placeholder="₹ Max" value="{{ max_price }}" min="0" step="1">
                 </div>
+              </div>
+              <div class="shop-filterbar__price-error" id="price-error-mobile"></div>
+              <div class="shop-filterbar__price-actions shop-filterbar__price-actions--stacked">
+                <button type="button" class="shop-filterbar__price-apply" id="price-apply-mobile">Apply</button>
+                <button type="button" class="shop-filterbar__price-clear" id="price-clear-mobile">Clear</button>
               </div>
             </div>
           </div>
@@ -306,68 +316,70 @@
 
       <div class="product-grid" id="product-grid">
         {% for product in products %}
-        <article class="product-card" data-product-id="{{ product.pk }}" data-product-url="{% url 'products:product_detail' product.pk %}">
-          <div class="product-card__image">
-            {% if product.image %}
-            <img src="{{ product.image.url|cloudinary_normalize }}"
-                 alt="{{ product.name }}"
-                 loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
-                 decoding="async"
-                 width="600"
-                 height="750">
-            {% else %}
-            <img src="{% static 'images/default.jpg' %}"
-                 alt="No image available"
-                 loading="lazy"
-                 decoding="async"
-                 width="600"
-                 height="750">
-            {% endif %}
+        <article class="product-card">
+            <a class="product-card__link" href="{% url 'products:product_detail' product.pk %}" aria-label="{{ product.name }}">
+                <div class="product-card__image">
+                    {% if product.image %}
+                    <img src="{{ product.image.url|cloudinary_normalize }}"
+                         alt="{{ product.name }}"
+                         loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+                         decoding="async"
+                         width="600"
+                         height="750">
+                    {% else %}
+                    <img src="{% static 'images/default.jpg' %}"
+                         alt="No image available"
+                         loading="lazy"
+                         decoding="async"
+                         width="600"
+                         height="750">
+                    {% endif %}
 
-            <div class="product-card__badges">
-              {% if product.condition == 'new' %}
-              <span class="badge badge-new">New</span>
-              {% elif product.condition == 'refurbished' %}
-              <span class="badge badge-refurb">Refurb</span>
-              {% endif %}
-              {% if product.stock <= 5 and product.stock > 0 %}
-              <span class="badge badge-low-stock">Low Stock</span>
-              {% endif %}
-            </div>
+                    <div class="product-card__badges">
+                        {% if product.condition == 'new' %}
+                        <span class="badge badge-new">New</span>
+                        {% elif product.condition == 'refurbished' %}
+                        <span class="badge badge-refurb">Refurb</span>
+                        {% endif %}
+                        {% if product.stock <= 5 and product.stock > 0 %}
+                        <span class="badge badge-low-stock">Low Stock</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="product-card__info">
+                    {% if product.brand %}
+                    <span class="product-card__brand">{{ product.brand }}</span>
+                    {% endif %}
+                    <h3 class="product-card__name">{{ product.name }}</h3>
+                    <div class="product-card__price">
+                        <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
+                    </div>
+                    {% if product.has_sizes %}
+                    <div class="product-card__sizes">
+                        {% for s in product.get_available_sizes %}
+                        <span class="product-card__size-dot">{{ s }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </a>
 
             {% if product.stock > 0 %}
-            <button type="button" class="product-card__quickview" data-product-id="{{ product.pk }}" aria-label="Quick view">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              Quick View
-            </button>
+            <a href="{% url 'products:product_detail' product.pk %}" class="product-card__quickview" aria-label="View Details">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                View Details
+            </a>
             {% else %}
             <div class="product-card__soldout">
-              <span>Sold Out</span>
+                <span>Sold Out</span>
             </div>
             {% endif %}
-          </div>
-
-          <div class="product-card__info">
-            {% if product.brand %}
-            <span class="product-card__brand">{{ product.brand }}</span>
-            {% endif %}
-            <h3 class="product-card__name">{{ product.name }}</h3>
-            <div class="product-card__price">
-              <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
-            </div>
-            {% if product.has_sizes %}
-            <div class="product-card__sizes">
-              {% for s in product.get_available_sizes %}
-              <span class="product-card__size-dot">{{ s }}</span>
-              {% endfor %}
-            </div>
-            {% endif %}
-          </div>
         </article>
-        {% endfor %}
+      {% endfor %}
       </div>
 
       {% if products.paginator.num_pages > 1 %}
@@ -412,46 +424,50 @@
         <h2 class="shop-suggested__title">You May Also Like</h2>
         <div class="product-grid">
           {% for product in suggested_products %}
-          <article class="product-card" data-product-id="{{ product.pk }}" data-product-url="{% url 'products:product_detail' product.pk %}">
-            <div class="product-card__image">
-              {% if product.image %}
-              <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="750">
-              {% else %}
-              <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750">
-              {% endif %}
-              <div class="product-card__badges">
-                {% if product.condition == 'new' %}
-                <span class="badge badge-new">New</span>
-                {% elif product.condition == 'refurbished' %}
-                <span class="badge badge-refurb">Refurb</span>
-                {% endif %}
-              </div>
-              {% if product.stock > 0 %}
-              <button type="button" class="product-card__quickview" data-product-id="{{ product.pk }}" aria-label="Quick view">
+        <article class="product-card">
+            <a class="product-card__link" href="{% url 'products:product_detail' product.pk %}" aria-label="{{ product.name }}">
+                <div class="product-card__image">
+                    {% if product.image %}
+                    <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="750">
+                    {% else %}
+                    <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750">
+                    {% endif %}
+                    <div class="product-card__badges">
+                        {% if product.condition == 'new' %}
+                        <span class="badge badge-new">New</span>
+                        {% elif product.condition == 'refurbished' %}
+                        <span class="badge badge-refurb">Refurb</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="product-card__info">
+                    <span class="product-card__brand">{{ product.brand }}</span>
+                    <h3 class="product-card__name">{{ product.name }}</h3>
+                    <div class="product-card__price">
+                        <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
+                    </div>
+                    {% if product.has_sizes %}
+                    <div class="product-card__sizes">
+                        {% for s in product.get_available_sizes %}
+                        <span class="product-card__size-dot">{{ s }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </a>
+
+            {% if product.stock > 0 %}
+            <a href="{% url 'products:product_detail' product.pk %}" class="product-card__quickview" aria-label="View Details">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                Quick View
-              </button>
-              {% else %}
-              <div class="product-card__soldout"><span>Sold Out</span></div>
-              {% endif %}
-            </div>
-            <div class="product-card__info">
-              <span class="product-card__brand">{{ product.brand }}</span>
-              <h3 class="product-card__name">{{ product.name }}</h3>
-              <div class="product-card__price">
-                <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
-              </div>
-              {% if product.has_sizes %}
-              <div class="product-card__sizes">
-                {% for s in product.get_available_sizes %}
-                <span class="product-card__size-dot">{{ s }}</span>
-                {% endfor %}
-              </div>
-              {% endif %}
-            </div>
-          </article>
+                View Details
+            </a>
+            {% else %}
+            <div class="product-card__soldout"><span>Sold Out</span></div>
+            {% endif %}
+        </article>
           {% endfor %}
-        </div>
+          </div>
       </section>
       {% endif %}
 

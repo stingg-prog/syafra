@@ -37,7 +37,6 @@ const CSS_FILES = [
     'static/css/components/cards.css',
     'static/css/components/product-card.css',
     'static/css/components/badges.css',
-    'static/css/components/quickview.css',
     'static/css/components/forms.css',
     // Page layer
     'static/css/pages/product-detail.css',

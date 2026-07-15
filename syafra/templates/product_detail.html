@@ -197,22 +197,24 @@
     <h2 class="pdp-related__title">You May Also Like</h2>
     <div class="pdp-related__grid">
         {% for related in related_products %}
-        <a href="{% url 'products:product_detail' related.pk %}" class="product-card">
-            <div class="product-card__image">
-                {% if related.image %}
-                <img src="{{ related.image.url|cloudinary_normalize }}" alt="{{ related.name }}" loading="lazy" decoding="async" width="600" height="750">
-                {% else %}
-                <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750">
-                {% endif %}
-            </div>
-            <div class="product-card__info">
-                <span class="product-card__brand">{{ related.brand }}</span>
-                <h3 class="product-card__name">{{ related.name }}</h3>
-                <div class="product-card__price">
-                    <span class="product-card__price-current">{{ currency }}{{ related.price|floatformat:0 }}</span>
+        <article class="product-card">
+            <a class="product-card__link" href="{% url 'products:product_detail' related.pk %}" aria-label="{{ related.name }}">
+                <div class="product-card__image">
+                    {% if related.image %}
+                    <img src="{{ related.image.url|cloudinary_normalize }}" alt="{{ related.name }}" loading="lazy" decoding="async" width="600" height="750">
+                    {% else %}
+                    <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750">
+                    {% endif %}
                 </div>
-            </div>
-        </a>
+                <div class="product-card__info">
+                    <span class="product-card__brand">{{ related.brand }}</span>
+                    <h3 class="product-card__name">{{ related.name }}</h3>
+                    <div class="product-card__price">
+                        <span class="product-card__price-current">{{ currency }}{{ related.price|floatformat:0 }}</span>
+                    </div>
+                </div>
+            </a>
+        </article>
         {% endfor %}
     </div>
 </section>

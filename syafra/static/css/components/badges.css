@@ -34,8 +34,8 @@
 
 /* ---- Stock Badges ---- */
 .badge-low-stock {
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--color-gray-900);
+    color: var(--color-white);
 }
 
 .badge-pre-order {

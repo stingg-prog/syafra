@@ -190,14 +190,6 @@
     }
 }
 
-.product-grid--homepage-six .product-card__name {
-    font-size: 0.9375rem;
-}
-
-.product-grid--homepage-six .product-card__price-current {
-    font-size: 0.9375rem;
-}
-
 /* ---- Dual Collection Section (Trending Now + Best Sellers) ---- */
 .dual-collection-section {
     scroll-margin-top: calc(var(--navbar-height) + 24px);
@@ -284,14 +276,6 @@
     .product-grid--dual-panel {
         grid-template-columns: 1fr;
     }
-}
-
-.dual-collection-panel .product-card__name {
-    font-size: 0.875rem;
-}
-
-.dual-collection-panel .product-card__price-current {
-    font-size: 0.875rem;
 }
 
 /* ---- Empty State (compact) ---- */

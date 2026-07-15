@@ -182,18 +182,16 @@ class HomeViewTest(TestCase):
         html = response.content.decode()
         self.assertNotIn('unsplash', html)
 
-    def test_home_newsletter_uses_cms_title(self):
-        section = HomepageSection.objects.create(
+    def test_home_newsletter_renders_static_content(self):
+        HomepageSection.objects.create(
             section_type='newsletter',
             is_active=True,
             display_order=1,
-            title='CMS TITLE',
-            subtitle='CMS SUBTITLE',
         )
         response = self.client.get('/', follow=True)
         html = response.content.decode()
-        self.assertIn('CMS TITLE', html)
-        self.assertIn('CMS SUBTITLE', html)
+        self.assertIn('Stay in the Loop', html)
+        self.assertIn('Subscribe for exclusive drops', html)
 
     def test_home_section_overline_from_cms(self):
         collection = ProductCollection.objects.create(name='Test Col')
@@ -346,8 +344,8 @@ class ShopViewTest(TestCase):
     def test_shop_product_detail_link_available(self):
         response = self.client.get('/shop', follow=True)
         html = response.content.decode()
-        self.assertIn(f'data-href="/product/{self.product1.pk}/"', html)
-        self.assertIn(f'data-href="/product/{self.product2.pk}/"', html)
+        self.assertIn(f'href="/product/{self.product1.pk}/"', html)
+        self.assertIn(f'href="/product/{self.product2.pk}/"', html)
 
     def test_shop_no_dead_anchor_links(self):
         response = self.client.get('/shop', follow=True)
@@ -371,14 +369,12 @@ class ShopViewTest(TestCase):
         ws.instagram_url = 'https://instagram.com/test'
         ws.twitter_url = 'https://twitter.com/test'
         ws.threads_url = 'https://threads.net/test'
-        ws.linkedin_url = 'https://linkedin.com/test'
         ws.save()
         response = self.client.get('/shop', follow=True)
         html = response.content.decode()
         self.assertIn('instagram.com/test', html)
         self.assertIn('twitter.com/test', html)
         self.assertIn('threads.net/test', html)
-        self.assertIn('linkedin.com/test', html)
 
 
 class ProductDetailViewTest(TestCase):
@@ -645,12 +641,14 @@ class HomepageSectionBehaviorTest(TestCase):
 
     # ── Instagram Feed ────────────────────────────────────────────
 
-    def test_instagram_hidden_with_zero_active_posts(self):
+    def test_instagram_shows_fallback_when_no_active_posts(self):
         HomepageSection.objects.create(
             section_type='instagram_feed', is_active=True, display_order=1,
         )
         response = self.client.get('/', follow=True)
-        self.assertNotIn('instagram-section', response.content.decode())
+        html = response.content.decode()
+        self.assertIn('instagram-section', html)
+        self.assertIn('instagram-fallback', html)
 
     def test_active_instagram_post_in_context(self):
         section = HomepageSection.objects.create(

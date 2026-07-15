@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -123,7 +125,7 @@ def shop(request):
         products = products.filter(category__slug=category_slug)
 
     if size_filter:
-        products = products.filter(sizes__size__iexact=size_filter).distinct()
+        products = products.filter(sizes__size__iexact=size_filter, sizes__stock__gt=0)
 
     if stock_filter == 'in_stock':
         in_stock = '1'
@@ -144,15 +146,13 @@ def shop(request):
 
     if min_price:
         try:
-            from decimal import Decimal
-            products = products.filter(price__gte=Decimal(str(min_price)))
+            products = products.filter(price__gte=Decimal(min_price.strip()))
         except Exception:
             pass
 
     if max_price:
         try:
-            from decimal import Decimal
-            products = products.filter(price__lte=Decimal(str(max_price)))
+            products = products.filter(price__lte=Decimal(max_price.strip()))
         except Exception:
             pass
 
@@ -325,7 +325,7 @@ def product_detail(request, pk):
         pk=pk
     )
     gallery_images = list(product.images.all())
-    related_products = Product.objects.filter(category=product.category).exclude(pk=pk)[:4]
+    related_products = Product.objects.filter(category=product.category).exclude(pk=pk)[:6]
     primary_image_url = (
         product.image.url if product.image else (
             gallery_images[0].image.url if gallery_images else ""

@@ -13,55 +13,57 @@
         {% if products %}
         <div class="product-grid product-grid--triple">
             {% for product in products|slice:":3" %}
-            <div class="product-card reveal stagger-{{ forloop.counter }}" data-product-id="{{ product.pk }}" data-product-url="{% url 'products:product_detail' product.pk %}">
-                <div class="product-card__image">
-                    {% if product.image %}
-                    <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="750">
-                    {% else %}
-                    <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750">
-                    {% endif %}
-
-                    <div class="product-card__badges">
-                        {% if product.condition == 'new' %}
-                        <span class="badge badge-new">New</span>
-                        {% elif product.condition == 'refurbished' %}
-                        <span class="badge badge-refurb">Refurb</span>
+            <article class="product-card reveal stagger-{{ forloop.counter }}">
+                <a class="product-card__link" href="{% url 'products:product_detail' product.pk %}" aria-label="{{ product.name }}">
+                    <div class="product-card__image">
+                        {% if product.image %}
+                        <img src="{{ product.image.url|cloudinary_normalize }}" alt="{{ product.name }}" loading="lazy" decoding="async" width="600" height="750">
+                        {% else %}
+                        <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750">
                         {% endif %}
-                        {% if product.stock <= 5 and product.stock > 0 %}
-                        <span class="badge badge-low-stock">Low Stock</span>
+
+                        <div class="product-card__badges">
+                            {% if product.condition == 'new' %}
+                            <span class="badge badge-new">New</span>
+                            {% elif product.condition == 'refurbished' %}
+                            <span class="badge badge-refurb">Refurb</span>
+                            {% endif %}
+                            {% if product.stock <= 5 and product.stock > 0 %}
+                            <span class="badge badge-low-stock">Low Stock</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="product-card__info">
+                        <span class="product-card__brand">{{ product.brand }}</span>
+                        <h3 class="product-card__name">{{ product.name }}</h3>
+                        <div class="product-card__price">
+                            <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:2 }}</span>
+                        </div>
+                        {% if product.has_sizes %}
+                        <div class="product-card__sizes">
+                            {% for size in product.get_available_sizes %}
+                            <span class="product-card__size-dot">{{ size }}</span>
+                            {% endfor %}
+                        </div>
                         {% endif %}
                     </div>
+                </a>
 
-                    {% if product.stock > 0 %}
-                    <button class="product-card__quickview" aria-label="Quick view">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                        </svg>
-                        Quick View
-                    </button>
-                    {% else %}
-                    <div class="product-card__soldout">
-                        <span>Sold Out</span>
-                    </div>
-                    {% endif %}
+                {% if product.stock > 0 %}
+                <a href="{% url 'products:product_detail' product.pk %}" class="product-card__quickview" aria-label="View Details">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    View Details
+                </a>
+                {% else %}
+                <div class="product-card__soldout">
+                    <span>Sold Out</span>
                 </div>
-
-                <div class="product-card__info">
-                    <span class="product-card__brand">{{ product.brand }}</span>
-                    <h3 class="product-card__name">{{ product.name }}</h3>
-                    <div class="product-card__price">
-                        <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:2 }}</span>
-                    </div>
-                    {% if product.has_sizes %}
-                    <div class="product-card__sizes">
-                        {% for size in product.get_available_sizes %}
-                        <span class="product-card__size-dot">{{ size }}</span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
+                {% endif %}
+            </article>
             {% endfor %}
         </div>
         {% else %}
