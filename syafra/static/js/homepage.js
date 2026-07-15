@@ -21,41 +21,103 @@
         return cookieValue;
     }
 
+    var SUBSCRIBING_TEXT = 'Subscribing\u2026';
+
+    function setLoading(form, input, btn, loading) {
+        var btnText = btn.querySelector('.newsletter-btn__text');
+        if (loading) {
+            form.setAttribute('aria-busy', 'true');
+            input.disabled = true;
+            btn.disabled = true;
+            btn.setAttribute('aria-disabled', 'true');
+            btn.classList.add('is-loading');
+            if (btnText) btnText.textContent = SUBSCRIBING_TEXT;
+        } else {
+            form.setAttribute('aria-busy', 'false');
+            input.disabled = false;
+            btn.disabled = false;
+            btn.removeAttribute('aria-disabled');
+            btn.classList.remove('is-loading');
+            if (btnText) btnText.textContent = 'Subscribe';
+        }
+    }
+
+    function resetForm(form, input, btn) {
+        form.reset();
+        setLoading(form, input, btn, false);
+    }
+
     window.submitNewsletter = function (e) {
         e.preventDefault();
         var form = document.getElementById('newsletter-form');
         var msg = document.getElementById('newsletter-message');
-        if (!form || !msg) return false;
+        var input = document.getElementById('newsletter-email');
+        var btn = document.getElementById('newsletter-submit');
+        if (!form || !msg || !input || !btn) return false;
 
         var formData = new FormData(form);
         var csrfToken =
             document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 
-        msg.classList.remove('newsletter-success-anim');
+        // Clear any pending auto-hide timeout
+        if (form._newsletterTimeout) {
+            clearTimeout(form._newsletterTimeout);
+            form._newsletterTimeout = null;
+        }
+
+        msg.classList.remove('hidden', 'is-success', 'is-error', 'is-fading-out', 'newsletter-success-anim');
+        msg.textContent = '';
+
+        setLoading(form, input, btn, true);
 
         fetch(form.getAttribute('action') || window.location.href, {
             method: 'POST',
             body: formData,
-            headers: { 'X-CSRFToken': csrfToken },
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
         })
             .then(function (r) {
+                if (!r.ok) {
+                    return r.json().then(function (data) {
+                        throw new Error(data.error || 'Request failed');
+                    }, function () {
+                        throw new Error('Server error (HTTP ' + r.status + ')');
+                    });
+                }
                 return r.json();
             })
             .then(function (data) {
-                msg.classList.remove('hidden', 'is-success', 'is-error');
                 if (data.success) {
                     msg.classList.add('is-success', 'newsletter-success-anim');
-                    form.reset();
+                    msg.textContent = data.message;
+
+                    // After 2.5s: clear input, re-enable everything
+                    form._newsletterTimeout = setTimeout(function () {
+                        resetForm(form, input, btn);
+                        // After another 1.5s (4s total): fade out message
+                        form._newsletterTimeout = setTimeout(function () {
+                            msg.classList.add('is-fading-out');
+                            // After fade animation (300ms): hide fully
+                            form._newsletterTimeout = setTimeout(function () {
+                                msg.classList.add('hidden');
+                                msg.classList.remove('is-success', 'is-fading-out');
+                                msg.textContent = '';
+                                form._newsletterTimeout = null;
+                            }, 300);
+                        }, 1500);
+                    }, 2500);
                 } else {
                     msg.classList.add('is-error');
+                    msg.textContent = data.error || data.message || 'Please try again.';
+                    setLoading(form, input, btn, false);
                 }
-                msg.textContent = data.message || data.error;
             })
-            .catch(function () {
-                msg.classList.remove('hidden', 'is-success', 'is-error');
+            .catch(function (err) {
                 msg.classList.add('is-error');
-                msg.textContent =
-                    'Something went wrong. Please try again.';
+                msg.textContent = err.message || 'Something went wrong. Please try again.';
+                setLoading(form, input, btn, false);
             });
 
         return false;

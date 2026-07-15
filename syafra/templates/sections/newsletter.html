@@ -10,7 +10,8 @@
               action="{% url 'products:newsletter_subscribe' %}"
               method="post"
               onsubmit="return window.submitNewsletter(event)"
-              class="newsletter-form">
+              class="newsletter-form"
+              aria-busy="false">
             {% csrf_token %}
             <div class="newsletter-input-wrapper">
                 <input type="email"
@@ -18,10 +19,19 @@
                        placeholder="Enter your email"
                        required
                        class="newsletter-input"
-                       aria-label="Email address">
+                       aria-label="Email address"
+                       id="newsletter-email">
             </div>
-            <button type="submit" class="newsletter-btn">Subscribe</button>
+            <button type="submit" class="newsletter-btn" id="newsletter-submit">
+                <span class="newsletter-btn__text">Subscribe</span>
+                <span class="newsletter-spinner"></span>
+            </button>
         </form>
-        <p id="newsletter-message" class="newsletter-message hidden"></p>
+        <p id="newsletter-message" class="newsletter-message hidden" aria-live="polite"></p>
+        {% if messages %}
+        <div class="newsletter-message is-success">
+            {% for message in messages %}{{ message }}{% endfor %}
+        </div>
+        {% endif %}
     </div>
 </section>

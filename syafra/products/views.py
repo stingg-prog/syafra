@@ -4,6 +4,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.cache import cache
+from django.contrib import messages
 from django.db.models import Q, Max, Min, Count
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -81,20 +82,35 @@ def home(request):
 
 @require_POST
 def newsletter_subscribe(request):
-    email = request.POST.get('email', '').strip()
+    email = request.POST.get('email', '').strip().lower()
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if not email or not re.match(r'^[^@]+@[^@]+\.[^@]+$', email):
-        return JsonResponse({'success': False, 'error': 'Valid email required.'}, status=400)
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': 'Valid email required.'}, status=400)
+        messages.error(request, 'Please enter a valid email address.')
+        return redirect(request.META.get('HTTP_REFERER', '/'))
 
     subscriber, created = NewsletterSubscriber.objects.get_or_create(
-        email__iexact=email,
+        email=email,
         defaults={'source': 'homepage'}
     )
-    if not created and not subscriber.is_active:
+
+    if created:
+        msg = 'Thank you for subscribing to SYAFRA.'
+    elif not subscriber.is_active:
         subscriber.is_active = True
         subscriber.unsubscribed_at = None
         subscriber.save(update_fields=['is_active', 'unsubscribed_at'])
+        msg = 'Thank you for subscribing to SYAFRA.'
+    else:
+        msg = "You're already subscribed."
 
-    return JsonResponse({'success': True, 'message': 'Subscribed!'})
+    if is_ajax:
+        return JsonResponse({'success': True, 'message': msg})
+
+    messages.success(request, msg)
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 SIZE_ORDER = {'XS': 0, 'S': 1, 'M': 2, 'L': 3, 'XL': 4, 'XXL': 5}

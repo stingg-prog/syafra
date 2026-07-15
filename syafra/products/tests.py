@@ -2,7 +2,7 @@ import re
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from products.models import Category, Product, ProductCollection, ProductSize, HomepageSection, ShopByCategoryItem, PromotionalBannerConfig, Testimonial, InstagramPost, ContentPage, ContactMessage, ThemeSettings, WebsiteSettings
+from products.models import Category, Product, ProductCollection, ProductSize, HomepageSection, ShopByCategoryItem, PromotionalBannerConfig, Testimonial, InstagramPost, ContentPage, ContactMessage, ThemeSettings, WebsiteSettings, NewsletterSubscriber
 
 User = get_user_model()
 
@@ -1058,3 +1058,123 @@ class MaintenancePhase8Test(TestCase):
     def test_razorpay_webhook_remains_maintenance_exempt(self):
         response = self.client.post('/orders/razorpay/webhook/', {})
         self.assertNotEqual(response.status_code, 503)
+
+
+class NewsletterSubscribeTest(TestCase):
+    def setUp(self):
+        self.url = reverse('products:newsletter_subscribe')
+        self.home_url = '/'
+
+    # ── AJAX tests ──────────────────────────────────────────────
+
+    def test_ajax_valid_email_creates_subscriber(self):
+        response = self.client.post(
+            self.url, {'email': 'test@example.com'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['message'], 'Thank you for subscribing to SYAFRA.')
+        self.assertTrue(NewsletterSubscriber.objects.filter(email='test@example.com').exists())
+
+    def test_ajax_duplicate_email_returns_already_subscribed(self):
+        NewsletterSubscriber.objects.create(email='test@example.com')
+        response = self.client.post(
+            self.url, {'email': 'test@example.com'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['message'], "You're already subscribed.")
+
+    def test_ajax_case_insensitive_duplicate_detected(self):
+        NewsletterSubscriber.objects.create(email='test@example.com')
+        response = self.client.post(
+            self.url, {'email': 'TEST@EXAMPLE.COM'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['message'], "You're already subscribed.")
+
+    def test_ajax_invalid_email_rejected(self):
+        response = self.client.post(
+            self.url, {'email': 'not-an-email'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+
+    def test_ajax_empty_email_rejected(self):
+        response = self.client.post(
+            self.url, {'email': ''},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+
+    def test_ajax_whitespace_email_trimmed(self):
+        response = self.client.post(
+            self.url, {'email': '  user@example.com  '},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertTrue(NewsletterSubscriber.objects.filter(email='user@example.com').exists())
+
+    def test_ajax_email_lowercased(self):
+        response = self.client.post(
+            self.url, {'email': 'User@Example.COM'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(NewsletterSubscriber.objects.filter(email='user@example.com').exists())
+
+    def test_ajax_reactivates_inactive_subscriber(self):
+        sub = NewsletterSubscriber.objects.create(
+            email='past@subscriber.com', is_active=False
+        )
+        response = self.client.post(
+            self.url, {'email': 'past@subscriber.com'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        sub.refresh_from_db()
+        self.assertTrue(sub.is_active)
+
+    # ── Non-AJAX (graceful degradation) tests ───────────────────
+
+    def test_non_ajax_valid_email_redirects_and_messages(self):
+        response = self.client.post(self.url, {'email': 'user@example.org'}, follow=True)
+        self.assertRedirects(response, self.home_url, status_code=302)
+        self.assertTrue(NewsletterSubscriber.objects.filter(email='user@example.org').exists())
+        msgs = list(response.context['messages'])
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(str(msgs[0]), 'Thank you for subscribing to SYAFRA.')
+
+    def test_non_ajax_duplicate_email_shows_already_subscribed(self):
+        NewsletterSubscriber.objects.create(email='existing@example.com')
+        response = self.client.post(
+            self.url, {'email': 'existing@example.com'}, follow=True
+        )
+        self.assertRedirects(response, self.home_url, status_code=302)
+        msgs = list(response.context['messages'])
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(str(msgs[0]), "You're already subscribed.")
+
+    def test_non_ajax_invalid_email_redirects_with_error(self):
+        response = self.client.post(self.url, {'email': 'bad'}, follow=True)
+        self.assertRedirects(response, self.home_url, status_code=302)
+        msgs = list(response.context['messages'])
+        self.assertEqual(len(msgs), 1)
+        self.assertIn('valid', str(msgs[0]).lower())
+
+    def test_non_ajax_without_email_redirects_with_error(self):
+        response = self.client.post(self.url, {}, follow=True)
+        self.assertRedirects(response, self.home_url, status_code=302)
