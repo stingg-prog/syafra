@@ -3,77 +3,75 @@
 
 {% block title %}ORDER #{{ order.id }} - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
-{% block content %}
-<section class="pt-32 pb-16 px-6 bg-black text-white">
-    <div class="max-w-7xl mx-auto">
-        <a href="{% url 'orders:order_history' %}" class="text-syafra-beige text-sm tracking-wider hover:text-white transition-colors mb-4 inline-block">
-            ← BACK TO ORDERS
-        </a>
-        <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-4">ORDER #{{ order.id }}</h1>
-        <p class="text-syafra-beige tracking-wider text-sm">Placed on {{ order.created_at|date:"F j, Y" }}</p>
-    </div>
-</section>
-
-<section class="py-16 px-6 bg-white min-h-screen">
-    <div class="max-w-3xl mx-auto">
-        <div class="bg-gray-100 p-8 mb-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                <div>
-                    <p class="text-gray-500 tracking-wider text-xs mb-2">STATUS</p>
-                    <p class="font-semibold uppercase">{{ order.status }}</p>
-                </div>
-                <div>
-                    <p class="text-gray-500 tracking-wider text-xs mb-2">EMAIL</p>
-                    <p class="font-medium text-sm">{{ order.email }}</p>
-                </div>
-                <div>
-                    <p class="text-gray-500 tracking-wider text-xs mb-2">PHONE</p>
-                    <p class="font-medium">{{ order.phone_number }}</p>
-                </div>
-                <div>
-                    <p class="text-gray-500 tracking-wider text-xs mb-2">TOTAL</p>
-                    <p class="font-bold text-lg">{{ currency }}{{ order.total_price|floatformat:2 }}</p>
-                </div>
+{% block content %}{{ block.super }}{% endblock %}
+{% block inner_header %}
+<a href="{% url 'orders:order_history' %}" class="text-syafra-beige text-sm tracking-wider hover:text-white transition-colors mb-4 inline-block">
+    ← BACK TO ORDERS
+</a>
+<header class="page-header">
+    <h1 class="page-header__title">Order #{{ order.id }}</h1>
+    <p class="page-header__subtitle">Placed on {{ order.created_at|date:"F j, Y" }}</p>
+</header>
+{% endblock %}
+{% block inner_content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-gray-100 p-8 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+                <p class="text-gray-500 tracking-wider text-xs mb-2">STATUS</p>
+                <p class="font-semibold uppercase">{{ order.status }}</p>
+            </div>
+            <div>
+                <p class="text-gray-500 tracking-wider text-xs mb-2">EMAIL</p>
+                <p class="font-medium text-sm">{{ order.email }}</p>
+            </div>
+            <div>
+                <p class="text-gray-500 tracking-wider text-xs mb-2">PHONE</p>
+                <p class="font-medium">{{ order.phone_number }}</p>
+            </div>
+            <div>
+                <p class="text-gray-500 tracking-wider text-xs mb-2">TOTAL</p>
+                <p class="font-bold text-lg">{{ currency }}{{ order.total_price|floatformat:2 }}</p>
             </div>
         </div>
+    </div>
 
-        <div class="bg-white border border-gray-200 p-8 mb-8">
-            <h2 class="text-xl font-bold tracking-tight mb-6">ORDER ITEMS</h2>
-            <div class="space-y-4">
-                {% for item in items %}
-                <div class="flex justify-between items-center py-4 border-b border-gray-100 last:border-0">
-                    <div class="flex items-center gap-4">
-                        {% if item.product.image %}
-                        <img src="{{ item.product.image.url|cloudinary_resize:'64x80' }}" alt="{{ item.product.name }}" loading="lazy" decoding="async" width="64" height="80"
-                             class="w-16 h-20 object-contain bg-white">
-                        {% else %}
-                        <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="64" height="80"
-                             class="w-16 h-20 object-contain bg-white">
-                        {% endif %}
-                        <div>
-                            <p class="font-medium">{{ item.product.name }}</p>
-                            <p class="text-gray-500 text-sm">{{ item.product.brand }}</p>
-                            {% if item.size %}<p class="text-gray-500 text-sm">Size: {{ item.size|upper }}</p>{% endif %}
-                            <p class="text-gray-500 text-sm">Qty: {{ item.quantity }} × {{ currency }}{{ item.price|floatformat:2 }}</p>
-                        </div>
+    <div class="bg-white border border-gray-200 p-8 mb-8">
+        <h2 class="text-xl font-bold tracking-tight mb-6">ORDER ITEMS</h2>
+        <div class="space-y-4">
+            {% for item in items %}
+            <div class="flex justify-between items-center py-4 border-b border-gray-100 last:border-0">
+                <div class="flex items-center gap-4">
+                    {% if item.product.image %}
+                    <img src="{{ item.product.image.url|cloudinary_resize:'64x80' }}" alt="{{ item.product.name }}" loading="lazy" decoding="async" width="64" height="80"
+                         class="w-16 h-20 object-contain bg-white">
+                    {% else %}
+                    <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="64" height="80"
+                         class="w-16 h-20 object-contain bg-white">
+                    {% endif %}
+                    <div>
+                        <p class="font-medium">{{ item.product.name }}</p>
+                        <p class="text-gray-500 text-sm">{{ item.product.brand }}</p>
+                        {% if item.size %}<p class="text-gray-500 text-sm">Size: {{ item.size|upper }}</p>{% endif %}
+                        <p class="text-gray-500 text-sm">Qty: {{ item.quantity }} × {{ currency }}{{ item.price|floatformat:2 }}</p>
                     </div>
-                    <p class="font-semibold">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
                 </div>
-                {% endfor %}
+                <p class="font-semibold">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
             </div>
-        </div>
-
-        <div class="bg-gray-100 p-8">
-            <h2 class="text-xl font-bold tracking-tight mb-6">SHIPPING ADDRESS</h2>
-            <p class="text-gray-600 whitespace-pre-line">{{ order.shipping_address }}</p>
-        </div>
-
-        <div class="mt-8 text-center">
-            <a href="{% url 'products:shop' %}" 
-               class="inline-block bg-black text-white px-10 py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
-                CONTINUE SHOPPING
-            </a>
+            {% endfor %}
         </div>
     </div>
-</section>
+
+    <div class="bg-gray-100 p-8">
+        <h2 class="text-xl font-bold tracking-tight mb-6">SHIPPING ADDRESS</h2>
+        <p class="text-gray-600 whitespace-pre-line">{{ order.shipping_address }}</p>
+    </div>
+
+    <div class="mt-8 text-center">
+        <a href="{% url 'products:shop' %}" 
+           class="inline-block bg-black text-white px-10 py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
+            CONTINUE SHOPPING
+        </a>
+    </div>
+</div>
 {% endblock %}

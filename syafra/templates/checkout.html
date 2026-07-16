@@ -1,25 +1,49 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static cloudinary_filters %}
 
 {% block title %}Checkout - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
 {% block content %}
-<section class="checkout-page">
-    <div class="container-max">
-        <div class="checkout-header">
-            <h1 class="checkout-header__title">Checkout</h1>
-            <p class="checkout-header__subtitle">Complete your order</p>
-        </div>
+{{ block.super }}
+{% endblock %}
 
+{% block inner_header %}
+<header class="page-header">
+    <h1 class="page-header__title">Checkout</h1>
+    <p class="page-header__subtitle">Complete your order</p>
+</header>
+{% endblock %}
+
+{% block inner_content %}
+
+        <!-- Progress Stepper -->
         <div class="checkout-steps">
-            <div class="checkout-step active">
-                <span class="checkout-step__number">1</span>
-                <span>Information</span>
+            <div class="checkout-step checkout-step--completed">
+                <span class="checkout-step__number">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </span>
+                <span class="checkout-step__label">Contact</span>
             </div>
-            <div class="checkout-step-divider"></div>
-            <div class="checkout-step active">
-                <span class="checkout-step__number">2</span>
-                <span>Payment</span>
+            <div class="checkout-step__divider"></div>
+            <div class="checkout-step checkout-step--completed">
+                <span class="checkout-step__number">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </span>
+                <span class="checkout-step__label">Shipping</span>
+            </div>
+            <div class="checkout-step__divider"></div>
+            <div class="checkout-step checkout-step--active">
+                <span class="checkout-step__number">3</span>
+                <span class="checkout-step__label">Payment</span>
+            </div>
+            <div class="checkout-step__divider"></div>
+            <div class="checkout-step">
+                <span class="checkout-step__number">4</span>
+                <span class="checkout-step__label">Review</span>
             </div>
         </div>
 
@@ -31,16 +55,18 @@
         </div>
         {% endif %}
 
-        <div class="checkout-layout">
+        <div class="sidebar-layout sidebar-layout--wide">
             <!-- Form -->
             <form id="checkout-form" method="POST" action="{% url 'orders:checkout' %}" novalidate>
                 {% csrf_token %}
 
+                <!-- Contact Section -->
                 <div class="checkout-section">
                     <h2 class="checkout-section__title">Contact Information</h2>
+                    <p class="checkout-section__desc">We'll use these details to keep you updated on your order.</p>
                     <div class="checkout-field">
-                        <label class="checkout-field__label">Full Name *</label>
-                        <input type="text" name="customer_name" required
+                        <label class="checkout-field__label" for="id_customer_name">Full Name *</label>
+                        <input type="text" name="customer_name" id="id_customer_name" required
                                class="checkout-field__input"
                                placeholder="Enter your full name"
                                value="{{ form.customer_name.value|default_if_none:'' }}">
@@ -49,8 +75,8 @@
                         {% endif %}
                     </div>
                     <div class="checkout-field">
-                        <label class="checkout-field__label">Email *</label>
-                        <input type="email" name="email" required
+                        <label class="checkout-field__label" for="id_email">Email *</label>
+                        <input type="email" name="email" id="id_email" required
                                class="checkout-field__input"
                                placeholder="your@email.com"
                                value="{{ form.email.value|default_if_none:'' }}">
@@ -59,8 +85,8 @@
                         {% endif %}
                     </div>
                     <div class="checkout-field">
-                        <label class="checkout-field__label">Phone Number *</label>
-                        <input type="tel" name="phone_number" required
+                        <label class="checkout-field__label" for="id_phone">Phone Number *</label>
+                        <input type="tel" name="phone_number" id="id_phone" required
                                class="checkout-field__input"
                                placeholder="+1 234 567 8900"
                                value="{{ form.phone_number.value|default_if_none:'' }}">
@@ -68,59 +94,66 @@
                         <p class="checkout-field__error">{{ form.phone_number.errors.0 }}</p>
                         {% endif %}
                     </div>
+                </div>
+
+                <!-- Shipping Section -->
+                <div class="checkout-section">
+                    <h2 class="checkout-section__title">Shipping Address</h2>
+                    <p class="checkout-section__desc">Where should we deliver your order?</p>
                     <div class="checkout-field">
-                        <label class="checkout-field__label">Pincode *</label>
-                        <input type="text" name="pincode" required pattern="\d{6}"
+                        <label class="checkout-field__label" for="id_pincode">Pincode *</label>
+                        <input type="text" name="pincode" id="id_pincode" required pattern="\d{6}"
                                class="checkout-field__input"
                                placeholder="560001"
+                               maxlength="6"
+                               inputmode="numeric"
                                value="{{ form.pincode.value|default_if_none:'' }}">
                         {% if form.pincode.errors %}
                         <p class="checkout-field__error">{{ form.pincode.errors.0 }}</p>
                         {% endif %}
                     </div>
-                </div>
-
-                <div class="checkout-section">
-                    <h2 class="checkout-section__title">Shipping Address</h2>
                     <div class="checkout-field">
-                        <label class="checkout-field__label">Street Address *</label>
-                        <textarea name="shipping_address" required
+                        <label class="checkout-field__label" for="id_address">Street Address *</label>
+                        <textarea name="shipping_address" id="id_address" required
                                   class="checkout-field__textarea"
-                                  placeholder="Enter your full shipping address">{{ form.shipping_address.value|default_if_none:'' }}</textarea>
+                                  placeholder="House number, street name, area, landmark">{{ form.shipping_address.value|default_if_none:'' }}</textarea>
                         {% if form.shipping_address.errors %}
                         <p class="checkout-field__error">{{ form.shipping_address.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
 
-                <div class="checkout-payment">
-                    <h2 class="checkout-payment__title">Payment Method</h2>
-                    {% if payment_notice %}
-                    <div class="checkout-payment__notice checkout-payment__notice--warning">{{ payment_notice }}</div>
-                    {% elif not available_methods %}
-                    <div class="checkout-payment__notice checkout-payment__notice--error">
-                        No payment methods available. Please contact support.
-                    </div>
-                    {% endif %}
-                    <div class="checkout-payment__options">
-                        {% if 'razorpay' in available_methods %}
-                        <label class="checkout-payment__option">
-                            <input type="radio" name="payment_method" value="razorpay" checked>
-                            <div class="checkout-payment__option-text">
-                                <span class="checkout-payment__option-name">Pay Online (Card/UPI/Bank)</span>
-                                <span class="checkout-payment__option-desc">Secure payment via Razorpay</span>
-                            </div>
-                        </label>
+                <!-- Payment Section -->
+                <div class="checkout-section">
+                    <div class="checkout-payment">
+                        <h2 class="checkout-payment__title">Payment Method</h2>
+                        {% if payment_notice %}
+                        <div class="checkout-payment__notice checkout-payment__notice--warning">{{ payment_notice }}</div>
+                        {% elif not available_methods %}
+                        <div class="checkout-payment__notice checkout-payment__notice--error">
+                            No payment methods available. Please contact support.
+                        </div>
                         {% endif %}
-                        {% if upi_enabled and 'upi' in available_methods %}
-                        <label class="checkout-payment__option">
-                            <input type="radio" name="payment_method" value="upi">
-                            <div class="checkout-payment__option-text">
-                                <span class="checkout-payment__option-name">Pay via UPI</span>
-                                <span class="checkout-payment__option-desc">Google Pay, PhonePe, Paytm & more</span>
-                            </div>
-                        </label>
-                        {% endif %}
+                        <div class="checkout-payment__options">
+                            {% if 'razorpay' in available_methods %}
+                            <label class="checkout-payment__option">
+                                <input type="radio" name="payment_method" value="razorpay" checked>
+                                <div class="checkout-payment__option-text">
+                                    <span class="checkout-payment__option-name">Pay Online (Card/UPI/Bank)</span>
+                                    <span class="checkout-payment__option-desc">Secure payment via Razorpay</span>
+                                </div>
+                            </label>
+                            {% endif %}
+                            {% if upi_enabled and 'upi' in available_methods %}
+                            <label class="checkout-payment__option">
+                                <input type="radio" name="payment_method" value="upi">
+                                <div class="checkout-payment__option-text">
+                                    <span class="checkout-payment__option-name">Pay via UPI</span>
+                                    <span class="checkout-payment__option-desc">Google Pay, PhonePe, Paytm & more</span>
+                                </div>
+                            </label>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
 
@@ -130,14 +163,31 @@
             </form>
 
             <!-- Order Summary -->
-            <div class="checkout-summary">
+            <aside class="checkout-summary">
                 <h2 class="checkout-summary__title">Order Summary</h2>
 
                 <div class="checkout-summary__items">
                     {% for item in items %}
                     <div class="checkout-summary__item">
-                        <span>{{ item.product.name }} &times; {{ item.quantity }}</span>
-                        <span>{{ currency }}{{ item.subtotal|floatformat:2 }}</span>
+                        <div class="checkout-summary__item-img">
+                            {% if item.product.image %}
+                            <img src="{{ item.product.image.url|cloudinary_resize:'96x120' }}"
+                                 alt="{{ item.product.name }}"
+                                 loading="lazy" decoding="async" width="96" height="120">
+                            {% else %}
+                            <img src="{% static 'images/default.jpg' %}"
+                                 alt="No image available"
+                                 loading="lazy" decoding="async" width="96" height="120">
+                            {% endif %}
+                        </div>
+                        <div class="checkout-summary__item-details">
+                            <div class="checkout-summary__item-name">{{ item.product.name }}</div>
+                            <div class="checkout-summary__item-meta">
+                                Qty: {{ item.quantity }}
+                                {% if item.size %} | {{ item.size|upper }}{% endif %}
+                            </div>
+                        </div>
+                        <div class="checkout-summary__item-total">{{ currency }}{{ item.subtotal|floatformat:2 }}</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -145,11 +195,11 @@
                 <div class="checkout-summary__rows">
                     <div class="checkout-summary__row">
                         <span>Subtotal</span>
-                        <span>{{ currency }}{{ total|floatformat:2 }}</span>
+                        <span class="checkout-summary__row-value">{{ currency }}{{ total|floatformat:2 }}</span>
                     </div>
                     <div class="checkout-summary__row">
                         <span>Shipping</span>
-                        <span>Free</span>
+                        <span class="checkout-summary__row-value">Free</span>
                     </div>
                 </div>
 
@@ -159,13 +209,37 @@
                 </div>
 
                 <a href="{% url 'cart:cart_view' %}" class="checkout-summary__back">
-                    &larr; Back to Bag
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Back to Bag
                 </a>
-            </div>
-        </div>
-    </div>
-</section>
 
+                <!-- Security -->
+                <div class="checkout-security">
+                    <div class="checkout-security__title">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                        Secure Checkout
+                    </div>
+                    <div class="checkout-security__grid">
+                        <span class="checkout-security__item">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                            SSL Encrypted
+                        </span>
+                        <span class="checkout-security__item">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                            Secure Payment
+                        </span>
+                        <span class="checkout-security__item">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Data Protection
+                        </span>
+                    </div>
+                </div>
+            </aside>
+        </div>
 {% if 'razorpay' in available_methods %}
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 {% endif %}

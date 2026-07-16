@@ -1,0 +1,33 @@
+/* ============================================
+   SYAFRA Page Shell — Shared Layout Wrapper
+   ============================================ */
+
+.internal-page {
+    padding-top: calc(var(--navbar-height) + var(--announcement-height));
+    padding-bottom: var(--space-20);
+    min-height: 100vh;
+    background: var(--color-white);
+    animation: pageFadeIn 0.4s var(--ease-out-expo);
+}
+
+@media (max-width: 767px) {
+    .internal-page {
+        padding-top: calc(var(--navbar-height-mobile));
+        padding-bottom: var(--space-16);
+    }
+}
+
+@keyframes pageFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .internal-page {
+        animation: none;
+    }
+}

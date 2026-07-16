@@ -1,0 +1,74 @@
+/* ============================================
+   SYAFRA Layout Primitives
+   ============================================ */
+
+.sidebar-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--sidebar-gap, var(--space-8));
+    align-items: start;
+}
+
+@media (min-width: 1024px) {
+    .sidebar-layout {
+        grid-template-columns: 1fr var(--sidebar-width, 380px);
+    }
+}
+
+.sidebar-layout--wide {
+    --sidebar-width: 400px;
+}
+
+.sidebar-layout--narrow {
+    --sidebar-width: 340px;
+}
+
+.two-col-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--col-gap, var(--space-8));
+}
+
+@media (min-width: 1024px) {
+    .two-col-layout {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.two-col-layout--60-40 {
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+    .two-col-layout--60-40 {
+        grid-template-columns: 3fr 2fr;
+    }
+}
+
+.two-col-layout--70-30 {
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+    .two-col-layout--70-30 {
+        grid-template-columns: 7fr 3fr;
+    }
+}
+
+.sticky-sidebar {
+    position: sticky;
+    top: calc(var(--navbar-height) + var(--announcement-height) + var(--space-4));
+}
+
+@media (max-width: 1023px) {
+    .sticky-sidebar {
+        position: static;
+    }
+}
+
+.section-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--color-gray-100);
+    margin: var(--divider-margin, var(--space-8)) 0;
+}

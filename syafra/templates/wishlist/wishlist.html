@@ -8,15 +8,21 @@
 {% endblock %}
 
 {% block content %}
-<section class="wishlist-page">
-    <div class="wishlist-page__container">
+{{ block.super }}
+{% endblock %}
 
-        {% if total_count > 0 %}
-        <header class="wishlist-page__header">
-            <h1 class="wishlist-page__title">My Wishlist</h1>
-            <p class="wishlist-page__subtitle">Saved items ready whenever you are.</p>
-            <span class="wishlist-page__count">{{ total_count }} Saved Item{{ total_count|pluralize }}</span>
-        </header>
+{% block inner_header %}
+{% if total_count > 0 %}
+<header class="page-header page-header--bordered">
+    <h1 class="page-header__title">My Wishlist</h1>
+    <p class="page-header__subtitle">Saved items ready whenever you are.</p>
+    <span class="page-header__count">{{ total_count }} Saved Item{{ total_count|pluralize }}</span>
+</header>
+{% endif %}
+{% endblock %}
+
+{% block inner_content %}
+{% if total_count > 0 %}
 
         <div class="wishlist-page__controls">
             <div class="wishlist-page__sort">
@@ -154,8 +160,6 @@
 
         {% endif %}
 
-    </div>
-</section>
 {% endblock %}
 
 {% block extra_js %}

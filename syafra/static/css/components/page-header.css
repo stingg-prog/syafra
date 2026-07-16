@@ -1,0 +1,123 @@
+/* ============================================
+   SYAFRA Page Header — Reusable Component
+   Used on: Cart, Wishlist, Shop, Checkout, etc.
+   ============================================ */
+
+.page-header {
+    text-align: center;
+    padding: var(--header-padding-top, var(--space-8)) 0 var(--header-padding-bottom, var(--space-6));
+    margin-bottom: var(--header-margin-bottom, var(--space-8));
+    animation: pageHeaderFadeIn 0.3s var(--ease-out-expo);
+}
+
+@media (max-width: 767px) {
+    .page-header {
+        padding: var(--header-padding-top-mobile, var(--space-6)) 0 var(--header-padding-bottom-mobile, var(--space-4));
+        margin-bottom: var(--header-margin-bottom-mobile, var(--space-6));
+    }
+}
+
+.page-header--bordered {
+    border-bottom: 1px solid var(--color-gray-100);
+}
+
+.page-header__eyebrow {
+    display: block;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-wider);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: var(--space-2);
+}
+
+.page-header__title {
+    font-family: var(--font-family-serif);
+    font-size: clamp(1.75rem, 3.5vw, var(--type-h1));
+    font-weight: 400;
+    letter-spacing: var(--letter-spacing-tight);
+    color: var(--color-black);
+    margin: 0 0 var(--space-1);
+    line-height: 1.1;
+}
+
+@media (max-width: 1023px) {
+    .page-header__title {
+        font-size: clamp(1.5rem, 4vw, var(--type-h2));
+    }
+}
+
+.page-header__subtitle {
+    font-family: var(--font-family);
+    font-size: var(--type-body);
+    color: var(--color-gray-400);
+    margin: 0;
+    font-weight: 400;
+}
+
+.page-header__subtitle--uppercase {
+    font-size: var(--type-caption);
+    color: var(--color-gray-500);
+    letter-spacing: var(--letter-spacing-wider);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.page-header__count {
+    display: inline-block;
+    font-family: var(--font-family);
+    font-size: var(--type-caption);
+    color: var(--color-gray-500);
+    letter-spacing: var(--letter-spacing-wider);
+    text-transform: uppercase;
+    margin-top: var(--space-2);
+}
+
+.page-header__divider {
+    width: 48px;
+    height: 1px;
+    background: var(--color-gray-200);
+    margin: var(--space-3) auto 0;
+}
+
+.page-header__overline {
+    display: block;
+    font-family: var(--font-family);
+    font-size: var(--type-overline);
+    font-weight: 500;
+    letter-spacing: var(--letter-spacing-wider);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: var(--space-2);
+}
+
+.page-header__summary {
+    font-family: var(--font-family);
+    font-size: var(--type-body);
+    color: var(--color-gray-500);
+    margin: var(--space-2) 0 0;
+    font-weight: 400;
+    line-height: var(--leading-body);
+}
+
+.page-header__action {
+    margin-top: var(--space-4);
+}
+
+@keyframes pageHeaderFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-header {
+        animation: none;
+    }
+}

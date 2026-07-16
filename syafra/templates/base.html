@@ -44,10 +44,15 @@
     </style>
     <link rel="stylesheet" href="{% static 'css/core/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/core/typography.css' %}">
+    <link rel="stylesheet" href="{% static 'css/core/spacing.css' %}">
+    <link rel="stylesheet" href="{% static 'css/core/layout.css' %}">
     <link rel="stylesheet" href="{% static 'css/core/animations.css' %}">
     <link rel="stylesheet" href="{% static 'css/core/responsive.css' %}">
     <link rel="stylesheet" href="{% static 'css/layout/navbar.css' %}">
     <link rel="stylesheet" href="{% static 'css/layout/footer.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layouts/page-shell.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layouts/container.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layouts/sidebar.css' %}">
     <link rel="stylesheet" href="{% static 'css/sections/announcement.css' %}">
     <link rel="stylesheet" href="{% static 'css/sections/hero.css' %}">
     <link rel="stylesheet" href="{% static 'css/sections/trust-bar.css' %}">
@@ -63,6 +68,10 @@
     <link rel="stylesheet" href="{% static 'css/components/product-grid.css' %}">
     <link rel="stylesheet" href="{% static 'css/components/badges.css' %}">
     <link rel="stylesheet" href="{% static 'css/components/forms.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components/page-header.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components/result-card.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components/alerts.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components/progress.css' %}">
     <link rel="stylesheet" href="{% static 'css/components/wishlist.css' %}">
     <link rel="stylesheet" href="{% static 'css/pages/product-detail.css' %}">
     <link rel="stylesheet" href="{% static 'css/pages/cart.css' %}">
@@ -147,7 +156,19 @@
     </div>
     {% endblock %}
 
-    {% block content %}{% endblock %}
+    {% block content %}
+    <section class="internal-page">
+        <div class="layout-container">
+            {% block inner_header %}
+            <header class="page-header">
+                <h1 class="page-header__title">{% block page_title %}{% endblock %}</h1>
+                {% block page_subtitle_element %}{% endblock %}
+            </header>
+            {% endblock %}
+            {% block inner_content %}{% endblock %}
+        </div>
+    </section>
+    {% endblock %}
 
     {% block footer %}
     {% include 'components/whatsapp_button.html' with button_type="floating" %}

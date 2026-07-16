@@ -1,0 +1,66 @@
+/* ============================================
+   SYAFRA Sidebar — Reused across Cart, Checkout, etc.
+   ============================================ */
+
+.summary-card {
+    background: var(--color-gray-50);
+    padding: var(--space-6);
+    border: 1px solid var(--color-gray-100);
+}
+
+.summary-card__title {
+    font-family: var(--font-family-serif);
+    font-size: var(--type-h3);
+    font-weight: 400;
+    letter-spacing: var(--letter-spacing-tight);
+    margin-bottom: var(--space-5);
+}
+
+.summary-card__row {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--type-caption);
+    color: var(--color-gray-500);
+}
+
+.summary-card__rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-gray-200);
+    margin-bottom: var(--space-4);
+}
+
+.summary-card__row-value {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-black);
+}
+
+.summary-card__total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: var(--space-4);
+    margin-top: var(--space-2);
+    border-top: 1px solid var(--color-gray-200);
+}
+
+.summary-card__total-label {
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--type-body);
+}
+
+.summary-card__total-value {
+    font-family: var(--font-family-serif);
+    font-size: var(--type-h3);
+    font-weight: 400;
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.summary-card__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+}

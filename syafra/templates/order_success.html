@@ -3,100 +3,106 @@
 
 {% block title %}Order Confirmed - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
-{% block content %}
-<section class="success-page">
-    <div class="container-max" style="max-width: 768px;">
-        <div class="success-hero">
-            <div class="success-hero__icon">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-            </div>
-            <h1 class="success-hero__title">Order Confirmed</h1>
-            <p class="success-hero__subtitle">Thank you for your purchase</p>
-        </div>
+{% block extra_head %}
+<style>
+.order-success__items { margin-top: var(--space-6); }
+.order-success__items-title { font-family: var(--font-family-serif); font-size: var(--type-h3); font-weight: 400; letter-spacing: var(--letter-spacing-tight); margin: 0 0 var(--space-4); }
+.order-success__item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-gray-100); }
+.order-success__item:last-child { border-bottom: none; }
+.order-success__item-left { display: flex; align-items: center; gap: var(--space-3); }
+.order-success__item-img { width: 56px; height: 70px; object-fit: contain; background: var(--color-white); border: 1px solid var(--color-gray-100); }
+.order-success__item-name { font-weight: var(--font-weight-medium); color: var(--color-black); }
+.order-success__item-meta { font-size: var(--type-caption); color: var(--color-gray-400); }
+.order-success__item-price { font-weight: var(--font-weight-semibold); color: var(--color-black); white-space: nowrap; }
+.order-success__address { margin-top: var(--space-6); padding-top: var(--space-6); border-top: 1px solid var(--color-gray-100); }
+.order-success__address-title { font-family: var(--font-family-serif); font-size: var(--type-h3); font-weight: 400; letter-spacing: var(--letter-spacing-tight); margin: 0 0 var(--space-3); }
+.order-success__address-text { font-size: var(--type-body); color: var(--color-gray-600); line-height: var(--leading-body); white-space: pre-line; }
+.order-success__email-note { text-align: center; color: var(--color-gray-500); font-size: var(--type-body); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-gray-100); }
+</style>
+{% endblock %}
 
-        <div class="success-card">
-            <div class="success-info-grid">
-                <div class="success-info-grid__item">
-                    <span class="success-info-grid__label">Order Number</span>
-                    <span class="success-info-grid__value">#{{ order.id }}</span>
-                </div>
-                <div class="success-info-grid__item">
-                    <span class="success-info-grid__label">Date</span>
-                    <span class="success-info-grid__value">{{ order.created_at|date:"F j, Y" }}</span>
-                </div>
-                <div class="success-info-grid__item">
-                    <span class="success-info-grid__label">Status</span>
-                    <span class="success-info-grid__value" style="text-transform: uppercase;">{{ order.status }}</span>
-                </div>
-                <div class="success-info-grid__item">
-                    <span class="success-info-grid__label">Email</span>
-                    <span class="success-info-grid__value">{{ order.email }}</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="success-items">
-            <h2 class="success-card__title">Order Items</h2>
-            {% for item in items %}
-            <div class="success-item">
-                <div class="success-item__left">
-                    {% if item.product.image %}
-                    <img src="{{ item.product.image.url|cloudinary_resize:'112x140' }}"
-                         alt="{{ item.product.name }}"
-                         loading="lazy" decoding="async" width="56" height="70"
-                         class="success-item__img">
-                    {% else %}
-                    <img src="{% static 'images/default.jpg' %}"
-                         alt="No image available"
-                         loading="lazy" decoding="async" width="56" height="70"
-                         class="success-item__img">
-                    {% endif %}
-                    <div>
-                        <p class="success-item__name">{{ item.product.name }}</p>
-                        <p class="success-item__meta">
-                            {% if item.size %}Size: {{ item.size|upper }} | {% endif %}Qty: {{ item.quantity }}
-                        </p>
-                    </div>
-                </div>
-                <p class="success-item__price">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
-            </div>
-            {% endfor %}
-        </div>
-
-        <div class="success-total">
-            <div class="success-total__row">
-                <span>Subtotal</span>
-                <span>{{ currency }}{{ order.total_price|floatformat:2 }}</span>
-            </div>
-            <div class="success-total__row">
-                <span>Shipping</span>
-                <span>Free</span>
-            </div>
-            <div class="success-total__final">
-                <span class="success-total__final-label">Total</span>
-                <span class="success-total__final-value">{{ currency }}{{ order.total_price|floatformat:2 }}</span>
-            </div>
-        </div>
-
-        <div class="success-address">
-            <h2 class="success-address__title">Shipping Address</h2>
-            <p class="success-address__text">{{ order.shipping_address }}</p>
-        </div>
-
-        <p style="text-align: center; color: var(--color-gray-500); font-size: var(--type-body); margin-bottom: var(--space-6);">
-            A confirmation email has been sent to <strong>{{ order.email }}</strong>
-        </p>
-
-        <div class="success-actions">
-            <a href="{% url 'products:shop' %}" class="success-actions__primary">
-                Continue Shopping
-            </a>
-            <a href="{% url 'orders:order_history' %}" class="success-actions__secondary">
-                View Orders
-            </a>
-        </div>
+{% block content %}{{ block.super }}{% endblock %}
+{% block inner_header %}
+<header class="page-header" style="--header-padding-top: 1rem; --header-padding-bottom: 0.5rem; --header-margin-bottom: 1rem;">
+    <h1 class="page-header__title">Order Confirmed</h1>
+    <p class="page-header__subtitle page-header__subtitle--uppercase">Thank you for your purchase</p>
+</header>
+{% endblock %}
+{% block inner_content %}
+<div class="result-card result-card--success">
+    <div class="result-card__icon result-card__icon--success">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
     </div>
-</section>
+
+    <p class="result-card__overline result-card__overline--success">Order Confirmed</p>
+    <h2 class="result-card__title">Payment Successful</h2>
+    <p class="result-card__description">Your order #{{ order.id }} has been placed.</p>
+
+    <dl class="result-card__details">
+        <div class="result-card__row">
+            <dt class="result-card__label">Order</dt>
+            <dd class="result-card__value">#{{ order.id }}</dd>
+        </div>
+        <div class="result-card__row">
+            <dt class="result-card__label">Date</dt>
+            <dd class="result-card__value">{{ order.created_at|date:"F j, Y" }}</dd>
+        </div>
+        <div class="result-card__row">
+            <dt class="result-card__label">Status</dt>
+            <dd class="result-card__value result-card__value--green">{{ order.status|upper }}</dd>
+        </div>
+        <div class="result-card__row">
+            <dt class="result-card__label">Email</dt>
+            <dd class="result-card__value">{{ order.email }}</dd>
+        </div>
+        <div class="result-card__row">
+            <dt class="result-card__label">Amount</dt>
+            <dd class="result-card__value">{{ currency }}{{ order.total_price|floatformat:2 }}</dd>
+        </div>
+    </dl>
+
+    <div class="result-card__actions result-card__actions--inline">
+        <a href="{% url 'orders:order_history' %}" class="result-card__action result-card__action--secondary">View Orders</a>
+        <a href="{% url 'products:shop' %}" class="result-card__action result-card__action--primary">Continue Shopping</a>
+    </div>
+</div>
+
+<div class="order-success__items">
+    <h2 class="order-success__items-title">Order Items</h2>
+    {% for item in items %}
+    <div class="order-success__item">
+        <div class="order-success__item-left">
+            {% if item.product.image %}
+            <img src="{{ item.product.image.url|cloudinary_resize:'112x140' }}"
+                 alt="{{ item.product.name }}"
+                 loading="lazy" decoding="async" width="56" height="70"
+                 class="order-success__item-img">
+            {% else %}
+            <img src="{% static 'images/default.jpg' %}"
+                 alt="No image available"
+                 loading="lazy" decoding="async" width="56" height="70"
+                 class="order-success__item-img">
+            {% endif %}
+            <div>
+                <p class="order-success__item-name">{{ item.product.name }}</p>
+                <p class="order-success__item-meta">
+                    {% if item.size %}Size: {{ item.size|upper }} | {% endif %}Qty: {{ item.quantity }}
+                </p>
+            </div>
+        </div>
+        <p class="order-success__item-price">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="order-success__address">
+    <h2 class="order-success__address-title">Shipping Address</h2>
+    <p class="order-success__address-text">{{ order.shipping_address }}</p>
+</div>
+
+<p class="order-success__email-note">
+    A confirmation email has been sent to <strong>{{ order.email }}</strong>
+</p>
 {% endblock %}

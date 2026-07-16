@@ -8,12 +8,18 @@
 {% endblock %}
 
 {% block content %}
-<div class="shop">
+{{ block.super }}
+{% endblock %}
 
-  <header class="shop-header">
-    <h1 class="shop-header__title">Shop</h1>
-    <p class="shop-header__subtitle">Discover our latest curated collections.</p>
-  </header>
+{% block inner_header %}
+<header class="page-header page-header--bordered">
+    <h1 class="page-header__title">Shop</h1>
+    <p class="page-header__subtitle">Discover our latest curated collections.</p>
+</header>
+{% endblock %}
+
+{% block inner_content %}
+<div class="layout-container--full">
 
   <form method="GET" action="{% url 'products:shop' %}" id="shop-filter-form">
 

@@ -1,0 +1,212 @@
+.result-card {
+  max-width: 480px;
+  margin: 0 auto;
+  border-radius: 20px;
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.result-card--success {
+  background: linear-gradient(180deg, #f4fbf4 0%, #ffffff 100%);
+  border: 1px solid #d1fae5;
+  box-shadow: 0 18px 48px rgba(21, 128, 61, 0.12);
+}
+
+.result-card--failed {
+  background: #fff7f7;
+  border: 1px solid #fecaca;
+  box-shadow: 0 18px 48px rgba(185, 28, 28, 0.08);
+}
+
+.result-card__messages {
+  margin-bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.result-card__message {
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+  line-height: 1.6;
+}
+
+.result-card__message--info {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.result-card__icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--space-3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-card__icon--success {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+}
+
+.result-card__icon--failed {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+}
+
+.result-card__icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.result-card__overline {
+  font-family: var(--font-family);
+  font-size: var(--type-overline);
+  letter-spacing: var(--letter-spacing-widest);
+  text-transform: uppercase;
+  margin: 0 0 var(--space-1);
+}
+
+.result-card__overline--success {
+  color: #166534;
+}
+
+.result-card__overline--failed {
+  color: #991b1b;
+}
+
+.result-card__title {
+  font-family: var(--font-family-serif);
+  font-size: clamp(1.5rem, 3vw, var(--type-h2));
+  font-weight: 400;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-black);
+  margin: 0 0 var(--space-1);
+  line-height: 1.1;
+}
+
+.result-card__description {
+  font-family: var(--font-family);
+  font-size: var(--type-body);
+  color: var(--color-gray-500);
+  margin: 0 0 var(--space-4);
+  line-height: var(--leading-body);
+}
+
+.result-card__details {
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-white);
+  text-align: left;
+}
+
+.result-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.result-card__row + .result-card__row {
+  border-top: 1px solid var(--color-gray-100);
+}
+
+.result-card__label {
+  font-family: var(--font-family);
+  font-size: var(--type-caption);
+  color: var(--color-gray-400);
+}
+
+.result-card__value {
+  font-family: var(--font-family);
+  font-size: var(--type-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-black);
+}
+
+.result-card__value--green {
+  color: #166534;
+}
+
+.result-card__value--red {
+  color: #b91c1c;
+}
+
+.result-card__actions {
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@media (min-width: 768px) {
+  .result-card__actions--inline {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+.result-card__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-full);
+  font-family: var(--font-family);
+  font-size: var(--type-overline);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-widest);
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.result-card__action--primary {
+  background: var(--color-black);
+  color: var(--color-white);
+  border: 1px solid var(--color-black);
+}
+
+.result-card__action--primary:hover {
+  background: var(--color-gray-800);
+  border-color: var(--color-gray-800);
+}
+
+.result-card__action--secondary {
+  background: transparent;
+  color: var(--color-black);
+  border: 1px solid var(--color-gray-300);
+}
+
+.result-card__action--secondary:hover {
+  border-color: var(--color-black);
+}
+
+.result-card__action--full {
+  width: 100%;
+}
+
+.result-card__footnote {
+  font-family: var(--font-family);
+  font-size: var(--type-caption);
+  color: var(--color-gray-400);
+  margin: var(--space-4) 0 0;
+}
+
+.result-card__footnote a {
+  color: var(--color-gray-500);
+  text-decoration: underline;
+}
+
+.result-card__footnote a:hover {
+  color: var(--color-black);
+}

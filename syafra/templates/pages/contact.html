@@ -8,86 +8,90 @@
 <link rel="canonical" href="{{ request.build_absolute_uri }}">
 {% endblock %}
 
-{% block content %}
-<main class="page-content">
-    <div class="page-content__container page-content__container--narrow">
+{% block content %}{{ block.super }}{% endblock %}
 
-        {% if page %}
-        {% if page.overline %}
-        <span class="page-content__overline">{{ page.overline }}</span>
-        {% endif %}
-        <h1 class="page-content__title">{{ page.title }}</h1>
-        {% if page.summary %}
-        <p class="page-content__summary">{{ page.summary }}</p>
-        {% endif %}
-        {% if page.content %}
-        <div class="page-content__body">{{ page.content|safe }}</div>
-        {% endif %}
-        {% else %}
-        <h1 class="page-content__title">Contact Us</h1>
-        {% endif %}
+{% block inner_header %}
+<header class="page-header">
+    {% if page %}
+    {% if page.overline %}
+    <span class="page-header__overline">{{ page.overline }}</span>
+    {% endif %}
+    <h1 class="page-header__title">{{ page.title }}</h1>
+    {% if page.summary %}
+    <p class="page-header__summary">{{ page.summary }}</p>
+    {% endif %}
+    {% else %}
+    <h1 class="page-header__title">Contact Us</h1>
+    {% endif %}
+</header>
+{% endblock %}
 
-        {% if contact_details %}
-        <div class="contact-details">
-            {% if contact_details.email %}
-            <div class="contact-detail-item">
-                <span class="contact-detail-label">Email</span>
-                <a href="mailto:{{ contact_details.email }}" class="contact-detail-value">{{ contact_details.email }}</a>
-            </div>
-            {% endif %}
-            {% if contact_details.phone %}
-            <div class="contact-detail-item">
-                <span class="contact-detail-label">Phone</span>
-                <span class="contact-detail-value">{{ contact_details.phone }}</span>
-            </div>
-            {% endif %}
-            {% if contact_details.address %}
-            <div class="contact-detail-item">
-                <span class="contact-detail-label">Address</span>
-                <span class="contact-detail-value">{{ contact_details.address|linebreaksbr }}</span>
-            </div>
-            {% endif %}
-            {% if contact_details.hours %}
-            <div class="contact-detail-item">
-                <span class="contact-detail-label">Hours</span>
-                <span class="contact-detail-value">{{ contact_details.hours }}</span>
-            </div>
-            {% endif %}
-            {% if contact_details.whatsapp %}
-            <div class="contact-detail-item">
-                <span class="contact-detail-label">WhatsApp</span>
-                <a href="https://wa.me/{{ contact_details.whatsapp }}" class="contact-detail-value" target="_blank" rel="noopener noreferrer">{{ contact_details.whatsapp }}</a>
-            </div>
-            {% endif %}
+{% block inner_content %}
+<div class="max-w-2xl mx-auto">
+    {% if page and page.content %}
+    <div class="page-content__body">{{ page.content|safe }}</div>
+    {% endif %}
+
+    {% if contact_details %}
+    <div class="contact-details">
+        {% if contact_details.email %}
+        <div class="contact-detail-item">
+            <span class="contact-detail-label">Email</span>
+            <a href="mailto:{{ contact_details.email }}" class="contact-detail-value">{{ contact_details.email }}</a>
+        </div>
+        {% endif %}
+        {% if contact_details.phone %}
+        <div class="contact-detail-item">
+            <span class="contact-detail-label">Phone</span>
+            <span class="contact-detail-value">{{ contact_details.phone }}</span>
+        </div>
+        {% endif %}
+        {% if contact_details.address %}
+        <div class="contact-detail-item">
+            <span class="contact-detail-label">Address</span>
+            <span class="contact-detail-value">{{ contact_details.address|linebreaksbr }}</span>
+        </div>
+        {% endif %}
+        {% if contact_details.hours %}
+        <div class="contact-detail-item">
+            <span class="contact-detail-label">Hours</span>
+            <span class="contact-detail-value">{{ contact_details.hours }}</span>
+        </div>
+        {% endif %}
+        {% if contact_details.whatsapp %}
+        <div class="contact-detail-item">
+            <span class="contact-detail-label">WhatsApp</span>
+            <a href="https://wa.me/{{ contact_details.whatsapp }}" class="contact-detail-value" target="_blank" rel="noopener noreferrer">{{ contact_details.whatsapp }}</a>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="contact-form">
+        {% csrf_token %}
+        {% if messages %}
+        <div class="contact-form__messages">
+            {% for message in messages %}
+            <div class="contact-form__message contact-form__message--{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
         </div>
         {% endif %}
 
-        <form method="post" class="contact-form">
-            {% csrf_token %}
-            {% if messages %}
-            <div class="contact-form__messages">
-                {% for message in messages %}
-                <div class="contact-form__message contact-form__message--{{ message.tags }}">{{ message }}</div>
+        {% for field in form %}
+        <div class="contact-form__field">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.errors %}
+            <div class="contact-form__errors">
+                {% for error in field.errors %}
+                <span>{{ error }}</span>
                 {% endfor %}
             </div>
             {% endif %}
+        </div>
+        {% endfor %}
 
-            {% for field in form %}
-            <div class="contact-form__field">
-                {{ field.label_tag }}
-                {{ field }}
-                {% if field.errors %}
-                <div class="contact-form__errors">
-                    {% for error in field.errors %}
-                    <span>{{ error }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-
-            <button type="submit" class="contact-form__submit">Send Message</button>
-        </form>
-    </div>
-</main>
+        <button type="submit" class="contact-form__submit">Send Message</button>
+    </form>
+</div>
 {% endblock %}

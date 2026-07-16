@@ -1,0 +1,93 @@
+/* ============================================
+   SYAFRA Status Alerts & Badges
+   ============================================ */
+
+.alert {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-sm);
+    font-size: var(--type-caption);
+    line-height: 1.4;
+    border: 1px solid transparent;
+}
+
+.alert--success {
+    background: #ECFDF5;
+    border-color: #A7F3D0;
+    color: #059669;
+}
+
+.alert--warning {
+    background: #FFFBEB;
+    border-color: #FDE68A;
+    color: #92400E;
+}
+
+.alert--error {
+    background: #FEF2F2;
+    border-color: #FECACA;
+    color: #DC2626;
+}
+
+.alert--info {
+    background: var(--color-gray-50);
+    border-color: var(--color-gray-200);
+    color: var(--color-gray-600);
+}
+
+.alert__icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.alert__text strong {
+    font-weight: 600;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.status-dot--success {
+    background: #059669;
+}
+
+.status-dot--warning {
+    background: #D97706;
+}
+
+.status-dot--error {
+    background: #DC2626;
+}
+
+.status-dot--info {
+    background: var(--color-gray-400);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-family: var(--font-family);
+    font-size: 0.6875rem;
+    font-weight: 500;
+}
+
+.status-badge--success {
+    color: #059669;
+}
+
+.status-badge--warning {
+    color: #D97706;
+}
+
+.status-badge--error {
+    color: #DC2626;
+}

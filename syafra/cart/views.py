@@ -8,12 +8,16 @@ from .models import Cart, CartItem
 from products.models import Product, ProductSize
 from orders.models import PaymentSettings
 
+# Single reusable constant for free shipping threshold (no DB field exists)
+FREE_SHIPPING_THRESHOLD = 999
+
 
 @login_required
 def cart_view(request):
     cart = Cart.get_for_user(request.user)
     # Single pass over prefetched rows avoids N+1 queries from Cart.total hitting item.subtotal.
-    items = list(cart.items.select_related('product').all())
+    # select_related('product__category') avoids extra query for item.product.category
+    items = list(cart.items.select_related('product__category').all())
     total = sum(item.quantity * item.product.price for item in items)
 
     payment_settings = PaymentSettings.get_settings()
@@ -42,7 +46,64 @@ def cart_view(request):
     else:
         checkout_notice = ''
     currency = payment_settings.currency_symbol if payment_settings else '₹'
-    
+
+    # Free shipping calculation
+    free_shipping_threshold = FREE_SHIPPING_THRESHOLD
+    free_shipping_remaining = max(0, free_shipping_threshold - float(total))
+    free_shipping_percent = min(100, int((float(total) / free_shipping_threshold) * 100)) if free_shipping_threshold > 0 else 100
+
+    # Recommended products queryset (efficient, 6 max)
+    cart_product_ids = [item.product_id for item in items]
+    cart_category_ids = list(set(
+        item.product.category_id for item in items if item.product.category_id
+    ))
+    cart_brands = list(set(
+        item.product.brand for item in items if item.product.brand
+    ))
+
+    recommended = []
+    base_qs = Product.objects.filter(stock__gt=0).exclude(id__in=cart_product_ids)
+
+    # Priority 1: Same category as items in cart
+    if cart_category_ids:
+        cat_qs = base_qs.filter(category_id__in=cart_category_ids)
+        recommended = list(cat_qs.select_related('category')[:6])
+
+    # Priority 2: Same brand
+    if len(recommended) < 6 and cart_brands:
+        existing_ids = [p.id for p in recommended]
+        brand_products = list(
+            base_qs.filter(brand__in=cart_brands)
+            .exclude(id__in=existing_ids)
+            .select_related('category')[:6 - len(recommended)]
+        )
+        recommended.extend(brand_products)
+
+    # Priority 3: Newest products
+    if len(recommended) < 6:
+        existing_ids = [p.id for p in recommended]
+        newest = list(
+            base_qs.exclude(id__in=existing_ids)
+            .order_by('-created_at')
+            .select_related('category')[:6 - len(recommended)]
+        )
+        recommended.extend(newest)
+
+    # Priority 4: Random fallback
+    if len(recommended) < 6:
+        existing_ids = [p.id for p in recommended]
+        random_count = 6 - len(recommended)
+        random_ids = list(
+            base_qs.exclude(id__in=existing_ids)
+            .order_by('?')[:random_count]
+            .values_list('id', flat=True)
+        )
+        if random_ids:
+            random_products = list(
+                Product.objects.filter(id__in=random_ids).select_related('category')
+            )
+            recommended.extend(random_products)
+
     return render(request, 'cart.html', {
         'cart': cart,
         'items': items,
@@ -51,6 +112,11 @@ def cart_view(request):
         'payment_settings': payment_settings,
         'checkout_available': checkout_available,
         'checkout_notice': checkout_notice,
+        'recommended_products': recommended,
+        'free_shipping_threshold': free_shipping_threshold,
+        'free_shipping_remaining': free_shipping_remaining,
+        'free_shipping_percent': free_shipping_percent,
+        'savings': 0,
     })
 
 

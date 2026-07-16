@@ -4,117 +4,382 @@
 {% block title %}Shopping Bag - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
 {% block content %}
-<section class="cart-page">
-    <div class="container-max">
-        <div class="cart-header">
-            <h1 class="cart-header__title">Shopping Bag</h1>
-            <p class="cart-header__subtitle">{{ items|length }} {% if items|length == 1 %}item{% else %}items{% endif %}</p>
-        </div>
+{{ block.super }}
+{% endblock %}
+
+{% block inner_header %}
+<header class="page-header">
+    <h1 class="page-header__title">Shopping Bag</h1>
+    <p class="page-header__subtitle--uppercase" aria-live="polite">
+        {{ items|length }} {% if items|length == 1 %}ITEM{% else %}ITEMS{% endif %}
+    </p>
+    <div class="page-header__divider" aria-hidden="true"></div>
+</header>
+{% endblock %}
+
+{% block inner_content %}
+{% if items %}
+<div class="cart-continue-top">
+    <a href="{% url 'products:shop' %}" class="cart-continue-top__link">
+        <svg class="cart-continue-top__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Continue Shopping
+    </a>
+</div>
+{% endif %}
 
         {% if items %}
-        <div class="cart-layout">
+
+        <!-- Free Shipping Progress -->
+        <div class="cart-shipping-progress{% if free_shipping_remaining == 0 %} cart-shipping-progress--unlocked{% endif %}">
+            {% if free_shipping_remaining > 0 %}
+            <p class="cart-shipping-progress__text">
+                You're <strong>₹{{ free_shipping_remaining|floatformat:0 }}</strong> away from <strong>FREE SHIPPING</strong>
+            </p>
+            <div class="cart-shipping-progress__bar">
+                <div class="cart-shipping-progress__fill" style="width: {{ free_shipping_percent }}%"></div>
+            </div>
+            {% else %}
+            <div class="cart-shipping-progress__unlocked">
+                <svg class="cart-shipping-progress__check" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span><strong>FREE SHIPPING</strong> Unlocked</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="sidebar-layout">
             <!-- Cart Items -->
             <div class="cart-items">
                 {% for item in items %}
-                <div class="cart-item" data-item-id="{{ item.id }}">
+                <article class="cart-item" data-item-id="{{ item.id }}">
                     <div class="cart-item__image">
                         {% if item.product.image %}
-                        <img src="{{ item.product.image.url|cloudinary_resize:'240x300' }}"
-                             alt="{{ item.product.name }}"
-                             loading="lazy" decoding="async" width="240" height="300">
+                        <a href="{% url 'products:product_detail' item.product.pk %}" class="cart-item__image-link">
+                            <img src="{{ item.product.image.url|cloudinary_resize:'320x400' }}"
+                                 alt="{{ item.product.name }}"
+                                 loading="lazy" decoding="async" width="320" height="400">
+                        </a>
                         {% else %}
-                        <img src="{% static 'images/default.jpg' %}"
-                             alt="No image available"
-                             loading="lazy" decoding="async" width="240" height="300">
+                        <a href="{% url 'products:product_detail' item.product.pk %}" class="cart-item__image-link">
+                            <img src="{% static 'images/default.jpg' %}"
+                                 alt="No image available"
+                                 loading="lazy" decoding="async" width="320" height="400">
+                        </a>
                         {% endif %}
                     </div>
 
-                    <div class="cart-item__details">
-                        <div class="cart-item__top">
-                            <div>
-                                <h3 class="cart-item__name">{{ item.product.name }}</h3>
-                                <p class="cart-item__brand">{{ item.product.brand }}</p>
-                                {% if item.size %}
-                                <p class="cart-item__size">Size: {{ item.size|upper }}</p>
-                                {% endif %}
-                            </div>
-                            <button onclick="removeFromCart({{ item.id }})" class="cart-item__remove" aria-label="Remove item">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
+                    <div class="cart-item__info">
+                        {% if item.product.brand %}
+                        <p class="cart-item__brand">{{ item.product.brand }}</p>
+                        {% endif %}
+                        <h3 class="cart-item__name">{{ item.product.name }}</h3>
+                        {% if item.product.category %}
+                        <p class="cart-item__category">{{ item.product.category.name }}</p>
+                        {% endif %}
+                        {% if item.size %}
+                        <div class="cart-item__meta">
+                            <span class="cart-item__size-label">Size</span>
+                            <span class="cart-item__size-value badge badge-sm">{{ item.size|upper }}</span>
                         </div>
+                        {% endif %}
+                        {% with stock=item.product.stock %}
+                        <p class="cart-item__stock{% if stock > 5 %} cart-item__stock--in{% elif stock > 0 %} cart-item__stock--low{% endif %}">
+                            {% if stock > 5 %}
+                            ✓ In Stock
+                            {% elif stock > 0 %}
+                            Only {{ stock }} left
+                            {% endif %}
+                        </p>
+                        {% endwith %}
+                    </div>
 
-                        <div class="cart-item__bottom">
-                            <div class="cart-qty">
-                                <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} - 1)"
-                                        class="cart-qty__btn" aria-label="Decrease quantity">&minus;</button>
-                                <span id="quantity-{{ item.id }}" class="cart-qty__value">{{ item.quantity }}</span>
-                                <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} + 1)"
-                                        class="cart-qty__btn" aria-label="Increase quantity">+</button>
-                            </div>
-                            <p id="subtotal-{{ item.id }}" class="cart-item__subtotal">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
+                    <div class="cart-qty-wrapper">
+                        <span class="cart-qty__label">Qty</span>
+                        <div class="cart-qty">
+                            <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} - 1)"
+                                    class="cart-qty__btn" aria-label="Decrease quantity">&minus;</button>
+                            <span id="quantity-{{ item.id }}" class="cart-qty__value" aria-live="polite">{{ item.quantity }}</span>
+                            <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} + 1)"
+                                    class="cart-qty__btn" aria-label="Increase quantity">+</button>
                         </div>
                     </div>
-                </div>
+
+                    <p id="subtotal-{{ item.id }}" class="cart-item__subtotal">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
+
+                    <button onclick="removeFromCart({{ item.id }})" class="cart-item__remove" aria-label="Remove item">
+                        <svg class="cart-item__remove-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        <span>Remove</span>
+                    </button>
+                </article>
                 {% endfor %}
             </div>
 
             <!-- Order Summary -->
-            <div class="cart-summary">
+            <aside class="cart-summary">
+                <!-- Mini Checkout Progress -->
+                <div class="cart-progress" aria-label="Checkout progress">
+                    <div class="cart-progress__step is-active">
+                        <span class="cart-progress__dot"></span>
+                        <span class="cart-progress__label">Bag</span>
+                    </div>
+                    <div class="cart-progress__line" aria-hidden="true"></div>
+                    <div class="cart-progress__step">
+                        <span class="cart-progress__dot"></span>
+                        <span class="cart-progress__label">Checkout</span>
+                    </div>
+                    <div class="cart-progress__line" aria-hidden="true"></div>
+                    <div class="cart-progress__step">
+                        <span class="cart-progress__dot"></span>
+                        <span class="cart-progress__label">Payment</span>
+                    </div>
+                    <div class="cart-progress__line" aria-hidden="true"></div>
+                    <div class="cart-progress__step">
+                        <span class="cart-progress__dot"></span>
+                        <span class="cart-progress__label">Complete</span>
+                    </div>
+                </div>
+
                 <h2 class="cart-summary__title">Order Summary</h2>
 
                 <div class="cart-summary__rows">
                     <div class="cart-summary__row">
                         <span>Subtotal</span>
-                        <span id="cart-subtotal">{{ currency }}{{ total|floatformat:2 }}</span>
+                        <span class="cart-summary__row-value" id="cart-subtotal" aria-live="polite">{{ currency }}{{ total|floatformat:2 }}</span>
                     </div>
                     <div class="cart-summary__row">
                         <span>Shipping</span>
-                        <span>Calculated at checkout</span>
+                        <span class="cart-summary__row-value">Calculated at checkout</span>
                     </div>
+                </div>
+
+                <div class="cart-summary__delivery">
+                    <span>Estimated Delivery</span>
+                    <span class="cart-summary__delivery-value">2–5 Business Days</span>
+                </div>
+
+                <div class="cart-summary__secure">
+                    <span>Secure Checkout</span>
+                    <span class="cart-summary__secure-value">SSL Encrypted</span>
                 </div>
 
                 <div class="cart-summary__total">
                     <span class="cart-summary__total-label">Total</span>
-                    <span id="cart-total" class="cart-summary__total-value">{{ currency }}{{ total|floatformat:2 }}</span>
+                    <span id="cart-total" class="cart-summary__total-value" aria-live="polite">{{ currency }}{{ total|floatformat:2 }}</span>
                 </div>
 
-                {% if checkout_available %}
-                <a href="{% url 'orders:checkout' %}" class="cart-summary__checkout">
-                    Proceed to Checkout
-                </a>
-                {% else %}
-                <button disabled class="cart-summary__checkout">
-                    Checkout Unavailable
-                </button>
+                {% if savings %}
+                <div class="cart-summary__savings is-visible">
+                    <span>You Saved</span>
+                    <span class="cart-summary__savings-value">{{ currency }}{{ savings|floatformat:2 }}</span>
+                </div>
                 {% endif %}
 
-                <a href="{% url 'products:shop' %}" class="cart-summary__continue">
-                    Continue Shopping
-                </a>
-            </div>
+                <!-- Coupon -->
+                <div class="cart-coupon">
+                    <label class="cart-coupon__label">Have a coupon?</label>
+                    <div class="cart-coupon__row">
+                        <input type="text" class="cart-coupon__input" placeholder="Enter coupon code" aria-label="Coupon code">
+                        <button type="button" class="cart-coupon__btn" aria-label="Apply coupon">Apply</button>
+                    </div>
+                </div>
+
+                <div class="cart-summary__actions">
+                    {% if checkout_available %}
+                    <a href="{% url 'orders:checkout' %}" class="cart-summary__checkout">
+                        Secure Checkout
+                        <svg class="cart-summary__checkout-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M13 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                    {% else %}
+                    <button disabled class="cart-summary__checkout">
+                        Checkout Unavailable
+                    </button>
+                    {% endif %}
+
+                    <div class="cart-payment-trust">
+                        <div class="cart-payment-trust__text">
+                            <svg class="cart-payment-trust__lock" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                            Secure Checkout &bull; SSL Encrypted
+                        </div>
+                        <div class="cart-payment-trust__icons">
+                            <span class="cart-payment-trust__icon" aria-label="Visa">
+                                <svg viewBox="0 0 44 14" fill="currentColor" width="32" height="10"><path d="M17.5 1h4l-3 12h-4l3-12zm8.5 4.5c-1.2-.4-2-.8-2-1.2s.4-.8 1.2-.8c.8 0 1.6.2 2.4.4l.4-2c-.8-.4-2-.6-3.2-.6-2.4 0-4 1.2-4 2.8 0 1.2.8 2 2 2.4s1.6.8 1.6 1.2c0 .8-.8 1.2-1.6 1.2-1.2 0-2-.2-2.8-.6l-.4 2c.8.4 2 .8 3.2.8 2.8 0 4.4-1.2 4.4-3.2 0-1.2-.8-2-2-2.4zm9.5-4.5h4.5l-3 12h-4l2.5-12z"/></svg>
+                            </span>
+                            <span class="cart-payment-trust__icon" aria-label="Mastercard">
+                                <svg viewBox="0 0 34 22" fill="currentColor" width="28" height="18"><circle cx="11" cy="11" r="8" opacity="0.5"/><circle cx="23" cy="11" r="8" opacity="0.5"/></svg>
+                            </span>
+                            <span class="cart-payment-trust__icon" aria-label="UPI">
+                                <svg viewBox="0 0 44 14" fill="currentColor" width="32" height="10"><path d="M5 1h3.5l4 8.5L16.5 1H20v12h-3V4.5L13 13h-1.5L8 4.5V13H5V1zm19.5 0h4l-4.5 12h-4l-1.5-4.5-1.5 4.5h-4l4.5-12h4l1.5 4.5L24.5 1z"/></svg>
+                            </span>
+                            <span class="cart-payment-trust__icon" aria-label="Razorpay">
+                                <svg viewBox="0 0 44 14" fill="currentColor" width="32" height="10"><path d="M8 1h7l-1 3h-4l-.5 1.5h3.5l-1 3h-3.5L7 10.5 6 13H3l3-12zm9 0h4l-1.5 5.5 3-3.5h3.5l-3 3.5L24 13h-3.5l1-4-2.5 4h-2.5l3-12zm9.5 0H30l-3 12h-3.5l3-12zm4 0h4l-3 12h-4l3-12z"/></svg>
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Trust Badges -->
+                <div class="cart-trust">
+                    <div class="cart-trust__grid">
+                        <div class="cart-trust__item">
+                            <div class="cart-trust__icon">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                            </div>
+                            <div class="cart-trust__text">
+                                <strong>Secure Checkout</strong>
+                                SSL encrypted payment
+                            </div>
+                        </div>
+                        <div class="cart-trust__item">
+                            <div class="cart-trust__icon">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                            </div>
+                            <div class="cart-trust__text">
+                                <strong>Easy Returns</strong>
+                                15-day return policy
+                            </div>
+                        </div>
+                        <div class="cart-trust__item">
+                            <div class="cart-trust__icon">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                </svg>
+                            </div>
+                            <div class="cart-trust__text">
+                                <strong>Authentic Products</strong>
+                                100% genuine guarantee
+                            </div>
+                        </div>
+                        <div class="cart-trust__item">
+                            <div class="cart-trust__icon">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                                </svg>
+                            </div>
+                            <div class="cart-trust__text">
+                                <strong>Fast Delivery</strong>
+                                2–5 business days
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
         </div>
+
+        {% if recommended_products %}
+        <section class="cart-recommended">
+            <h2 class="cart-recommended__title">You May Also Like</h2>
+            <div class="product-grid">
+                {% for product in recommended_products %}
+                <article class="product-card">
+                    <a class="product-card__link" href="{% url 'products:product_detail' product.pk %}" aria-label="{{ product.name }}">
+                        <div class="product-card__image">
+                            {% if product.image %}
+                            <img src="{{ product.image.url|cloudinary_normalize }}"
+                                 alt="{{ product.name }}"
+                                 loading="lazy" decoding="async" width="600" height="750">
+                            {% else %}
+                            <img src="{% static 'images/default.jpg' %}"
+                                 alt="No image available"
+                                 loading="lazy" decoding="async" width="600" height="750">
+                            {% endif %}
+                            <div class="product-card__badges">
+                                {% if product.condition == 'new' %}
+                                <span class="badge badge-new">New</span>
+                                {% elif product.condition == 'refurbished' %}
+                                <span class="badge badge-refurb">Refurb</span>
+                                {% endif %}
+                                {% if product.stock <= 5 and product.stock > 0 %}
+                                <span class="badge badge-low-stock">Low Stock</span>
+                                {% endif %}
+                            </div>
+                            {% include 'components/wishlist_heart.html' %}
+                        </div>
+                        <div class="product-card__info">
+                            {% if product.brand %}
+                            <span class="product-card__brand">{{ product.brand }}</span>
+                            {% endif %}
+                            <h3 class="product-card__name">{{ product.name }}</h3>
+                            <div class="product-card__price">
+                                <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </a>
+                    {% if product.stock > 0 %}
+                    <a href="{% url 'products:product_detail' product.pk %}" class="product-card__quickview" aria-label="View Details">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-4.35-4.35"/>
+                        </svg>
+                        View Details
+                    </a>
+                    {% else %}
+                    <div class="product-card__soldout"><span>Sold Out</span></div>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
 
         {% else %}
         <!-- Empty Cart -->
         <div class="cart-empty">
             <svg class="cart-empty__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="0.8"
                       d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
             </svg>
             <h2 class="cart-empty__title">Your bag is empty</h2>
-            <p class="cart-empty__text">Looks like you haven't added anything yet.</p>
+            <p class="cart-empty__text">Looks like you haven't added anything yet.<br>Discover our latest collection and find your style.</p>
             <a href="{% url 'products:shop' %}" class="cart-empty__cta">
                 Start Shopping
             </a>
         </div>
         {% endif %}
-    </div>
-</section>
-
 <script>
 const currencySymbol = '{{ currency }}';
+const freeShippingThreshold = {{ free_shipping_threshold }};
+
+function updateFreeShippingProgress(cartTotal) {
+    const progressEl = document.querySelector('.cart-shipping-progress');
+    if (!progressEl) return;
+
+    const threshold = freeShippingThreshold;
+    const remaining = Math.max(0, threshold - cartTotal);
+    const percent = Math.min(100, Math.round((cartTotal / threshold) * 100));
+
+    const textEl = progressEl.querySelector('.cart-shipping-progress__text');
+    const fillEl = progressEl.querySelector('.cart-shipping-progress__fill');
+    const unlockedEl = progressEl.querySelector('.cart-shipping-progress__unlocked');
+
+    if (remaining > 0) {
+        if (textEl) {
+            textEl.innerHTML = "You're <strong>" + currencySymbol + remaining.toFixed(0) + "</strong> away from <strong>FREE SHIPPING</strong>";
+            textEl.style.fontSize = 'var(--type-caption)';
+            textEl.style.display = '';
+        }
+        if (fillEl) fillEl.style.width = percent + '%';
+        if (unlockedEl) unlockedEl.style.display = 'none';
+        progressEl.classList.remove('cart-shipping-progress--unlocked');
+    } else {
+        if (textEl) textEl.style.display = 'none';
+        if (unlockedEl) unlockedEl.style.display = 'flex';
+        progressEl.classList.add('cart-shipping-progress--unlocked');
+    }
+}
 
 function updateQuantity(itemId, newQuantity) {
     if (newQuantity < 1) {
@@ -137,6 +402,7 @@ function updateQuantity(itemId, newQuantity) {
             document.getElementById(`subtotal-${itemId}`).textContent = `${currencySymbol}${data.item_subtotal.toFixed(2)}`;
             document.getElementById('cart-subtotal').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
             document.getElementById('cart-total').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
+            updateFreeShippingProgress(data.cart_total);
 
             if (data.item_removed) {
                 const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
@@ -161,6 +427,7 @@ function removeFromCart(itemId) {
 
             document.getElementById('cart-subtotal').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
             document.getElementById('cart-total').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
+            updateFreeShippingProgress(data.cart_total);
 
             if (data.cart_count === 0) {
                 location.reload();

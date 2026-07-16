@@ -3,8 +3,6 @@
    ============================================ */
 
 .pdp {
-    padding-top: calc(var(--navbar-height) + var(--announcement-height));
-    min-height: 100vh;
     background: var(--color-white);
 }
 

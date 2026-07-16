@@ -75,7 +75,7 @@ class CartViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['checkout_available'])
-        self.assertContains(response, 'Proceed to Checkout')
+        self.assertContains(response, 'Secure Checkout')
 
 
 class AddToCartTest(TestCase):

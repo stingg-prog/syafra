@@ -1,0 +1,69 @@
+/* ============================================
+   SYAFRA Progress Indicators
+   ============================================ */
+
+.progress-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+}
+
+.progress-steps__step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.progress-steps__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-gray-200);
+    transition: background var(--transition-fast);
+}
+
+.progress-steps__step.is-active .progress-steps__dot {
+    background: var(--color-black);
+}
+
+.progress-steps__step.is-completed .progress-steps__dot {
+    background: var(--color-accent);
+}
+
+.progress-steps__label {
+    font-size: 0.5rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-gray-400);
+    transition: color var(--transition-fast);
+}
+
+.progress-steps__step.is-active .progress-steps__label {
+    color: var(--color-black);
+    font-weight: 600;
+}
+
+.progress-steps__step.is-completed .progress-steps__label {
+    color: var(--color-accent);
+}
+
+.progress-steps__line {
+    width: 24px;
+    height: 1px;
+    background: var(--color-gray-200);
+    margin: 0 6px 16px;
+}
+
+.progress-steps__line.is-completed {
+    background: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .progress-steps__dot,
+    .progress-steps__label {
+        transition: none !important;
+    }
+}

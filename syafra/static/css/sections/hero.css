@@ -5,9 +5,9 @@
 .hero {
     position: relative;
     width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    min-height: 900px;
+    height: 95vh;
+    height: 95dvh;
+    min-height: 650px;
     overflow: hidden;
     background: #050505;
     background-image: radial-gradient(ellipse at 20% 50%, rgba(201, 169, 110, 0.04) 0%, transparent 70%);
@@ -28,9 +28,6 @@
     display: grid;
     grid-template-columns: 40% 60%;
     align-items: center;
-    min-height: 100vh;
-    min-height: 100dvh;
-    min-height: 900px;
     padding-top: 96px;
     opacity: 0;
     transition: opacity 1.2s var(--ease-luxury);
@@ -62,7 +59,7 @@
     text-transform: uppercase;
     font-weight: 400;
     color: var(--color-accent);
-    margin-bottom: 20px;
+    margin-bottom: var(--space-6);
     opacity: 0;
     transform: translateY(20px);
     transition: all 0.8s var(--ease-luxury);
@@ -93,8 +90,8 @@
     font-size: clamp(0.9375rem, 1.1vw, 1.125rem);
     line-height: 1.7;
     color: rgba(255, 255, 255, 0.55);
-    margin-top: 36px;
-    margin-bottom: 44px;
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-10);
     max-width: 420px;
     opacity: 0;
     transform: translateY(20px);
@@ -151,13 +148,13 @@
 /* ---- Scroll Indicator ---- */
 .hero-scroll-indicator {
     position: absolute;
-    bottom: 3rem;
+    bottom: 2rem;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     opacity: 0;
     transition: opacity 0.8s var(--ease-luxury) 0.6s;
     z-index: 10;
@@ -170,7 +167,7 @@
 
 .hero-scroll-line {
     width: 1px;
-    height: 48px;
+    height: 32px;
     background: rgba(255, 255, 255, 0.2);
     position: relative;
     overflow: hidden;
@@ -182,25 +179,22 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: 50%;
     background: var(--color-accent);
-    animation: scrollLine 2s var(--ease-in-out) infinite;
-    transform-origin: top;
+    animation: scrollPulse 2.4s var(--ease-out-expo) infinite;
 }
 
-@keyframes scrollLine {
-    0%       { transform: scaleY(0); transform-origin: top; }
-    50%      { transform: scaleY(1); transform-origin: top; }
-    50.1%    { transform: scaleY(1); transform-origin: bottom; }
-    100%     { transform: scaleY(0); transform-origin: bottom; }
+@keyframes scrollPulse {
+    0%, 100% { opacity: 0.4; transform: translateY(0); }
+    50%      { opacity: 1;   transform: translateY(100%); }
 }
 
 .hero-scroll-text {
-    font-size: 0.5625rem;
-    letter-spacing: var(--letter-spacing-widest);
+    font-size: 0.5rem;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.4);
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.35);
+    font-weight: 400;
 }
 
 /* ---- Hero Controls Wrapper ---- */
@@ -334,8 +328,13 @@
 .hero-btn-primary:hover {
     background: var(--color-white);
     color: var(--color-black);
-    transform: translateY(-3px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.hero-btn-primary:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
 }
 
 .hero-btn-secondary {
@@ -360,7 +359,12 @@
 .hero-btn-secondary:hover {
     border-color: var(--color-white);
     color: var(--color-black);
-    transform: translateY(-3px);
+    transform: translateY(-2px);
+}
+
+.hero-btn-secondary:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
 }
 
 .hero-btn-secondary:hover::before {
@@ -442,6 +446,8 @@
 
 @media (max-width: 1023px) {
     .hero {
+        height: 100vh;
+        height: 100dvh;
         min-height: 0;
     }
 
@@ -449,8 +455,6 @@
         grid-template-columns: 1fr;
         grid-template-rows: 1fr auto;
         gap: 0;
-        min-height: 100vh;
-        min-height: 100dvh;
         padding-top: 0;
     }
 
@@ -561,6 +565,7 @@
     }
     .hero-image.ken-burns { animation: none !important; }
     .hero-image { transition: opacity 0.3s ease !important; }
-    .hero-scroll-line::after { animation: none !important; }
+    .hero-scroll-line::after { animation: none !important; opacity: 0.5 !important; }
     .hero-slide { transition: opacity 0.3s ease !important; }
+    .hero-btn-primary:hover, .hero-btn-secondary:hover { transform: none !important; }
 }
