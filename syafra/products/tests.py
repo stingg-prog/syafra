@@ -520,7 +520,6 @@ class HomepageSectionBehaviorTest(TestCase):
         )
         response = self.client.get('/', follow=True)
         self.assertNotIn(section, response.context['sections'])
-        self.assertNotIn('product-grid--homepage-six', response.content.decode())
 
     def test_womens_tops_renders_with_in_stock_product(self):
         collection = ProductCollection.objects.create(name='WT')
@@ -532,7 +531,7 @@ class HomepageSectionBehaviorTest(TestCase):
         response = self.client.get('/', follow=True)
         self.assertIn(section, response.context['sections'])
         html = response.content.decode()
-        self.assertIn('product-grid--homepage-six', html)
+        self.assertIn('product-grid', html)
         self.assertIn('Test Product', html)
 
     # ── Trending + Best Sellers pairing ───────────────────────────

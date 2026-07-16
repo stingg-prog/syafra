@@ -60,8 +60,10 @@
     <link rel="stylesheet" href="{% static 'css/components/buttons.css' %}">
     <link rel="stylesheet" href="{% static 'css/components/cards.css' %}">
     <link rel="stylesheet" href="{% static 'css/components/product-card.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components/product-grid.css' %}">
     <link rel="stylesheet" href="{% static 'css/components/badges.css' %}">
     <link rel="stylesheet" href="{% static 'css/components/forms.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components/wishlist.css' %}">
     <link rel="stylesheet" href="{% static 'css/pages/product-detail.css' %}">
     <link rel="stylesheet" href="{% static 'css/pages/cart.css' %}">
     <link rel="stylesheet" href="{% static 'css/pages/checkout.css' %}">
@@ -106,7 +108,12 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                 </svg>
             </a>
-            <!-- Wishlist nav icon removed: no backend wishlist exists -->
+            <a href="{% url 'wishlist:page' %}" class="nav-icon wishlist-nav-icon" aria-label="Wishlist" data-wishlist-link>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span class="wishlist-nav-count" id="wishlist-count" data-count="0">0</span>
+            </a>
             <a href="{% url 'cart:cart_view' %}" class="nav-icon" aria-label="Cart">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
@@ -307,6 +314,12 @@
         setTimeout(hide, duration);
     }
     </script>
+
+    <script>
+        window.SYAFRA_WISHLIST_LOGIN_URL = '{% url "accounts:login" %}';
+        window.SYAFRA_WISHLIST_AUTH = {% if user.is_authenticated %}true{% else %}false{% endif %};
+    </script>
+    <script src="{% static 'js/wishlist.js' %}" defer></script>
 
     {% if website.google_analytics_id %}
     <script async src="https://www.googletagmanager.com/gtag/js?id={{ website.google_analytics_id }}"></script>

@@ -145,6 +145,7 @@ INSTALLED_APPS = [
     "cart",
     "orders",
     "accounts",
+    "wishlist",
     "sendgrid",
 ]
 
@@ -177,6 +178,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "cart.context_processors.cart_context",
+                "wishlist.context_processors.wishlist_ids",
                 "syafra.context_processors.global_context",
                 "syafra.context_processors.theme_context",
                 "syafra.context_processors.website_context",

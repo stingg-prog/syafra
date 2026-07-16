@@ -767,17 +767,9 @@
 
 /* ---- Product Grid ---- */
 .product-grid {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    padding: 2rem 0;
     column-gap: 1.5rem;
     row-gap: 2rem;
-    padding: 2rem 0;
-}
-
-@media (max-width: 1279px) {
-    .product-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
 }
 
 /* ---- Pagination ---- */
@@ -924,6 +916,7 @@
     }
 
     .product-grid {
+        padding: 1.75rem 0;
         column-gap: 1.25rem;
         row-gap: 1.75rem;
     }
@@ -967,7 +960,6 @@
     }
 
     .product-grid {
-        grid-template-columns: repeat(3, 1fr);
         column-gap: 1rem;
         row-gap: 1.5rem;
     }
@@ -1014,7 +1006,6 @@
     }
 
     .product-grid {
-        grid-template-columns: repeat(2, 1fr);
         column-gap: 0.75rem;
         row-gap: 1.25rem;
         padding: 1.5rem 0;
@@ -1062,12 +1053,6 @@
 
     .shop-chips__clear {
         font-size: 0.625rem;
-    }
-}
-
-@media (max-width: 374px) {
-    .product-grid {
-        grid-template-columns: 1fr;
     }
 }
 

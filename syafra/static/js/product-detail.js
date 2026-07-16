@@ -149,6 +149,39 @@ function addToCart(productId) {
     });
 }
 
+/* ---- From Wishlist Helper ---- */
+
+(function handleFromWishlist() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('from') !== 'wishlist') return;
+
+    var sizeSelector = document.getElementById('size-selector');
+    if (!sizeSelector) return;
+
+    var header = document.querySelector('.site-header');
+    var headerHeight = header ? header.offsetHeight : 0;
+
+    setTimeout(function () {
+        var rect = sizeSelector.getBoundingClientRect();
+        var scrollTarget = rect.top + window.pageYOffset - headerHeight - 20;
+        window.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+
+        sizeSelector.classList.add('is-wishlist-highlight');
+
+        var banner = document.createElement('div');
+        banner.className = 'pdp-wishlist-banner';
+        banner.innerHTML =
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
+            '<span>Select a size to add from your wishlist</span>' +
+            '<button type="button" class="pdp-wishlist-banner__close" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>';
+
+        var sizeSection = document.querySelector('.pdp-size');
+        if (sizeSection) {
+            sizeSection.parentNode.insertBefore(banner, sizeSection);
+        }
+    }, 400);
+})();
+
 /* ---- Buy Now ---- */
 
 function buyNow(productId) {

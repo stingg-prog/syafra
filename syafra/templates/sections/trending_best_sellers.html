@@ -13,7 +13,7 @@
 
             {% with products=trending_data.products %}
             {% if products %}
-            <div class="product-grid product-grid--dual-panel">
+            <div class="product-grid">
                 {% for product in products|slice:":3" %}
                 <article class="product-card reveal stagger-{{ forloop.counter }}">
                     <a class="product-card__link" href="{% url 'products:product_detail' product.pk %}" aria-label="{{ product.name }}">
@@ -34,6 +34,7 @@
                                 <span class="badge badge-low-stock">Low Stock</span>
                                 {% endif %}
                             </div>
+                            {% include 'components/wishlist_heart.html' %}
                         </div>
 
                         <div class="product-card__info">
@@ -84,7 +85,7 @@
 
             {% with products=best_sellers_data.products %}
             {% if products %}
-            <div class="product-grid product-grid--dual-panel">
+            <div class="product-grid">
                 {% for product in products|slice:":3" %}
                 <article class="product-card reveal stagger-{{ forloop.counter }}">
                     <a class="product-card__link" href="{% url 'products:product_detail' product.pk %}" aria-label="{{ product.name }}">
@@ -105,6 +106,7 @@
                                 <span class="badge badge-low-stock">Low Stock</span>
                                 {% endif %}
                             </div>
+                            {% include 'components/wishlist_heart.html' %}
                         </div>
 
                         <div class="product-card__info">

@@ -81,115 +81,6 @@
     margin-top: clamp(2rem, 3vw, 3rem);
 }
 
-/* ---- Product Grid (homepage collections) ---- */
-.product-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    column-gap: 2rem;
-    row-gap: 2.5rem;
-}
-
-@media (max-width: 1439px) {
-    .product-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-@media (max-width: 1023px) {
-    .product-grid {
-        grid-template-columns: repeat(2, 1fr);
-        column-gap: 1.5rem;
-        row-gap: 2rem;
-    }
-}
-
-@media (max-width: 640px) {
-    .product-grid {
-        grid-template-columns: repeat(3, 1fr);
-        column-gap: 0.5rem;
-        row-gap: 1rem;
-    }
-}
-
-@media (max-width: 374px) {
-    .product-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ---- Homepage three-column grid modifier (Trending / Best Sellers) ---- */
-.product-grid--triple {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-@media (max-width: 1023px) {
-    .product-grid--triple {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 640px) {
-    .product-grid--triple {
-        grid-template-columns: repeat(3, 1fr);
-        column-gap: 0.5rem;
-    }
-}
-
-@media (max-width: 374px) {
-    .product-grid--triple {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ---- Homepage six-column grid modifier ---- */
-.product-grid--homepage-six {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    column-gap: 1.25rem;
-}
-
-@media (max-width: 1439px) {
-    .product-grid--homepage-six {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 1279px) {
-    .product-grid--homepage-six {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        column-gap: 1.5rem;
-    }
-}
-
-@media (max-width: 1023px) {
-    .product-grid--homepage-six {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        column-gap: 1.25rem;
-        row-gap: 2rem;
-    }
-}
-
-@media (max-width: 767px) {
-    .product-grid--homepage-six {
-        grid-template-columns: repeat(2, 1fr);
-        column-gap: 1rem;
-        row-gap: 1.5rem;
-    }
-}
-
-@media (max-width: 640px) {
-    .product-grid--homepage-six {
-        grid-template-columns: repeat(3, 1fr);
-        column-gap: 0.5rem;
-        row-gap: 1rem;
-    }
-}
-
-@media (max-width: 374px) {
-    .product-grid--homepage-six {
-        grid-template-columns: 1fr;
-    }
-}
-
 /* ---- Dual Collection Section (Trending Now + Best Sellers) ---- */
 .dual-collection-section {
     scroll-margin-top: calc(var(--navbar-height) + 24px);
@@ -240,6 +131,15 @@
     min-width: 0;
 }
 
+/* Sections displaying ≤3 products use 3 columns at ≥769px */
+@media (min-width: 769px) {
+    .dual-collection-panel .product-grid,
+    section[data-section-type="trending_now"] .product-grid,
+    section[data-section-type="best_sellers"] .product-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
 .dual-collection-panel__header {
     text-align: center;
     margin-bottom: clamp(2rem, 3vw, 3rem);
@@ -248,34 +148,6 @@
 .dual-collection-panel__cta {
     text-align: center;
     margin-top: clamp(1.5rem, 2.5vw, 2.5rem);
-}
-
-.product-grid--dual-panel {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    column-gap: 1rem;
-    row-gap: 2rem;
-}
-
-@media (max-width: 1023px) {
-    .product-grid--dual-panel {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        column-gap: 1rem;
-        row-gap: 2rem;
-    }
-}
-
-@media (max-width: 640px) {
-    .product-grid--dual-panel {
-        grid-template-columns: repeat(3, 1fr);
-        column-gap: 0.5rem;
-    }
-}
-
-@media (max-width: 374px) {
-    .product-grid--dual-panel {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* ---- Empty State (compact) ---- */

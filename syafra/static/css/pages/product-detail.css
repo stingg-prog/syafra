@@ -216,6 +216,87 @@
     color: #dc2626;
 }
 
+/* ---- Wishlist From PDP Helper ---- */
+.pdp-wishlist-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-gray-50);
+    border: 1px solid var(--color-gray-200);
+    border-radius: 4px;
+    font-family: var(--font-family);
+    font-size: var(--type-caption);
+    color: var(--color-gray-700);
+    animation: pdp-banner-slide 0.4s var(--ease-out-expo);
+}
+
+.pdp-wishlist-banner svg {
+    flex-shrink: 0;
+    color: var(--color-black);
+}
+
+.pdp-wishlist-banner span {
+    flex: 1;
+}
+
+.pdp-wishlist-banner__close {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.125rem;
+    color: var(--color-gray-400);
+    transition: color 0.2s var(--ease-out-expo);
+}
+
+.pdp-wishlist-banner__close:hover {
+    color: var(--color-black);
+}
+
+@keyframes pdp-banner-slide {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.is-wishlist-highlight {
+    animation: pdp-highlight-pulse 1.6s ease 3;
+}
+
+@keyframes pdp-highlight-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.08);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pdp-wishlist-banner {
+        animation: none;
+    }
+
+    .is-wishlist-highlight {
+        animation: none;
+        outline: 2px solid var(--color-black);
+        outline-offset: 2px;
+    }
+}
+
 /* ---- Size Selector ---- */
 .pdp-size {
     margin-bottom: 1.5rem;
@@ -534,18 +615,9 @@
 }
 
 .pdp-related__grid {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 1.5rem;
     max-width: 1600px;
     margin: 0 auto;
     padding: 0 2rem;
-}
-
-@media (max-width: 1279px) {
-    .pdp-related__grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
 }
 
 /* ============================================
@@ -608,7 +680,6 @@
     }
 
     .pdp-related__grid {
-        grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
         padding: 0 1.5rem;
     }
@@ -661,16 +732,12 @@
     }
 
     .pdp-related__grid {
-        grid-template-columns: repeat(2, 1fr);
         gap: 0.75rem;
         padding: 0 0.75rem;
     }
 }
 
 @media (max-width: 374px) {
-    .pdp-related__grid {
-        grid-template-columns: 1fr;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {

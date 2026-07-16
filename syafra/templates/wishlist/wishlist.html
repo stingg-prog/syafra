@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load static cloudinary_filters %}
+
+{% block title %}My Wishlist - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pages/wishlist.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="wishlist-page">
+    <div class="wishlist-page__container">
+
+        {% if total_count > 0 %}
+        <header class="wishlist-page__header">
+            <h1 class="wishlist-page__title">My Wishlist</h1>
+            <p class="wishlist-page__subtitle">Saved items ready whenever you are.</p>
+            <span class="wishlist-page__count">{{ total_count }} Saved Item{{ total_count|pluralize }}</span>
+        </header>
+
+        <div class="wishlist-page__controls">
+            <div class="wishlist-page__sort">
+                <label for="wishlist-sort" class="visually-hidden">Sort by</label>
+                <select name="sort" id="wishlist-sort">
+                    <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+                    <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest First</option>
+                    <option value="price-asc" {% if sort_by == 'price-asc' %}selected{% endif %}>Price Low → High</option>
+                    <option value="price-desc" {% if sort_by == 'price-desc' %}selected{% endif %}>Price High → Low</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="product-grid wishlist-page__grid" id="wishlist-grid">
+            {% for item in wishlist_items %}
+            {% with product=item.product %}
+            <article class="product-card wishlist-card" data-wishlist-id="{{ item.pk }}" data-product-id="{{ product.pk }}" data-has-sizes="{{ product.has_sizes|yesno:'true,false' }}">
+                <a class="product-card__link" href="{% url 'products:product_detail' product.pk %}" aria-label="{{ product.name }}">
+                    <div class="product-card__image">
+                        {% if product.image %}
+                        <img src="{{ product.image.url|cloudinary_normalize }}"
+                             alt="{{ product.name }}"
+                             loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+                             decoding="async"
+                             width="600"
+                             height="750">
+                        {% else %}
+                        <img src="{% static 'images/default.jpg' %}"
+                             alt="No image available"
+                             loading="lazy"
+                             decoding="async"
+                             width="600"
+                             height="750">
+                        {% endif %}
+
+                        <div class="product-card__badges">
+                            {% if product.condition == 'new' %}
+                            <span class="badge badge-new">New</span>
+                            {% elif product.condition == 'refurbished' %}
+                            <span class="badge badge-refurb">Refurb</span>
+                            {% endif %}
+                            {% if product.stock <= 5 and product.stock > 0 %}
+                            <span class="badge badge-low-stock">Low Stock</span>
+                            {% endif %}
+                        </div>
+                        {% include 'components/wishlist_heart.html' %}
+                    </div>
+
+                    <div class="product-card__info">
+                        {% if product.brand %}
+                        <span class="product-card__brand">{{ product.brand }}</span>
+                        {% endif %}
+                        <h3 class="product-card__name">{{ product.name }}</h3>
+                        <div class="product-card__price">
+                            <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
+                        </div>
+                        {% if product.has_sizes %}
+                        <div class="product-card__sizes">
+                            {% for s in product.get_available_sizes %}
+                            <span class="product-card__size-dot">{{ s }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </a>
+
+                <div class="wishlist-card__actions">
+                    {% if product.stock > 0 %}
+                    {% if product.has_sizes %}
+                    <a href="{% url 'products:product_detail' product.pk %}?from=wishlist#size-selector" class="wishlist-cart-btn wishlist-cart-btn--link">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                        </svg>
+                        Select Size
+                    </a>
+                    {% else %}
+                    <form action="{% url 'cart:add_to_cart' product.pk %}" method="POST" class="wishlist-cart-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="wishlist-cart-btn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                            </svg>
+                            Move to Cart
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% else %}
+                    <span class="wishlist-card__soldout">Sold Out</span>
+                    {% endif %}
+                </div>
+            </article>
+            {% endwith %}
+            {% endfor %}
+        </div>
+
+        {% if wishlist_items.paginator.num_pages > 1 %}
+        <nav class="wishlist-page__pagination" aria-label="Pagination">
+            {% if wishlist_items.has_previous %}
+            <a href="?{% url_replace page=wishlist_items.previous_page_number %}&sort={{ sort_by }}" class="wishlist-page__page-link wishlist-page__page-prev" aria-label="Previous page">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Prev
+            </a>
+            {% endif %}
+
+            {% for pg in wishlist_items.paginator.page_range %}
+                {% if pg == wishlist_items.number %}
+                <span class="wishlist-page__page-link is-active" aria-current="page">{{ pg }}</span>
+                {% elif pg > wishlist_items.number|add:'-3' and pg < wishlist_items.number|add:'3' %}
+                <a href="?{% url_replace page=pg %}&sort={{ sort_by }}" class="wishlist-page__page-link">{{ pg }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if wishlist_items.has_next %}
+            <a href="?{% url_replace page=wishlist_items.next_page_number %}&sort={{ sort_by }}" class="wishlist-page__page-link wishlist-page__page-next" aria-label="Next page">
+                Next
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            {% endif %}
+        </nav>
+        {% endif %}
+
+        {% else %}
+
+        <div class="wishlist-page__empty">
+            <div class="wishlist-page__empty-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+            </div>
+            <h2 class="wishlist-page__empty-title">Your Wishlist is Empty</h2>
+            <p class="wishlist-page__empty-text">Save your favourite pieces and they'll appear here.</p>
+            <a href="{% url 'products:shop' %}" class="wishlist-page__empty-btn">Continue Shopping</a>
+        </div>
+
+        {% endif %}
+
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/wishlist-page.js' %}" defer></script>
+{% endblock extra_js %}

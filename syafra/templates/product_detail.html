@@ -39,6 +39,11 @@
                         <span>SOLD OUT</span>
                     </div>
                     {% endif %}
+                    <button class="wishlist-pdp-btn{% if product.pk in wishlisted_ids %} is-wishlisted{% endif %}" type="button" data-product-id="{{ product.pk }}" aria-label="{% if product.pk in wishlisted_ids %}Remove from Wishlist{% else %}Add to Wishlist{% endif %}" aria-pressed="{% if product.pk in wishlisted_ids %}true{% else %}false{% endif %}">
+                        <svg class="wishlist-btn__icon" viewBox="0 0 24 24" width="24" height="24" fill="{% if product.pk in wishlisted_ids %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -195,7 +200,7 @@
 {% if related_products %}
 <section class="pdp-related">
     <h2 class="pdp-related__title">You May Also Like</h2>
-    <div class="pdp-related__grid">
+    <div class="product-grid pdp-related__grid">
         {% for related in related_products %}
         <article class="product-card">
             <a class="product-card__link" href="{% url 'products:product_detail' related.pk %}" aria-label="{{ related.name }}">
@@ -205,6 +210,7 @@
                     {% else %}
                     <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="600" height="750">
                     {% endif %}
+                    {% include 'components/wishlist_heart.html' with product=related %}
                 </div>
                 <div class="product-card__info">
                     <span class="product-card__brand">{{ related.brand }}</span>
