@@ -2,76 +2,229 @@
 {% load static cloudinary_filters %}
 
 {% block title %}ORDER #{{ order.id }} - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pages/account.css' %}">
+{% endblock %}
 
 {% block content %}{{ block.super }}{% endblock %}
-{% block inner_header %}
-<a href="{% url 'orders:order_history' %}" class="text-syafra-beige text-sm tracking-wider hover:text-white transition-colors mb-4 inline-block">
-    ← BACK TO ORDERS
-</a>
-<header class="page-header">
-    <h1 class="page-header__title">Order #{{ order.id }}</h1>
-    <p class="page-header__subtitle">Placed on {{ order.created_at|date:"F j, Y" }}</p>
-</header>
-{% endblock %}
+{% block inner_header %}{% endblock %}
 {% block inner_content %}
-<div class="max-w-3xl mx-auto">
-    <div class="bg-gray-100 p-8 mb-8">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-                <p class="text-gray-500 tracking-wider text-xs mb-2">STATUS</p>
-                <p class="font-semibold uppercase">{{ order.status }}</p>
-            </div>
-            <div>
-                <p class="text-gray-500 tracking-wider text-xs mb-2">EMAIL</p>
-                <p class="font-medium text-sm">{{ order.email }}</p>
-            </div>
-            <div>
-                <p class="text-gray-500 tracking-wider text-xs mb-2">PHONE</p>
-                <p class="font-medium">{{ order.phone_number }}</p>
-            </div>
-            <div>
-                <p class="text-gray-500 tracking-wider text-xs mb-2">TOTAL</p>
-                <p class="font-bold text-lg">{{ currency }}{{ order.total_price|floatformat:2 }}</p>
-            </div>
-        </div>
+<div class="order-detail">
+    <a href="{% url 'orders:order_history' %}" class="order-detail__back">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Back to Orders
+    </a>
+
+    <div class="order-detail__header">
+        <h1 class="order-detail__number">Order #{{ order.id }}</h1>
+        <p class="order-detail__date">Placed on {{ order.created_at|date:"F j, Y \a\t g:i A" }}</p>
+        <span class="status-badge status-badge--{{ order.status }}">{{ order.get_status_display }}</span>
     </div>
 
-    <div class="bg-white border border-gray-200 p-8 mb-8">
-        <h2 class="text-xl font-bold tracking-tight mb-6">ORDER ITEMS</h2>
-        <div class="space-y-4">
-            {% for item in items %}
-            <div class="flex justify-between items-center py-4 border-b border-gray-100 last:border-0">
-                <div class="flex items-center gap-4">
-                    {% if item.product.image %}
-                    <img src="{{ item.product.image.url|cloudinary_resize:'64x80' }}" alt="{{ item.product.name }}" loading="lazy" decoding="async" width="64" height="80"
-                         class="w-16 h-20 object-contain bg-white">
-                    {% else %}
-                    <img src="{% static 'images/default.jpg' %}" alt="No image available" loading="lazy" decoding="async" width="64" height="80"
-                         class="w-16 h-20 object-contain bg-white">
-                    {% endif %}
-                    <div>
-                        <p class="font-medium">{{ item.product.name }}</p>
-                        <p class="text-gray-500 text-sm">{{ item.product.brand }}</p>
-                        {% if item.size %}<p class="text-gray-500 text-sm">Size: {{ item.size|upper }}</p>{% endif %}
-                        <p class="text-gray-500 text-sm">Qty: {{ item.quantity }} × {{ currency }}{{ item.price|floatformat:2 }}</p>
+    {% if order.status != 'cancelled' and order.status != 'failed' %}
+    <div class="order-timeline">
+        {% with steps='Ordered Packed Shipped Delivered' %}
+        {% with active_count='' %}
+            {% if order.status == 'pending' %}
+                {% with completed=0 active=0 %}
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--active"></div>
+                    <div class="order-timeline__line"></div>
+                    <span class="order-timeline__label order-timeline__label--active">Ordered</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot"></div>
+                    <div class="order-timeline__line"></div>
+                    <span class="order-timeline__label">Packed</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot"></div>
+                    <div class="order-timeline__line"></div>
+                    <span class="order-timeline__label">Shipped</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot"></div>
+                    <span class="order-timeline__label">Delivered</span>
+                </div>
+                {% endwith %}
+            {% elif order.status == 'paid' %}
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <div class="order-timeline__line order-timeline__line--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Ordered</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--active"></div>
+                    <div class="order-timeline__line"></div>
+                    <span class="order-timeline__label order-timeline__label--active">Packed</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot"></div>
+                    <div class="order-timeline__line"></div>
+                    <span class="order-timeline__label">Shipped</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot"></div>
+                    <span class="order-timeline__label">Delivered</span>
+                </div>
+            {% elif order.status == 'packed' %}
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <div class="order-timeline__line order-timeline__line--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Ordered</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <div class="order-timeline__line order-timeline__line--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Packed</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--active"></div>
+                    <div class="order-timeline__line"></div>
+                    <span class="order-timeline__label order-timeline__label--active">Shipped</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot"></div>
+                    <span class="order-timeline__label">Delivered</span>
+                </div>
+            {% elif order.status == 'shipped' %}
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <div class="order-timeline__line order-timeline__line--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Ordered</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <div class="order-timeline__line order-timeline__line--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Packed</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <div class="order-timeline__line order-timeline__line--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Shipped</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--active"></div>
+                    <span class="order-timeline__label order-timeline__label--active">Delivered</span>
+                </div>
+            {% elif order.status == 'delivered' %}
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <div class="order-timeline__line order-timeline__line--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Ordered</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <div class="order-timeline__line order-timeline__line--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Packed</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <div class="order-timeline__line order-timeline__line--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Shipped</span>
+                </div>
+                <div class="order-timeline__step">
+                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
+                    <span class="order-timeline__label order-timeline__label--completed">Delivered</span>
+                </div>
+            {% endif %}
+        {% endwith %}
+        {% endwith %}
+    </div>
+    {% endif %}
+
+    <div class="detail-card">
+        <h2 class="detail-card__title">Order Items</h2>
+        {% for item in items %}
+        <div class="order-item">
+            {% if item.product.image %}
+            <img src="{{ item.product.image.url|cloudinary_resize:'80x100' }}" alt="{{ item.product.name }}"
+                 loading="lazy" decoding="async" width="80" height="100"
+                 class="order-item__image">
+            {% else %}
+            <img src="{% static 'images/default.jpg' %}" alt="No image available"
+                 loading="lazy" decoding="async" width="80" height="100"
+                 class="order-item__image">
+            {% endif %}
+            <div class="order-item__info">
+                <h3 class="order-item__name">{{ item.product.name }}</h3>
+                <p class="order-item__variant">{{ item.product.brand|default:'' }}</p>
+                <p class="order-item__details">
+                    {% if item.size %}Size: {{ item.size|upper }} · {% endif %}
+                    Qty: {{ item.quantity }} × {{ currency }}{{ item.price|floatformat:2 }}
+                </p>
+            </div>
+            <span class="order-item__total">{{ currency }}{{ item.subtotal|floatformat:2 }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="detail-grid">
+        <div class="detail-card">
+            <h2 class="detail-card__title">Shipping Address</h2>
+            <div class="detail-info">
+                <span class="detail-info__label">Recipient</span>
+                <span class="detail-info__value">{{ order.customer_name }}</span>
+            </div>
+            <div class="detail-info" style="margin-top:var(--space-4)">
+                <span class="detail-info__label">Address</span>
+                <span class="detail-info__value" style="white-space:pre-line">{{ order.shipping_address }}</span>
+            </div>
+            {% if order.phone_number %}
+            <div class="detail-info" style="margin-top:var(--space-4)">
+                <span class="detail-info__label">Phone</span>
+                <span class="detail-info__value">{{ order.phone_number }}</span>
+            </div>
+            {% endif %}
+            {% if order.email %}
+            <div class="detail-info" style="margin-top:var(--space-4)">
+                <span class="detail-info__label">Email</span>
+                <span class="detail-info__value">{{ order.email }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div>
+            <div class="detail-card">
+                <h2 class="detail-card__title">Payment</h2>
+                <div class="detail-info">
+                    <span class="detail-info__label">Status</span>
+                    <span class="detail-info__value">{{ order.get_payment_status_display }}</span>
+                </div>
+                {% if order.tracking_id %}
+                <div class="detail-info" style="margin-top:var(--space-4)">
+                    <span class="detail-info__label">Tracking ID</span>
+                    <span class="detail-info__value">{{ order.tracking_id }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="detail-card">
+                <h2 class="detail-card__title">Order Total</h2>
+                <div class="order-summary">
+                    <div class="order-summary__row">
+                        <span class="order-summary__label">Subtotal ({{ items|length }} item{% if items|length != 1 %}s{% endif %})</span>
+                        <span class="order-summary__value">{{ currency }}{{ order.total_price|floatformat:2 }}</span>
+                    </div>
+                    <div class="order-summary__row">
+                        <span class="order-summary__label">Shipping</span>
+                        <span class="order-summary__value">Free</span>
+                    </div>
+                    <div class="order-summary__divider"></div>
+                    <div class="order-summary__row">
+                        <span class="order-summary__label order-summary__total">Total</span>
+                        <span class="order-summary__value order-summary__total">{{ currency }}{{ order.total_price|floatformat:2 }}</span>
                     </div>
                 </div>
-                <p class="font-semibold">{{ currency }}{{ item.subtotal|floatformat:2 }}</p>
             </div>
-            {% endfor %}
         </div>
     </div>
 
-    <div class="bg-gray-100 p-8">
-        <h2 class="text-xl font-bold tracking-tight mb-6">SHIPPING ADDRESS</h2>
-        <p class="text-gray-600 whitespace-pre-line">{{ order.shipping_address }}</p>
-    </div>
-
-    <div class="mt-8 text-center">
-        <a href="{% url 'products:shop' %}" 
-           class="inline-block bg-black text-white px-10 py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
-            CONTINUE SHOPPING
-        </a>
+    <div class="order-detail__actions">
+        <a href="{% url 'orders:order_history' %}" class="auth-result__action">Back to Orders</a>
+        <a href="{% url 'products:shop' %}" class="auth-result__action" style="background:transparent;color:var(--color-black);border:1px solid var(--color-gray-200)">Continue Shopping</a>
     </div>
 </div>
 {% endblock %}

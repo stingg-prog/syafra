@@ -84,6 +84,8 @@
     --navbar-height: 88px;
     --navbar-height-mobile: 60px;
     --announcement-height: 36px;
+    --header-height: var(--navbar-height);
+    --header-height-mobile: var(--navbar-height-mobile);
 
     /* ---- Container Widths ---- */
     --container-sm: 640px;

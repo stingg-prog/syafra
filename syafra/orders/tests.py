@@ -259,7 +259,7 @@ class CheckoutViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'checkout.html')
         self.assertContains(response, 'id="pay-btn"')
-        self.assertContains(response, 'PAY NOW')
+        self.assertContains(response, 'Pay Now')
 
     def test_checkout_response_sets_correlation_id_header(self):
         self.client.login(username='testuser', password='testpass123')
@@ -299,22 +299,19 @@ class CheckoutViewTest(TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.json(),
-            {
-                'ok': True,
-                'order_id': 1,
-                'amount': 20000,
-                'currency': 'INR',
-                'razorpay_key': 'test_key',
-                'razorpay_order_id': 'order_ajax_123',
-                'verify_url': reverse('orders:verify_payment'),
-                'failure_url': reverse('orders:payment_failure_callback'),
-                'status_url': reverse('orders:order_status', args=[1]),
-                'success_url': reverse('orders:order_success', args=[1]),
-                'failed_url': reverse('orders:payment_failed') + '?order_id=1',
-            },
-        )
+        data = response.json()
+        self.assertTrue(data['ok'])
+        self.assertIsInstance(data['order_id'], int)
+        self.assertGreater(data['order_id'], 0)
+        self.assertEqual(data['amount'], 20000)
+        self.assertEqual(data['currency'], 'INR')
+        self.assertEqual(data['razorpay_key'], 'test_key')
+        self.assertEqual(data['razorpay_order_id'], 'order_ajax_123')
+        self.assertEqual(data['verify_url'], reverse('orders:verify_payment'))
+        self.assertEqual(data['failure_url'], reverse('orders:payment_failure_callback'))
+        self.assertEqual(data['status_url'], reverse('orders:order_status', args=[data['order_id']]))
+        self.assertEqual(data['success_url'], reverse('orders:order_success', args=[data['order_id']]))
+        self.assertEqual(data['failed_url'], reverse('orders:payment_failed') + f'?order_id={data["order_id"]}')
 
         order = Order.objects.get(user=self.user)
         self.assertEqual(order.razorpay_order_id, 'order_ajax_123')

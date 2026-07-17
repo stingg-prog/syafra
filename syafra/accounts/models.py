@@ -4,7 +4,7 @@ from django.db.models import Q
 
 
 class EmailLog(models.Model):
-    PROVIDER_SENDGRID = "sendgrid"
+    PROVIDER_RESEND = "resend"
 
     STATUS_QUEUED = "queued"
     STATUS_ACCEPTED = "accepted"
@@ -50,7 +50,7 @@ class EmailLog(models.Model):
         (TYPE_TEST, "Test Email"),
     ]
 
-    provider = models.CharField(max_length=32, default=PROVIDER_SENDGRID, db_index=True)
+    provider = models.CharField(max_length=32, default=PROVIDER_RESEND, db_index=True)
     email_type = models.CharField(max_length=64, choices=EMAIL_TYPE_CHOICES, default=TYPE_GENERIC, db_index=True)
     order = models.ForeignKey(
         "orders.Order",
@@ -72,8 +72,8 @@ class EmailLog(models.Model):
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_QUEUED, db_index=True)
     event_type = models.CharField(max_length=64, blank=True, default="", db_index=True)
     correlation_id = models.CharField(max_length=64, blank=True, default="", db_index=True)
-    sendgrid_message_id = models.CharField(max_length=255, blank=True, default="", db_index=True)
-    sendgrid_response_status = models.PositiveIntegerField(null=True, blank=True)
+    provider_message_id = models.CharField(max_length=255, blank=True, default="", db_index=True)
+    provider_response_status = models.PositiveIntegerField(null=True, blank=True)
     send_attempts = models.PositiveIntegerField(default=0)
     open_count = models.PositiveIntegerField(default=0)
     retryable = models.BooleanField(default=False)
@@ -117,10 +117,10 @@ class EmailWebhookEvent(models.Model):
         blank=True,
         related_name="webhook_events",
     )
-    provider = models.CharField(max_length=32, default=EmailLog.PROVIDER_SENDGRID, db_index=True)
+    provider = models.CharField(max_length=32, default=EmailLog.PROVIDER_RESEND, db_index=True)
     event_type = models.CharField(max_length=64, db_index=True)
-    sendgrid_event_id = models.CharField(max_length=255, blank=True, default="")
-    sendgrid_message_id = models.CharField(max_length=255, blank=True, default="", db_index=True)
+    provider_event_id = models.CharField(max_length=255, blank=True, default="")
+    provider_message_id = models.CharField(max_length=255, blank=True, default="", db_index=True)
     recipient = models.EmailField(blank=True, default="", db_index=True)
     payload = models.JSONField(default=dict, blank=True)
     occurred_at = models.DateTimeField(db_index=True)
@@ -130,9 +130,9 @@ class EmailWebhookEvent(models.Model):
         ordering = ["-occurred_at", "-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["sendgrid_event_id"],
-                condition=~Q(sendgrid_event_id=""),
-                name="email_webhook_events_unique_sendgrid_event_id",
+                fields=["provider_event_id"],
+                condition=~Q(provider_event_id=""),
+                name="email_webhook_events_unique_provider_event_id",
             ),
         ]
         indexes = [

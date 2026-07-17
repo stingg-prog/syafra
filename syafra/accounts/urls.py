@@ -1,7 +1,6 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
-from . import sendgrid_webhooks
 
 from .views import password_reset_request, password_reset_confirm
 

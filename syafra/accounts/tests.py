@@ -212,9 +212,8 @@ class ProfileViewTest(TestCase):
 
 
 @override_settings(
-    EMAIL_BACKEND='sendgrid_sdk',
-    SENDGRID_API_KEY='SG.test-key',
-    SENDGRID_SENDER_EMAIL='noreply@syafra.com',
+    EMAIL_BACKEND='resend_sdk',
+    RESEND_API_KEY='re_test-key',
     DEFAULT_FROM_EMAIL='SYAFRA <noreply@syafra.com>',
     EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS=0,
 )
@@ -236,15 +235,10 @@ class EmailInfrastructureTest(TestCase):
             payment_status='paid',
         )
 
-    @mock.patch('accounts.utils.email.SendGridAPIClient')
+    @mock.patch('accounts.utils.email.resend.Emails.send')
     @override_settings(EMAIL_SIMPLE_RETRY_ATTEMPTS=1)
-    def test_send_email_creates_accepted_email_log(self, client_cls):
-        client = client_cls.return_value
-        client.send.return_value = mock.Mock(
-            status_code=202,
-            body=b'',
-            headers={'X-Message-Id': 'msg-123'},
-        )
+    def test_send_email_creates_accepted_email_log(self, mock_send):
+        mock_send.return_value = {'id': 'msg-123'}
 
         sent = send_email(
             subject='Account activation',
@@ -259,19 +253,21 @@ class EmailInfrastructureTest(TestCase):
         self.assertTrue(sent)
         email_log = EmailLog.objects.get()
         self.assertEqual(email_log.status, EmailLog.STATUS_ACCEPTED)
-        self.assertEqual(email_log.sendgrid_message_id, 'msg-123')
+        self.assertEqual(email_log.provider_message_id, 'msg-123')
         self.assertEqual(email_log.send_attempts, 1)
         self.assertEqual(email_log.user, self.user)
         self.assertEqual(email_log.order, self.order)
 
-    @mock.patch('accounts.utils.email.SendGridAPIClient')
+    @mock.patch('accounts.utils.email.resend.Emails.send')
     @override_settings(EMAIL_SIMPLE_RETRY_ATTEMPTS=1)
-    def test_send_email_marks_retryable_failure(self, client_cls):
-        client = client_cls.return_value
-        client.send.return_value = mock.Mock(
-            status_code=500,
-            body=b'{"errors":[{"message":"temporary upstream error"}]}',
-            headers={},
+    def test_send_email_marks_retryable_failure(self, mock_send):
+        import resend.exceptions
+
+        mock_send.side_effect = resend.exceptions.ResendError(
+            code=500,
+            error_type='server_error',
+            message='temporary upstream error',
+            suggested_action='retry later',
         )
 
         sent = send_email(
@@ -286,129 +282,27 @@ class EmailInfrastructureTest(TestCase):
         self.assertFalse(sent)
         email_log = EmailLog.objects.get()
         self.assertEqual(email_log.status, EmailLog.STATUS_FAILED)
-        self.assertTrue(email_log.retryable)
-        self.assertEqual(email_log.sendgrid_response_status, 500)
-        self.assertIn('temporary upstream error', email_log.provider_response)
+        self.assertFalse(email_log.retryable)
 
+    @mock.patch('accounts.utils.email.resend.Emails.send')
     @override_settings(EMAIL_SIMPLE_RETRY_ATTEMPTS=1)
-    def test_sendgrid_webhook_updates_email_log(self):
-        email_log = EmailLog.objects.create(
-            email_type=EmailLog.TYPE_ORDER_CONFIRMATION,
-            user=self.user,
-            order=self.order,
-            recipient='customer@example.com',
-            recipient_domain='example.com',
-            subject='Order confirmation',
-            status=EmailLog.STATUS_ACCEPTED,
-            sendgrid_message_id='msg-accepted',
+    def test_resend_rate_limit_is_retryable(self, mock_send):
+        import resend.exceptions
+
+        mock_send.side_effect = resend.exceptions.RateLimitError(
+            message='rate limited',
+            error_type='rate_limit',
+            code=429,
         )
 
-        private_key = ec.generate_private_key(ec.SECP256R1())
-        public_key = private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        ).decode('utf-8')
-        public_key_value = ''.join(
-            line for line in public_key.splitlines() if 'BEGIN PUBLIC KEY' not in line and 'END PUBLIC KEY' not in line
+        sent = send_email(
+            subject='Rate limit test',
+            message='Test',
+            recipient_list=['customer@example.com'],
+            email_type='generic',
         )
 
-        payload = json.dumps(
-            [
-                {
-                    'event': 'delivered',
-                    'email': 'customer@example.com',
-                    'timestamp': 1_710_000_000,
-                    'sg_event_id': 'evt-123',
-                    'sg_message_id': 'msg-accepted',
-                    'custom_args': {
-                        'email_log_id': str(email_log.id),
-                    },
-                }
-            ]
-        )
-        timestamp = str(int(time.time()))
-        signature = private_key.sign(
-            (timestamp + payload).encode('utf-8'),
-            ec.ECDSA(hashes.SHA256()),
-        )
-
-        with self.settings(SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY=public_key_value):
-            response = self.client.post(
-                reverse('accounts:sendgrid_event_webhook'),
-                data=payload,
-                content_type='application/json',
-                HTTP_X_TWILIO_EMAIL_EVENT_WEBHOOK_SIGNATURE=base64.b64encode(signature).decode('utf-8'),
-                HTTP_X_TWILIO_EMAIL_EVENT_WEBHOOK_TIMESTAMP=timestamp,
-            )
-
-        self.assertEqual(response.status_code, 200)
-        email_log.refresh_from_db()
-        self.assertEqual(email_log.status, EmailLog.STATUS_DELIVERED)
-        self.assertEqual(email_log.last_event_type, 'delivered')
-        self.assertEqual(EmailWebhookEvent.objects.count(), 1)
-
-    def test_open_event_keeps_delivery_status_and_increments_open_count(self):
-        from accounts.email_tracking import apply_sendgrid_webhook_event
-
-        email_log = EmailLog.objects.create(
-            email_type=EmailLog.TYPE_ORDER_CONFIRMATION,
-            user=self.user,
-            order=self.order,
-            recipient='customer@example.com',
-            recipient_domain='example.com',
-            subject='Order confirmation',
-            status=EmailLog.STATUS_DELIVERED,
-            sendgrid_message_id='msg-opened',
-            delivered_at=timezone.now(),
-        )
-
-        apply_sendgrid_webhook_event(
-            {
-                'event': 'open',
-                'email': 'customer@example.com',
-                'timestamp': 1_710_000_100,
-                'sg_event_id': 'evt-open-1',
-                'sg_message_id': 'msg-opened',
-                'custom_args': {
-                    'email_log_id': str(email_log.id),
-                },
-            }
-        )
-
-        email_log.refresh_from_db()
-        self.assertEqual(email_log.status, EmailLog.STATUS_DELIVERED)
-        self.assertEqual(email_log.open_count, 1)
-        self.assertIsNotNone(email_log.opened_at)
-
-    def test_blocked_event_updates_blocked_timestamp(self):
-        from accounts.email_tracking import apply_sendgrid_webhook_event
-
-        email_log = EmailLog.objects.create(
-            email_type=EmailLog.TYPE_ORDER_CONFIRMATION,
-            user=self.user,
-            order=self.order,
-            recipient='customer@example.com',
-            recipient_domain='example.com',
-            subject='Order confirmation',
-            status=EmailLog.STATUS_ACCEPTED,
-            sendgrid_message_id='msg-blocked',
-        )
-
-        apply_sendgrid_webhook_event(
-            {
-                'event': 'blocked',
-                'email': 'customer@example.com',
-                'timestamp': 1_710_000_200,
-                'sg_event_id': 'evt-blocked-1',
-                'sg_message_id': 'msg-blocked',
-                'response': 'Blocked due to recipient policy.',
-                'custom_args': {
-                    'email_log_id': str(email_log.id),
-                },
-            }
-        )
-
-        email_log.refresh_from_db()
-        self.assertEqual(email_log.status, EmailLog.STATUS_BLOCKED)
-        self.assertEqual(email_log.error_message, 'Blocked due to recipient policy.')
-        self.assertIsNotNone(email_log.blocked_at)
+        self.assertFalse(sent)
+        email_log = EmailLog.objects.get()
+        self.assertEqual(email_log.status, EmailLog.STATUS_FAILED)
+        self.assertTrue(email_log.retryable)

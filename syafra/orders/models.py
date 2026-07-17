@@ -69,24 +69,34 @@ class PaymentSettings(models.Model):
     def get_settings(cls):
         """
         Get PaymentSettings singleton.
-        
-        🔧 FIX: Better error handling with logging.
+        Returns None if not configured or DB error.
+        Env credentials serve as fallback for payment resolution.
         """
         global _PAYMENT_SETTINGS_WARNING_LOGGED
         try:
             settings = cls.objects.first()
-            if not settings and not _PAYMENT_SETTINGS_WARNING_LOGGED:
-                import logging
-                logger = logging.getLogger('orders')
-                logger.warning('PaymentSettings not configured in database. Admin must set up Razorpay keys.')
-                _PAYMENT_SETTINGS_WARNING_LOGGED = True
-            elif settings:
+            if settings is None:
+                if not _PAYMENT_SETTINGS_WARNING_LOGGED:
+                    import logging
+                    logger = logging.getLogger('orders')
+                    env_kid, env_ks = cls.get_env_razorpay_credentials()
+                    if env_kid and env_ks:
+                        logger.info(
+                            'PaymentSettings not in DB, using RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET from env'
+                        )
+                    else:
+                        logger.warning(
+                            'PaymentSettings not configured in database and no env fallback. '
+                            'Admin must set up Razorpay keys.'
+                        )
+                    _PAYMENT_SETTINGS_WARNING_LOGGED = True
+            else:
                 _PAYMENT_SETTINGS_WARNING_LOGGED = False
             return settings
-        except Exception as e:
+        except Exception:
             import logging
             logger = logging.getLogger('orders')
-            logger.error(f'Error retrieving PaymentSettings: {e}')
+            logger.exception('Error retrieving PaymentSettings')
             return None
     
     def get_currency_display_symbol(self):

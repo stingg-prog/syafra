@@ -2,16 +2,14 @@ import logging
 import time
 from email.utils import parseaddr
 
+import resend
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives, send_mail
 from django.core.validators import validate_email
 from django.template.loader import render_to_string
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import From, Mail
 
 from accounts.email_tracking import (
-    RETRYABLE_SENDGRID_STATUS_CODES,
     build_custom_args,
     create_email_log,
     get_recent_order_email_issue,
@@ -46,40 +44,13 @@ def _using_django_backend():
     return str(getattr(settings, "EMAIL_BACKEND", "")).startswith(DJANGO_BACKEND_PREFIX)
 
 
-def _read_sendgrid_body(response):
-    body = getattr(response, "body", "")
-    if isinstance(body, bytes):
-        try:
-            return body.decode("utf-8")
-        except UnicodeDecodeError:
-            return body.decode("utf-8", errors="replace")
-    return str(body)
-
-
-def _get_sendgrid_message_id(response):
-    headers = getattr(response, "headers", None)
-    if headers is None:
-        return ""
-    if hasattr(headers, "get"):
-        return (
-            headers.get("X-Message-Id")
-            or headers.get("x-message-id")
-            or headers.get("X-Message-ID")
-            or ""
-        )
-    return ""
-
-
-def _build_sendgrid_sender(from_email):
+def _build_resend_sender(from_email):
     display_name, email_address = parseaddr(from_email or "")
     if not email_address:
-        fallback_sender = (getattr(settings, "SENDGRID_SENDER_EMAIL", "") or "").strip()
-        if not fallback_sender:
-            raise ValueError("SENDGRID_SENDER_EMAIL is missing")
-        email_address = fallback_sender
+        email_address = settings.DEFAULT_FROM_EMAIL
     if display_name:
-        return From(email_address, display_name)
-    return From(email_address)
+        return f"{display_name} <{email_address}>"
+    return email_address
 
 
 def _build_log_metadata(*, email_type, user=None, order=None, metadata=None):
@@ -117,59 +88,67 @@ def _send_via_django_backend(subject, message, recipient_list, html_message=None
     return True
 
 
-def _send_via_sendgrid_sdk(email_log, *, subject, message, recipient, html_message=None, from_email=None):
-    api_key = (getattr(settings, "SENDGRID_API_KEY", "") or "").strip()
+def _send_via_resend_sdk(email_log, *, subject, message, recipient, html_message=None, from_email=None):
+    api_key = (getattr(settings, "RESEND_API_KEY", "") or "").strip()
     if not api_key:
-        raise ValueError("SENDGRID_API_KEY is missing")
+        raise ValueError("RESEND_API_KEY is missing")
 
-    sender = _build_sendgrid_sender(from_email)
-    client = SendGridAPIClient(api_key)
+    resend.api_key = api_key
+
+    sender = _build_resend_sender(from_email)
     html_content = html_message or message.replace("\n", "<br>")
 
-    mail = Mail(
-        from_email=sender,
-        to_emails=recipient,
-        subject=subject,
-        plain_text_content=message,
-        html_content=html_content,
-    )
-    for key, value in build_custom_args(email_log).items():
-        mail.add_custom_arg({key: str(value)})
+    params = {
+        "from": sender,
+        "to": [recipient],
+        "subject": subject,
+        "text": message,
+        "html": html_content,
+    }
 
-    response = client.send(mail)
-    response_body = _read_sendgrid_body(response)
-    print("SendGrid Status:", response.status_code)
+    custom_args = build_custom_args(email_log)
+    if custom_args:
+        params["headers"] = {f"X-Syafra-{k}": str(v) for k, v in custom_args.items()}
 
-    logger.info(
-        "SendGrid Status: %s | email_log_id=%s | recipient=%s | order_id=%s | user_id=%s",
-        response.status_code,
-        email_log.id,
-        recipient,
-        email_log.order_id or "-",
-        email_log.user_id or "-",
-    )
+    tags = [{"name": "email_type", "value": email_log.email_type}]
+    if email_log.event_type:
+        tags.append({"name": "event_type", "value": email_log.event_type})
+    params["tags"] = tags
 
-    if response.status_code >= 400:
+    try:
+        response = resend.Emails.send(params)
+    except resend.exceptions.ResendError as exc:
+        error_str = str(exc)
+        status_code = getattr(exc, "code", 0)
         logger.error(
-            "SendGrid Error Body: %s | email_log_id=%s | recipient=%s",
-            response_body,
+            "Resend API error | email_log_id=%s | recipient=%s | status=%s | error=%s",
             email_log.id,
             recipient,
+            status_code,
+            error_str,
         )
         mark_email_failed(
             email_log,
-            error_message=f"SendGrid API returned status {response.status_code}",
-            response_status=response.status_code,
-            provider_response=response_body,
-            retryable=response.status_code in RETRYABLE_SENDGRID_STATUS_CODES,
+            error_message=error_str,
+            response_status=status_code,
+            provider_response=error_str,
+            retryable=isinstance(exc, (resend.exceptions.RateLimitError,)),
         )
         return False
 
+    message_id = response.get("id", "") if isinstance(response, dict) else ""
+    logger.info(
+        "Resend accepted | email_log_id=%s | recipient=%s | message_id=%s",
+        email_log.id,
+        recipient,
+        message_id,
+    )
+
     mark_email_accepted(
         email_log,
-        response_status=response.status_code,
-        message_id=_get_sendgrid_message_id(response),
-        provider_response=response_body,
+        response_status=200,
+        message_id=message_id,
+        provider_response=str(response),
     )
     return True
 
@@ -246,7 +225,7 @@ def _send_single_email(
                 mark_email_accepted(email_log, response_status=200)
                 return True
 
-            sent = _send_via_sendgrid_sdk(
+            sent = _send_via_resend_sdk(
                 email_log,
                 subject=subject,
                 message=message,
@@ -264,7 +243,7 @@ def _send_single_email(
                 retryable=retryable,
             )
             logger.exception(
-                "SendGrid Exception occurred | email_log_id=%s | recipient=%s | attempt=%s | order_id=%s | user_id=%s",
+                "Resend exception | email_log_id=%s | recipient=%s | attempt=%s | order_id=%s | user_id=%s",
                 email_log.id,
                 recipient,
                 attempt,
@@ -299,7 +278,7 @@ def send_email(
     """
     Send an email with optional HTML content.
 
-    The production path uses the SendGrid SDK directly and records delivery
+    The production path uses the Resend SDK directly and records delivery
     attempts in EmailLog. Explicit Django backend overrides remain available for
     tests and local diagnostics.
     """
@@ -434,17 +413,15 @@ def test_email_configuration():
     diagnostics = {
         "backend": settings.EMAIL_BACKEND,
         "from_email": settings.DEFAULT_FROM_EMAIL,
-        "sendgrid_sender": getattr(settings, "SENDGRID_SENDER_EMAIL", "Not configured"),
-        "sendgrid_api_key_configured": bool(getattr(settings, "SENDGRID_API_KEY", "")),
-        "sendgrid_webhook_public_key_configured": bool(getattr(settings, "SENDGRID_EVENT_WEBHOOK_PUBLIC_KEY", "")),
+        "resend_api_key_configured": bool(getattr(settings, "RESEND_API_KEY", "")),
         "debug_mode": settings.DEBUG,
     }
 
     if _using_django_backend():
         diagnostics["warning"] = "Using Django email backend override - useful for tests or local debugging"
     else:
-        diagnostics["warning"] = "Using direct SendGrid SDK delivery"
-        diagnostics["api_connection"] = "Configured" if diagnostics["sendgrid_api_key_configured"] else "Missing API key"
+        diagnostics["warning"] = "Using direct Resend SDK delivery"
+        diagnostics["api_connection"] = "Configured" if diagnostics["resend_api_key_configured"] else "Missing API key"
 
     return diagnostics
 
