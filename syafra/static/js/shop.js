@@ -17,9 +17,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var dropdownBtns = document.querySelectorAll('.shop-filterbar__dropdown-btn');
     var drawerGroupHeaders = document.querySelectorAll('.shop-drawer__group-header');
 
+    /* ---- Form submit: disable inactive section to prevent duplicate params ---- */
+    form.addEventListener('submit', function (e) {
+        disableInactiveSection();
+    });
+
     /* ---- Disable inactive section inputs to prevent duplicate params ---- */
     function disableInactiveSection() {
-        var isDesktop = window.innerWidth >= 1025;
+        var isDesktop = window.innerWidth >= 1024;
         var filterbar = document.getElementById('shop-filterbar');
         var drawerEl = document.getElementById('shop-drawer');
         var sections = filterbar ? [filterbar] : [];
@@ -81,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
     autoSubmitSelectors.forEach(function (selector) {
         form.querySelectorAll(selector).forEach(function (input) {
             input.addEventListener('change', function () {
-                if (window.innerWidth >= 1025) {
+                if (window.innerWidth >= 1024) {
                     submitForm();
                 }
             });
@@ -117,8 +122,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showPriceError(msg) {
-        var el = document.getElementById('price-error-desktop');
-        if (el) el.textContent = msg;
+        var elDesktop = document.getElementById('price-error-desktop');
+        var elMobile = document.getElementById('price-error-mobile');
+        if (elDesktop) elDesktop.textContent = msg;
+        if (elMobile) elMobile.textContent = msg;
     }
 
     function submitPriceFilter() {
@@ -199,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function handlePriceEnter(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
-            var isDesktop = window.innerWidth >= 1025;
+            var isDesktop = window.innerWidth >= 1024;
             if (isDesktop) {
                 submitPriceFilter();
                 closePriceDropdown();
@@ -242,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function () {
         showPriceError('');
     }
 
-    ['price-min', 'price-max'].forEach(function (id) {
+    ['price-min', 'price-max', 'price-min-mobile', 'price-max-mobile'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) {
             el.addEventListener('input', clearPriceError);
@@ -268,6 +275,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* ---- Mobile Drawer ---- */
+    function closeDrawer() {
+        if (!drawer || !drawerOverlay) return;
+        drawer.classList.remove('is-open');
+        drawerOverlay.classList.remove('is-visible');
+        document.body.style.overflow = '';
+    }
+
     if (drawerOpen && drawer && drawerOverlay && drawerClose) {
         drawerOpen.addEventListener('click', function () {
             drawer.classList.add('is-open');
@@ -275,15 +289,17 @@ document.addEventListener('DOMContentLoaded', function () {
             document.body.style.overflow = 'hidden';
         });
 
-        function closeDrawer() {
-            drawer.classList.remove('is-open');
-            drawerOverlay.classList.remove('is-visible');
-            document.body.style.overflow = '';
-        }
-
         drawerClose.addEventListener('click', closeDrawer);
         drawerOverlay.addEventListener('click', closeDrawer);
     }
+
+    /* ---- Drawer close on Escape ---- */
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && drawer && drawer.classList.contains('is-open')) {
+            closeDrawer();
+            if (drawerOpen) drawerOpen.focus();
+        }
+    });
 
     /* ---- Drawer Accordion ---- */
     drawerGroupHeaders.forEach(function (header) {

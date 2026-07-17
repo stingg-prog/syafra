@@ -164,36 +164,45 @@
     display: none;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background: none;
     border: none;
     cursor: pointer;
     color: inherit;
     padding: 0;
+    position: relative;
     justify-self: end;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .hamburger-line {
     display: block;
-    width: 20px;
-    height: 1px;
+    width: 22px;
+    height: 1.5px;
+    border-radius: 1px;
     background: currentColor;
     transition: transform 0.4s var(--ease-luxury), opacity 0.3s ease;
     position: absolute;
+    left: 0;
+    right: 0;
+    margin: auto;
 }
 
-.hamburger-line:nth-child(1) { transform: translateY(-5px); }
-.hamburger-line:nth-child(2) { transform: translateY(0); }
-.hamburger-line:nth-child(3) { transform: translateY(5px); }
+.hamburger-line:nth-child(1) { top: calc(50% - 7.5px); }
+.hamburger-line:nth-child(2) { top: calc(50% - 0.75px); }
+.hamburger-line:nth-child(3) { top: calc(50% + 6px); }
 
 .mobile-menu-btn[aria-expanded="true"] .hamburger-line:nth-child(1) {
+    top: calc(50% - 0.75px);
     transform: rotate(45deg);
 }
 .mobile-menu-btn[aria-expanded="true"] .hamburger-line:nth-child(2) {
     opacity: 0;
 }
 .mobile-menu-btn[aria-expanded="true"] .hamburger-line:nth-child(3) {
+    top: calc(50% - 0.75px);
     transform: rotate(-45deg);
 }
 

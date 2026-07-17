@@ -356,6 +356,8 @@
     color: var(--color-black);
     cursor: pointer;
     transition: border-color 0.2s var(--ease-out-expo);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .shop-controls__filter-btn:hover {
@@ -882,7 +884,7 @@
     }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
     .shop-filterbar {
         display: none;
     }
