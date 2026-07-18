@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 from .models import (
-    Category, Product, ProductSize, ProductImage, InstagramPost, Testimonial,
+    Category, Product, ProductSize, ProductImage, InstagramFeedItem, Testimonial,
     HomepageSection, HeroSlide, TrustBarItem, ShopByCategoryItem,
     ProductCollection, FooterLink, NewsletterSubscriber,
     PromotionalBannerConfig, ThemeSettings, WebsiteSettings,
@@ -41,8 +41,8 @@ class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductSizeInline, ProductImageInline]
 
 
-@admin.register(InstagramPost)
-class InstagramPostAdmin(admin.ModelAdmin):
+@admin.register(InstagramFeedItem)
+class InstagramFeedItemAdmin(admin.ModelAdmin):
     list_display = ('id', 'is_active', 'created_at')
     list_filter = ('is_active',)
     search_fields = ('link',)

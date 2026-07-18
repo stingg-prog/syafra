@@ -3,7 +3,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'syafra.settings')
 django.setup()
 
-from products.models import HomepageSection, Testimonial, InstagramPost
+from products.models import HomepageSection, Testimonial, InstagramFeedItem
 
 sections = HomepageSection.objects.filter(is_active=True).order_by('display_order')
 print('=== ACTIVE HOMEPAGE SECTIONS ===')
@@ -33,6 +33,6 @@ for t in Testimonial.objects.all():
     print(f'"{t.name}" active={t.is_active}')
 
 print()
-print('=== INSTAGRAM POSTS ===')
-for p in InstagramPost.objects.all():
+print('=== INSTAGRAM FEED ITEMS ===')
+for p in InstagramFeedItem.objects.all():
     print(f'id={p.id} active={p.is_active}')

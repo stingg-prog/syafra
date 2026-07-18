@@ -3,7 +3,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .models import (
-    Category, InstagramPost, Product, ProductImage, ProductSize, Testimonial,
+    Category, InstagramFeedItem, Product, ProductImage, ProductSize, Testimonial,
     HomepageSection, HeroSlide, TrustBarItem, ShopByCategoryItem,
     FooterLink, NewsletterSubscriber, ProductCollection,
     ThemeSettings, WebsiteSettings,
@@ -21,7 +21,7 @@ def invalidate_catalog_cache():
 
 @receiver([post_save, post_delete], sender=Product)
 @receiver([post_save, post_delete], sender=ProductImage)
-@receiver([post_save, post_delete], sender=InstagramPost)
+@receiver([post_save, post_delete], sender=InstagramFeedItem)
 @receiver([post_save, post_delete], sender=Testimonial)
 def clear_homepage_cache_on_content_change(sender, **kwargs):
     invalidate_homepage_cache()

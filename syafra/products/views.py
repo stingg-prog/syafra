@@ -12,7 +12,7 @@ from django.utils import timezone
 import re
 
 from .models import (
-    Product, Category, InstagramPost, Testimonial,
+    Product, Category, InstagramFeedItem, Testimonial,
     HomepageSection, NewsletterSubscriber, ProductCollection,
     ShopByCategoryItem, ContentPage, ContactMessage,
     ThemeSettings, WebsiteSettings,
@@ -57,7 +57,7 @@ def home(request):
         elif st == 'instagram_feed':
             max_items = section.config.get('max_items', 6)
             data['posts'] = list(
-                InstagramPost.objects.filter(is_active=True)
+                InstagramFeedItem.objects.filter(is_active=True)
                 .exclude(image='').exclude(image__isnull=True)[:max_items]
             )
 

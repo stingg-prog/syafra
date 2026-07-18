@@ -104,7 +104,7 @@ class ProductImage(models.Model):
         return f"{self.product.name} - Image {self.id}"
 
 
-class InstagramPost(models.Model):
+class InstagramFeedItem(models.Model):
     image = CloudinaryField('image', blank=True)
     link = models.URLField(default='https://www.instagram.com/syafra.thrift/')
     is_active = models.BooleanField(default=True)
@@ -112,9 +112,11 @@ class InstagramPost(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'Instagram Feed Item'
+        verbose_name_plural = 'Instagram Feed Items'
 
     def __str__(self):
-        return f"Instagram Post {self.id}"
+        return f"Instagram Feed Item {self.id}"
 
 
 class Testimonial(models.Model):
@@ -128,6 +130,11 @@ class Testimonial(models.Model):
 
     def __str__(self):
         return self.name
+
+
+# =============================================================================
+# CMS Content Page
+# =============================================================================
 
 
 # =============================================================================
@@ -415,6 +422,7 @@ class WebsiteSettings(models.Model):
     contact_phone = models.CharField(max_length=20, blank=True, default='')
     business_address = models.TextField(blank=True, default='')
     business_hours = models.CharField(max_length=200, default='Mon-Sat: 10AM - 8PM')
+
     whatsapp_number = models.CharField(max_length=20, default='919037626684')
     whatsapp_default_message = models.CharField(
         max_length=500, default='Hi, I am interested in your products. Please share more details.'

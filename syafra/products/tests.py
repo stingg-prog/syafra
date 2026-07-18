@@ -2,7 +2,7 @@ import re
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from products.models import Category, Product, ProductCollection, ProductSize, HomepageSection, ShopByCategoryItem, PromotionalBannerConfig, Testimonial, InstagramPost, ContentPage, ContactMessage, ThemeSettings, WebsiteSettings, NewsletterSubscriber
+from products.models import Category, Product, ProductCollection, ProductSize, HomepageSection, ShopByCategoryItem, PromotionalBannerConfig, Testimonial, InstagramFeedItem, ContentPage, ContactMessage, ThemeSettings, WebsiteSettings, NewsletterSubscriber
 
 User = get_user_model()
 
@@ -653,7 +653,7 @@ class HomepageSectionBehaviorTest(TestCase):
         section = HomepageSection.objects.create(
             section_type='instagram_feed', is_active=True, display_order=1,
         )
-        post = InstagramPost.objects.create(
+        post = InstagramFeedItem.objects.create(
             image='test_img', link='https://ig.com/p/1', is_active=True,
         )
         response = self.client.get('/', follow=True)
@@ -664,7 +664,7 @@ class HomepageSectionBehaviorTest(TestCase):
         section = HomepageSection.objects.create(
             section_type='instagram_feed', is_active=True, display_order=1,
         )
-        InstagramPost.objects.create(
+        InstagramFeedItem.objects.create(
             image='test_img', link='https://ig.com/p/1', is_active=False,
         )
         response = self.client.get('/', follow=True)
@@ -675,10 +675,10 @@ class HomepageSectionBehaviorTest(TestCase):
         section = HomepageSection.objects.create(
             section_type='instagram_feed', is_active=True, display_order=1,
         )
-        first = InstagramPost.objects.create(
+        first = InstagramFeedItem.objects.create(
             image='first', link='https://ig.com/p/1', is_active=True,
         )
-        second = InstagramPost.objects.create(
+        second = InstagramFeedItem.objects.create(
             image='second', link='https://ig.com/p/2', is_active=True,
         )
         response = self.client.get('/', follow=True)
