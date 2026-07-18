@@ -351,6 +351,19 @@ def product_detail(request, pk):
     payment_settings = PaymentSettings.get_settings()
     currency = payment_settings.currency_symbol if payment_settings else '₹'
 
+    og_image_url = primary_image_url
+    og_description = product.description[:200] if product.description else f'Shop {product.name} at SYAFRA. Premium vintage streetwear.'
+
+    request_scheme = 'https' if request.is_secure() else 'http'
+    product_url = f'{request_scheme}://{request.get_host()}{product.get_absolute_url()}'
+
+    share_text = (
+        f'\u2728 {product.name}\n'
+        f'\U0001f4b0 {currency}{product.price}\n'
+        f'\U0001f6cd\ufe0f Shop Now:\n'
+        f'{product_url}'
+    )
+
     wa_text = f'Hi, I am interested in {product.name} ({product.brand}). Is it available?'
     return render(request, 'product_detail.html', {
         'product': product,
@@ -359,6 +372,10 @@ def product_detail(request, pk):
         'related_products': related_products,
         'currency': currency,
         'whatsapp_product_message': wa_text,
+        'og_image_url': og_image_url,
+        'og_description': og_description,
+        'product_url': product_url,
+        'share_text': share_text,
     })
 
 
