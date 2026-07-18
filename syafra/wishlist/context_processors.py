@@ -7,6 +7,8 @@ def wishlist_ids(request):
             Wishlist.objects.filter(user=request.user)
             .values_list('product_id', flat=True)
         )
+        count = len(ids)
     else:
         ids = set()
-    return {'wishlisted_ids': ids}
+        count = 0
+    return {'wishlisted_ids': ids, 'wishlist_count': count}

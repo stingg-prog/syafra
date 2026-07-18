@@ -18,19 +18,13 @@
 
 @media (max-width: 768px) {
     .product-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
     }
 }
 
 @media (max-width: 480px) {
     .product-grid {
-        gap: 0.75rem;
-    }
-}
-
-@media (max-width: 374px) {
-    .product-grid {
-        grid-template-columns: 1fr;
+        gap: 0.5rem;
     }
 }

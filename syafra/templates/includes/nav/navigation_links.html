@@ -1,0 +1,55 @@
+{# ---------------------------------------------------------------
+   Single source of truth for all navigation links.
+   Usage:
+     {% include 'includes/nav/navigation_links.html' with placement='center' %}
+     {% include 'includes/nav/navigation_links.html' with placement='right' %}
+     {% include 'includes/nav/navigation_links.html' with placement='mobile' %}
+   --------------------------------------------------------------- #}
+
+{% if placement == 'center' %}
+<a href="{% url 'products:home' %}" class="nav-link">HOME</a>
+<a href="{% url 'products:shop' %}" class="nav-link">COLLECTION</a>
+
+{% elif placement == 'right' %}
+<a href="{% url 'products:shop' %}" class="nav-icon" aria-label="Search">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+    </svg>
+</a>
+<a href="{% url 'accounts:profile' %}" class="nav-icon" aria-label="Account">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+    </svg>
+</a>
+<a href="{% url 'wishlist:page' %}" class="nav-icon wishlist-nav-icon" aria-label="Wishlist" data-wishlist-link>
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+    <span class="wishlist-nav-count" id="wishlist-count" data-count="0">0</span>
+</a>
+<a href="{% url 'cart:cart_view' %}" class="nav-icon" aria-label="Cart">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+    </svg>
+    {% if cart_count > 0 %}
+    <span class="cart-badge">{{ cart_count }}</span>
+    {% endif %}
+</a>
+
+{% elif placement == 'mobile' %}
+<a href="{% url 'products:home' %}" class="nav-link">HOME</a>
+<a href="{% url 'products:shop' %}" class="nav-link">COLLECTION</a>
+<a href="{% url 'wishlist:page' %}" class="nav-link">
+    WISHLIST{% if wishlist_count > 0 %} ({{ wishlist_count }}){% endif %}
+</a>
+<a href="{% url 'cart:cart_view' %}" class="nav-link">
+    CART{% if cart_count > 0 %} ({{ cart_count }}){% endif %}
+</a>
+{% if user.is_authenticated %}
+<a href="{% url 'accounts:profile' %}" class="nav-link">ACCOUNT</a>
+{% include 'includes/logout_form.html' with button_class="nav-link bg-transparent border-0 cursor-pointer p-0 text-red-400 hover:text-red-300" %}
+{% else %}
+<a href="{% url 'accounts:login' %}" class="nav-link">LOGIN</a>
+<a href="{% url 'accounts:register' %}" class="nav-link">REGISTER</a>
+{% endif %}
+{% endif %}
