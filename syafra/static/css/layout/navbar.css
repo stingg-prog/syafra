@@ -233,6 +233,7 @@
 .mobile-menu .nav-link {
     font-size: 1rem;
     letter-spacing: var(--letter-spacing-widest);
+    color: var(--color-white);
     opacity: 0;
     transform: translateY(20px);
     transition: opacity 0.5s var(--ease-luxury), transform 0.5s var(--ease-luxury), color 0.3s ease;
