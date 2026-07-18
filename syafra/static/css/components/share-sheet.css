@@ -1,0 +1,303 @@
+/* ============================================
+   SYAFRA Premium Share Sheet
+   ============================================ */
+
+/* --- Container --- */
+.share-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal, 100);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.share-sheet.is-open {
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* --- Backdrop --- */
+.share-sheet__backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--backdrop-overlay, rgba(0, 0, 0, 0.6));
+    opacity: 0;
+    transition: opacity 0.35s var(--ease-out-expo);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+.share-sheet.is-open .share-sheet__backdrop {
+    opacity: 1;
+}
+
+/* --- Panel (shared) --- */
+.share-sheet__panel {
+    position: relative;
+    background: var(--color-white, #ffffff);
+    box-shadow: var(--shadow-xl, 0 20px 25px rgba(0, 0, 0, 0.15));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.share-sheet__panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.share-sheet__panel::-webkit-scrollbar-thumb {
+    background: var(--color-gray-300);
+    border-radius: 2px;
+}
+
+/* --- Mobile: Bottom Sheet (default) --- */
+.share-sheet__panel {
+    width: 100%;
+    max-height: 85vh;
+    border-radius: var(--radius-2xl, 1rem) var(--radius-2xl, 1rem) 0 0;
+    transform: translateY(100%);
+    transition: transform 0.45s var(--ease-out-expo);
+}
+
+.share-sheet.is-open .share-sheet__panel {
+    transform: translateY(0);
+}
+
+.share-sheet--dropdown .share-sheet__panel {
+    border-radius: var(--radius-xl, 0.75rem);
+    width: 320px;
+    max-height: 420px;
+    transform: scale(0.92);
+    opacity: 0;
+    transition: transform 0.3s var(--ease-out-expo), opacity 0.25s var(--ease-out-expo);
+    box-shadow: var(--shadow-xl, 0 20px 25px rgba(0, 0, 0, 0.15));
+}
+
+.share-sheet--dropdown.is-open .share-sheet__panel {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* --- Panel Arrow (dropdown only) --- */
+.share-sheet__arrow {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: var(--color-white, #ffffff);
+    transform: rotate(45deg);
+    z-index: -1;
+    display: none;
+}
+
+.share-sheet--dropdown .share-sheet__arrow {
+    display: block;
+}
+
+/* --- Header --- */
+.share-sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-gray-100);
+}
+
+.share-sheet__title {
+    font-family: var(--font-family, 'Inter', sans-serif);
+    font-size: var(--type-caption, 0.8125rem);
+    font-weight: 600;
+    letter-spacing: var(--letter-spacing-wide, 0.05em);
+    text-transform: uppercase;
+    color: var(--color-black, #000000);
+    margin: 0;
+}
+
+.share-sheet__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-gray-100);
+    color: var(--color-gray-600);
+    cursor: pointer;
+    transition: background 0.2s var(--ease-out-expo), color 0.2s var(--ease-out-expo);
+}
+
+.share-sheet__close:hover {
+    background: var(--color-gray-200);
+    color: var(--color-black);
+}
+
+.share-sheet__close:focus-visible {
+    outline: 2px solid var(--color-black);
+    outline-offset: 2px;
+}
+
+.share-sheet__close svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* --- Body --- */
+.share-sheet__body {
+    padding: 1.25rem 1.5rem 1.75rem;
+}
+
+/* --- Grid --- */
+.share-sheet__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+
+/* --- Option Button --- */
+.share-sheet__option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 0.5rem;
+    border: none;
+    border-radius: var(--radius-lg, 0.5rem);
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.2s var(--ease-out-expo);
+    position: relative;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.share-sheet__option:hover {
+    background: var(--color-gray-50);
+}
+
+.share-sheet__option:focus-visible {
+    outline: 2px solid var(--color-black);
+    outline-offset: 2px;
+}
+
+.share-sheet__option:active {
+    background: var(--color-gray-100);
+}
+
+/* --- Icon Wrapper --- */
+.share-sheet__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: transform 0.2s var(--ease-out-expo);
+}
+
+.share-sheet__option:hover .share-sheet__icon {
+    transform: scale(1.08);
+}
+
+.share-sheet__option:active .share-sheet__icon {
+    transform: scale(0.95);
+}
+
+.share-sheet__icon svg {
+    width: 22px;
+    height: 22px;
+    color: var(--color-white, #ffffff);
+}
+
+/* --- Platform Colors --- */
+.share-sheet__icon--whatsapp { background: #25D366; }
+.share-sheet__icon--instagram { background: #E4405F; }
+.share-sheet__icon--facebook { background: #1877F2; }
+.share-sheet__icon--twitter { background: #000000; }
+.share-sheet__icon--telegram { background: #0088CC; }
+.share-sheet__icon--email { background: var(--color-gray-700, #374151); }
+.share-sheet__icon--copy { background: var(--color-accent, #C9A96E); }
+
+/* --- Label --- */
+.share-sheet__label {
+    font-family: var(--font-family, 'Inter', sans-serif);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--color-gray-700);
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+/* --- Drag Handle (mobile) --- */
+.share-sheet__handle {
+    display: flex;
+    justify-content: center;
+    padding: 0.625rem 0 0.25rem;
+}
+
+.share-sheet__handle::before {
+    content: '';
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-gray-300);
+}
+
+.share-sheet--dropdown .share-sheet__handle {
+    display: none;
+}
+
+/* --- Body scroll lock --- */
+body.share-sheet-open {
+    overflow: hidden;
+}
+
+/* --- Desktop (>= 768px): dropdown behavior --- */
+@media (min-width: 768px) {
+    .share-sheet--dropdown .share-sheet__panel {
+        position: fixed;
+    }
+
+    .share-sheet--dropdown .share-sheet__backdrop {
+        opacity: 0;
+        transition: opacity 0.3s var(--ease-out-expo);
+    }
+
+    .share-sheet--dropdown.is-open .share-sheet__backdrop {
+        opacity: 1;
+    }
+}
+
+/* --- Small mobile --- */
+@media (max-width: 479px) {
+    .share-sheet__grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .share-sheet__body {
+        padding: 1rem 1.25rem 1.5rem;
+    }
+
+    .share-sheet__icon {
+        width: 44px;
+        height: 44px;
+    }
+
+    .share-sheet__icon svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+    .share-sheet__panel,
+    .share-sheet__backdrop {
+        transition: none !important;
+    }
+}
