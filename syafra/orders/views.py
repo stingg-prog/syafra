@@ -1106,6 +1106,14 @@ def order_detail(request, order_id):
     )
     items = order.items.select_related('product').all()
 
+    TIMELINE_MAP = {
+        'pending': 0,
+        'paid': 1,
+        'packed': 1,
+        'shipped': 2,
+        'delivered': 3,
+    }
+
     payment_settings = PaymentSettings.get_settings()
     currency = payment_settings.currency_symbol if payment_settings else '\u20b9'
 
@@ -1113,6 +1121,8 @@ def order_detail(request, order_id):
         'order': order,
         'items': items,
         'currency': currency,
+        'timeline_steps': ['Ordered', 'Packed', 'Shipped', 'Delivered'],
+        'status_index': TIMELINE_MAP.get(order.status, -1),
     })
 
 

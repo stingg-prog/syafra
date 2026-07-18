@@ -25,113 +25,24 @@
 
     {% if order.status != 'cancelled' and order.status != 'failed' %}
     <div class="order-timeline">
-        {% with steps='Ordered Packed Shipped Delivered' %}
-        {% with active_count='' %}
-            {% if order.status == 'pending' %}
-                {% with completed=0 active=0 %}
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--active"></div>
-                    <div class="order-timeline__line"></div>
-                    <span class="order-timeline__label order-timeline__label--active">Ordered</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot"></div>
-                    <div class="order-timeline__line"></div>
-                    <span class="order-timeline__label">Packed</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot"></div>
-                    <div class="order-timeline__line"></div>
-                    <span class="order-timeline__label">Shipped</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot"></div>
-                    <span class="order-timeline__label">Delivered</span>
-                </div>
-                {% endwith %}
-            {% elif order.status == 'paid' %}
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <div class="order-timeline__line order-timeline__line--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Ordered</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--active"></div>
-                    <div class="order-timeline__line"></div>
-                    <span class="order-timeline__label order-timeline__label--active">Packed</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot"></div>
-                    <div class="order-timeline__line"></div>
-                    <span class="order-timeline__label">Shipped</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot"></div>
-                    <span class="order-timeline__label">Delivered</span>
-                </div>
-            {% elif order.status == 'packed' %}
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <div class="order-timeline__line order-timeline__line--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Ordered</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <div class="order-timeline__line order-timeline__line--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Packed</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--active"></div>
-                    <div class="order-timeline__line"></div>
-                    <span class="order-timeline__label order-timeline__label--active">Shipped</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot"></div>
-                    <span class="order-timeline__label">Delivered</span>
-                </div>
-            {% elif order.status == 'shipped' %}
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <div class="order-timeline__line order-timeline__line--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Ordered</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <div class="order-timeline__line order-timeline__line--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Packed</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <div class="order-timeline__line order-timeline__line--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Shipped</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--active"></div>
-                    <span class="order-timeline__label order-timeline__label--active">Delivered</span>
-                </div>
-            {% elif order.status == 'delivered' %}
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <div class="order-timeline__line order-timeline__line--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Ordered</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <div class="order-timeline__line order-timeline__line--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Packed</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <div class="order-timeline__line order-timeline__line--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Shipped</span>
-                </div>
-                <div class="order-timeline__step">
-                    <div class="order-timeline__dot order-timeline__dot--completed"></div>
-                    <span class="order-timeline__label order-timeline__label--completed">Delivered</span>
-                </div>
+        {% for step in timeline_steps %}
+        <div class="order-timeline__step">
+            <div class="order-timeline__dot
+                {% if forloop.counter0 < status_index %}order-timeline__dot--completed
+                {% elif forloop.counter0 == status_index %}order-timeline__dot--active{% endif %}">
+            </div>
+            {% if not forloop.last %}
+            <div class="order-timeline__line
+                {% if forloop.counter0 < status_index %}order-timeline__line--completed{% endif %}">
+            </div>
             {% endif %}
-        {% endwith %}
-        {% endwith %}
+            <span class="order-timeline__label
+                {% if forloop.counter0 < status_index %}order-timeline__label--completed
+                {% elif forloop.counter0 == status_index %}order-timeline__label--active{% endif %}">
+                {{ step }}
+            </span>
+        </div>
+        {% endfor %}
     </div>
     {% endif %}
 
