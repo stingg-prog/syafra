@@ -1,10 +1,7 @@
-{# ---------------------------------------------------------------
-   Single source of truth for all navigation links.
-   Usage:
-     {% include 'includes/nav/navigation_links.html' with placement='center' %}
-     {% include 'includes/nav/navigation_links.html' with placement='right' %}
-     {% include 'includes/nav/navigation_links.html' with placement='mobile' %}
-   --------------------------------------------------------------- #}
+{% comment %}
+Single source of truth for all navigation links.
+Include with: placement='center' | 'right' | 'mobile'
+{% endcomment %}
 
 {% if placement == 'center' %}
 <a href="{% url 'products:home' %}" class="nav-link">HOME</a>
