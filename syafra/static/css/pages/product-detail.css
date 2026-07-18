@@ -120,6 +120,60 @@
     text-transform: uppercase;
 }
 
+/* ---- Gallery Action Overlay (Glassmorphism) ---- */
+.pdp-gallery__actions {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 16px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.pdp-gallery__action {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: transform 0.25s var(--ease-out-expo), background 0.3s var(--ease-out-expo), color 0.3s var(--ease-out-expo);
+    pointer-events: auto;
+    color: var(--color-black);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pdp-gallery__action:hover {
+    transform: scale(1.05);
+}
+
+.pdp-gallery__action svg {
+    width: 22px;
+    height: 22px;
+}
+
+.pdp-gallery__action--wishlist.is-wishlisted {
+    background: var(--color-black);
+    color: var(--color-white);
+}
+
+.pdp-gallery__action--wishlist.is-wishlisted:hover {
+    background: var(--color-gray-900);
+}
+
+.pdp-gallery__action .wishlist-pdp-btn__label {
+    display: none;
+}
+
 /* ---- Product Details ---- */
 .pdp-details {
     padding: 2.5rem 0 3rem 3rem;
@@ -669,6 +723,16 @@
         aspect-ratio: 4 / 5;
     }
 
+    .pdp-gallery__action {
+        width: 50px;
+        height: 50px;
+    }
+
+    .pdp-gallery__action svg {
+        width: 22px;
+        height: 22px;
+    }
+
     .pdp-details {
         padding: 1.5rem 0 2rem;
     }
@@ -714,6 +778,16 @@
     .pdp-gallery__thumb {
         width: 48px;
         height: 60px;
+    }
+
+    .pdp-gallery__action {
+        width: 48px;
+        height: 48px;
+    }
+
+    .pdp-gallery__action svg {
+        width: 22px;
+        height: 22px;
     }
 
     .pdp-details {
