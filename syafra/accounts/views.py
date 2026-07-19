@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib import messages
 from django.core.exceptions import MultipleObjectsReturned
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.shortcuts import render, redirect, resolve_url
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -59,20 +59,23 @@ def _get_safe_redirect_url(request, next_url, fallback):
         return next_url
     return resolve_url(fallback)
 
+def _send_password_reset_on_commit(user, request):
+    sent = send_password_reset_email(user, request=request)
+    return sent
+
+
 def password_reset_request(request):
     if request.method == "POST":
         form = PasswordResetForm(request.POST)
 
         if form.is_valid():
             email = form.cleaned_data["email"]
-            user = User.objects.get(email=email)
 
-            sent = send_password_reset_email(user, request=request)
+            with transaction.atomic():
+                user = User.objects.get(email=email)
+                transaction.on_commit(lambda u=user, r=request: _send_password_reset_on_commit(u, r))
 
-            if sent:
-                messages.success(request, "Password reset email sent.")
-            else:
-                messages.error(request, "We couldn't send the password reset email. Please try again.")
+            messages.success(request, "Password reset email sent.")
             return redirect("accounts:login")
 
     else:
@@ -159,15 +162,18 @@ def _send_activation_email(user, request):
     }
     html_message = render_to_string('emails/account_activation_email.html', context)
     plain_message = strip_tags(html_message)
-    return send_email(
-        subject=subject,
-        message=plain_message,
-        recipient_list=[user.email],
-        html_message=html_message,
-        email_type='account_activation',
-        user=user,
-        metadata={'flow': 'account_activation'},
+    transaction.on_commit(
+        lambda: send_email(
+            subject=subject,
+            message=plain_message,
+            recipient_list=[user.email],
+            html_message=html_message,
+            email_type='account_activation',
+            user=user,
+            metadata={'flow': 'account_activation'},
+        )
     )
+    return True
 
 
 @require_http_methods(['GET', 'POST', 'HEAD', 'OPTIONS'])
@@ -183,7 +189,9 @@ def register_view(request):
             return render(request, 'register.html', {'form': form, 'next': next_url})
 
         try:
-            user = form.save()
+            with transaction.atomic():
+                user = form.save()
+                _send_activation_email(user, request)
         except IntegrityError:
             error_message = 'This username or email is already registered.'
             form.add_error('username', error_message)

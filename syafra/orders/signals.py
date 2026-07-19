@@ -1,5 +1,6 @@
 import logging
 
+from django.db import transaction
 from django.db.models import DecimalField, F, Sum, Value
 from django.db.models.functions import Coalesce
 from django.db.models.signals import post_delete, post_save
@@ -48,7 +49,7 @@ def queue_whatsapp_notification(order, status):
 
 
 def queue_email_notification(order, email_type, status_override=None):
-    """Send order notification emails immediately without interrupting order saves."""
+    """Send order notification emails immediately after the DB transaction commits."""
     try:
         correlation_id = get_correlation_id()
 
@@ -60,49 +61,39 @@ def queue_email_notification(order, email_type, status_override=None):
                 logger.info("Email already sent | type=%s | order=%s | skipping", email_type, order.pk)
                 return
 
-        _send_email_instant(
-            order.pk,
-            email_type,
-            status_override,
-            correlation_id=correlation_id,
+        transaction.on_commit(
+            lambda pk=order.pk, et=email_type, so=status_override, cid=correlation_id:
+            _send_email_on_commit(pk, et, so, cid)
         )
     except Exception as exc:
         logger.exception(
-            "Failed to send immediate email notification | order_id=%s | type=%s | error=%s",
+            "Failed to schedule email notification | order_id=%s | type=%s | error=%s",
             order.id,
             email_type,
             exc,
         )
 
 
-def _send_email_instant(order_pk, email_type, status_override=None, correlation_id=None):
-    """Send email via the synchronous path for checkout-critical notifications."""
+def _send_email_on_commit(order_pk, email_type, status_override, correlation_id):
     from syafra.logging_context import correlation_id_context
     from .services.email_service import EmailDeliveryError, send_notification_email
 
     with correlation_id_context(correlation_id):
         logger.info(
-            "Email send started | type=%s | order=%s | correlation_id=%s",
-            email_type,
-            order_pk,
-            correlation_id,
+            "Email send on_commit | type=%s | order=%s | correlation_id=%s",
+            email_type, order_pk, correlation_id,
         )
-
-        if email_type in ["confirmation", "status"]:
-            logger.info("Critical email forced to sync path | type=%s | order=%s", email_type, order_pk)
-
         try:
-            sent = send_notification_email(
-                order_pk,
-                email_type,
-                status=status_override,
-                raise_on_failure=True,
+            sent = send_notification_email(order_pk, email_type, status=status_override, raise_on_failure=False)
+            logger.info(
+                "Email send result | type=%s | order=%s | sent=%s",
+                email_type, order_pk, sent,
             )
-            logger.info("Email send success | type=%s | order=%s | sent=%s", email_type, order_pk, sent)
-        except EmailDeliveryError as exc:
-            logger.warning("Email delivery failed for order %s: %s", order_pk, exc)
         except Exception as exc:
-            logger.exception("Failed to send instant email for order %s: %s", order_pk, exc)
+            logger.exception(
+                "Email send failed | type=%s | order=%s | error=%s",
+                email_type, order_pk, exc,
+            )
 
 
 @receiver([post_save, post_delete], sender=OrderItem)

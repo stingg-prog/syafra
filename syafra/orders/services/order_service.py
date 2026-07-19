@@ -343,22 +343,12 @@ def confirm_order_payment(order, payment_reference='', save=True):
                 locked_order.user_id,
             )
 
-        if save and status_email_order is not None and previous_status != status_email_order.status:
-            try:
-                from .email_service import send_order_status_email_if_changed
-
-                if not send_order_status_email_if_changed(status_email_order, previous_status, status_email_order.status):
-                    logger.info(
-                        "Payment confirmation status email skipped | order_id=%s | old_status=%s | new_status=%s",
-                        status_email_order.id,
-                        previous_status,
-                        status_email_order.status,
-                    )
-            except Exception as exc:
-                logger.exception(
-                    "Payment confirmation status email failed without interrupting order flow | order_id=%s | error=%s",
-                    status_email_order.id,
-                    exc,
+            if save and previous_status is not None and previous_status != status_email_order.status:
+                order_id = status_email_order.id
+                old = previous_status
+                new = status_email_order.status
+                transaction.on_commit(
+                    lambda oid=order_id, old_s=old, new_s=new: _send_status_email_on_commit(oid, old_s, new_s)
                 )
 
         return status_email_order, True
@@ -371,3 +361,21 @@ def confirm_order_payment(order, payment_reference='', save=True):
             exc,
         )
         raise
+
+
+def _send_status_email_on_commit(order_id, old_status, new_status):
+    from .email_service import send_order_status_email_if_changed
+    from orders.models import Order
+
+    try:
+        order = Order.objects.get(pk=order_id)
+        if not send_order_status_email_if_changed(order, old_status, new_status):
+            logger.info(
+                "Payment confirmation status email skipped | order_id=%s | old_status=%s | new_status=%s",
+                order_id, old_status, new_status,
+            )
+    except Exception as exc:
+        logger.exception(
+            "Payment confirmation status email failed | order_id=%s | error=%s",
+            order_id, exc,
+        )

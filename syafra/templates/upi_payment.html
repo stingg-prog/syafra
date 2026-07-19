@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Pay via UPI - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
@@ -29,12 +30,27 @@
             <span class="font-semibold text-lg">Total Amount</span>
             <span class="text-2xl font-bold">{{ currency_symbol }}{{ amount|floatformat:2 }}</span>
         </div>
+
+        <!-- UPI Intent Deep Link Button -->
+        <a href="{{ upi_intent }}"
+           class="w-full bg-green-600 text-white py-4 text-sm tracking-wider font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2 rounded-lg mb-4"
+           style="display:flex;">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+            Pay with UPI App
+        </a>
+
+        <p class="text-center text-gray-500 text-xs mb-6">
+            Opens Google Pay, PhonePe, Paytm, BHIM, or your default UPI app
+        </p>
         
+        <!-- UPI ID & QR Section -->
         <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-            <h3 class="text-lg font-semibold mb-4">Pay to UPI ID</h3>
+            <h3 class="text-lg font-semibold mb-4">Or Pay Manually</h3>
             <div class="text-center">
-                <p class="text-gray-600 mb-2">Scan QR Code or transfer to:</p>
-                <p class="text-2xl font-mono font-bold text-black">{{ upi_id }}</p>
+                <p class="text-gray-600 mb-2">Transfer to UPI ID:</p>
+                <p class="text-2xl font-mono font-bold text-black select-all">{{ upi_id }}</p>
             </div>
             
             {% if upi_qr_code %}
@@ -44,37 +60,84 @@
             {% endif %}
         </div>
         
+        <!-- Instructions -->
         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
             <h4 class="font-semibold text-yellow-800 mb-2">How to Pay:</h4>
             <ol class="list-decimal list-inside text-sm text-yellow-700 space-y-1">
-                <li>Open your UPI app (GPay, PhonePe, Paytm, etc.)</li>
-                <li>Scan the QR code or enter UPI ID: <strong>{{ upi_id }}</strong></li>
+                <li>Tap <strong>"Pay with UPI App"</strong> above to open your UPI app automatically</li>
+                <li>Or scan the QR code / enter UPI ID manually: <strong>{{ upi_id }}</strong></li>
                 <li>Enter amount: <strong>{{ currency_symbol }}{{ amount|floatformat:2 }}</strong></li>
-                <li>Complete the payment and note the transaction ID</li>
-                <li>Click "I've Paid" button below and enter transaction details</li>
+                <li>Complete the payment in your UPI app</li>
+                <li>Come back and enter the transaction reference (UTR) below</li>
             </ol>
         </div>
+
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="{% if message.tags == 'error' %}bg-red-50 border-red-200 text-red-700{% elif message.tags == 'success' %}bg-green-50 border-green-200 text-green-700{% else %}bg-blue-50 border-blue-200 text-blue-700{% endif %} border rounded-lg p-3 text-sm">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         
-        <form method="POST" action="{% url 'orders:upi_payment_verify' %}" class="space-y-4">
+        <!-- Transaction Verification Form -->
+        <form method="POST" action="{% url 'orders:upi_payment_verify' %}" class="space-y-4" id="upi-verify-form">
             {% csrf_token %}
             <input type="hidden" name="order_id" value="{{ order.id }}">
             
             <div>
-                <label class="block text-sm tracking-wider text-gray-500 mb-2">UPI TRANSACTION ID</label>
+                <label class="block text-sm tracking-wider text-gray-500 mb-2">UPI TRANSACTION REFERENCE (UTR)</label>
                 <input type="text" name="transaction_id" required
                        class="w-full border border-gray-300 px-4 py-3 focus:outline-none focus:border-black transition-colors"
-                       placeholder="Enter your UPI transaction reference">
+                       placeholder="Enter the UTR from your UPI app"
+                       inputmode="text"
+                       autocomplete="off">
             </div>
             
-            <button type="submit"
+            <button type="submit" id="verify-btn"
                     class="w-full bg-black text-white py-4 text-sm tracking-wider font-semibold hover:bg-gray-800 transition-colors">
-                I'VE PAID
+                I'VE PAID - VERIFY
             </button>
         </form>
     </div>
     
-    <a href="{% url 'cart:cart_view' %}" class="block text-center py-4 text-sm tracking-wider text-gray-500 hover:text-black transition-colors mt-4">
-        Cancel Payment
+    <a href="{% url 'orders:order_status' order_id=order.id %}"
+       class="block text-center py-4 text-sm tracking-wider text-gray-500 hover:text-black transition-colors mt-4">
+        Cancel - I'll pay later
     </a>
 </div>
+
+<script>
+(function() {
+    var form = document.getElementById('upi-verify-form');
+    var verifyBtn = document.getElementById('verify-btn');
+
+    if (form && verifyBtn) {
+        form.addEventListener('submit', function() {
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'VERIFYING...';
+        });
+    }
+
+    try {
+        var intentLink = document.querySelector('a[href="{{ upi_intent|escapejs }}"]');
+        if (intentLink) {
+            intentLink.addEventListener('click', function(e) {
+                console.log('UPI intent opened:', '{{ upi_intent|escapejs }}');
+            });
+            var now = new Date().getTime();
+            var timeout = setTimeout(function() {
+                console.log('UPI app did not open, showing manual instructions');
+            }, 500);
+            intentLink.addEventListener('click', function() {
+                clearTimeout(timeout);
+            });
+        }
+    } catch(e) {
+        console.log('UPI intent tracking not available');
+    }
+})();
+</script>
 {% endblock %}

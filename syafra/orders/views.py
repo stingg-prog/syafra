@@ -100,7 +100,7 @@ def _is_payment_retry_expired(order, now=None):
     return order.payment_retry_reserved_at < now - _get_payment_retry_timeout()
 
 
-def _checkout_context(*, cart, items, total, currency, payment_settings, payment_notice, cod_fallback, form, available_methods, upi_enabled):
+def _checkout_context(*, cart, items, total, currency, payment_settings, payment_notice, form, available_methods, upi_enabled):
     return {
         'cart': cart,
         'items': items,
@@ -108,7 +108,6 @@ def _checkout_context(*, cart, items, total, currency, payment_settings, payment
         'currency': currency,
         'payment_settings': payment_settings,
         'payment_notice': payment_notice,
-        'cod_fallback': cod_fallback,
         'form': form,
         'available_methods': available_methods,
         'upi_enabled': upi_enabled,
@@ -304,6 +303,25 @@ def _upsert_payment_record(order, *, provider, status, amount, currency, receipt
             payment.save(update_fields=update_fields)
         return payment, created
 
+    if razorpay_payment_id:
+        payment, created = Payment.objects.get_or_create(
+            razorpay_payment_id=razorpay_payment_id,
+            defaults={**defaults, 'razorpay_payment_id': razorpay_payment_id},
+        )
+        if payment.order_id != order.id:
+            raise ValueError(f"Payment reference {razorpay_payment_id} is already linked to another order.")
+        update_fields = []
+        for field, value in defaults.items():
+            if field == 'status' and payment.status == 'paid' and value != 'paid':
+                continue
+            if getattr(payment, field) != value and value not in ('', None):
+                setattr(payment, field, value)
+                update_fields.append(field)
+        if update_fields:
+            update_fields.append('updated_at')
+            payment.save(update_fields=update_fields)
+        return payment, created
+
     payment = Payment.objects.create(
         order=order,
         provider=provider,
@@ -418,7 +436,6 @@ def checkout(request):
     if upi_enabled:
         available_methods.append('upi')
 
-    cod_fallback = False
     payment_notice = ''
     if payment_settings and payment_settings.payment_disabled_message and not can_pay_online and not upi_enabled:
         payment_notice = payment_settings.payment_disabled_message
@@ -434,7 +451,6 @@ def checkout(request):
                 currency=currency,
                 payment_settings=payment_settings,
                 payment_notice=payment_notice,
-                cod_fallback=cod_fallback,
                 form=form,
                 available_methods=available_methods,
                 upi_enabled=upi_enabled,
@@ -476,7 +492,6 @@ def checkout(request):
                 available_methods=','.join(available_methods),
             )
         )
-
         if payment_method == 'razorpay' and not can_pay_online:
             logger.error(_format_log_message("Razorpay not available for checkout", request))
             messages.error(request, 'Razorpay payment is not available. Please contact support.')
@@ -559,6 +574,10 @@ def checkout(request):
                 OrderItem.objects.bulk_create(order_items)
                 locked_cart.items.filter(pk__in=locked_item_ids).delete()
 
+                transaction.on_commit(
+                    lambda o=order: _send_order_email_safely(o, "created")
+                )
+
         except (ValueError, TypeError, KeyError) as exc:
             logger.error(
                 _format_log_message(
@@ -605,8 +624,6 @@ def checkout(request):
                     status=500,
                 )
             return render_checkout(form)
-
-        _send_order_email_safely(order, "created", request=request)
 
         if payment_method == 'razorpay' and can_pay_online:
             logger.info(_format_log_message("Processing Razorpay payment", request, order_id=order.id))
@@ -701,7 +718,7 @@ def checkout(request):
             )
 
         if payment_method == 'upi' and upi_enabled:
-            logger.info(_format_log_message("Rendering UPI payment page", request, order_id=order.id))
+            logger.info(_format_log_message("UPI payment flow started", request, order_id=order.id))
             try:
                 upi_qr_code = None
                 if payment_settings and payment_settings.upi_qr_code:
@@ -712,26 +729,31 @@ def checkout(request):
                             _format_log_message("Could not resolve UPI QR code", request, order_id=order.id, error=qr_err)
                         )
 
-                if wants_json:
-                    return JsonResponse(
-                        {
-                            'ok': True,
-                            'redirect_url': reverse('orders:upi_payment_verify'),
-                            'message': 'UPI order created successfully.',
-                            'order_id': order.id,
-                        }
-                    )
+                merchant_name = (payment_settings.upi_merchant_name or '').strip() or 'SYAFRA'
+                upi_intent = (
+                    f"upi://pay?pa={upi_id}"
+                    f"&pn={merchant_name}"
+                    f"&am={order.total_price:.2f}"
+                    f"&cu=INR"
+                    f"&tn=ORDER{order.id}"
+                )
 
+                logger.info(
+                    _format_log_message("UPI intent generated", request,
+                        order_id=order.id, upi_id=upi_id, amount=float(order.total_price))
+                )
                 return render(request, 'upi_payment.html', {
                     'order': order,
                     'upi_id': upi_id,
                     'amount': order.total_price,
                     'currency_symbol': currency,
                     'upi_qr_code': upi_qr_code,
+                    'upi_intent': upi_intent,
+                    'merchant_name': merchant_name,
                 })
             except Exception as exc:
                 logger.exception(_format_log_message("Error rendering UPI payment page", request, order_id=order.id, error=exc))
-                messages.error(request, f'UPI Error: {exc}')
+                messages.error(request, 'UPI payment setup failed. Please try again.')
                 return redirect('cart:cart_view')
 
         messages.error(request, 'No payment method available. Please contact support.')
@@ -908,14 +930,13 @@ def verify_payment(request):
         with transaction.atomic():
             locked_order = Order.objects.select_for_update().get(pk=order.pk)
             if _order_is_paid(locked_order):
-                logger.info(_format_log_message("Webhook already finalized paid order", request, order_id=locked_order.id))
+                logger.info(_format_log_message("Verify_payment: order already paid", request, order_id=locked_order.id))
                 return _already_paid_response(request, locked_order)
 
-            interim_status = 'authorized' if gateway_status in {'authorized', 'captured'} else 'created'
-            payment, _created = _upsert_payment_record(
+            _upsert_payment_record(
                 locked_order,
                 provider='razorpay',
-                status=interim_status,
+                status='paid',
                 amount=locked_order.total_price,
                 currency=expected_currency,
                 receipt=f'order_{locked_order.id}',
@@ -923,22 +944,6 @@ def verify_payment(request):
                 razorpay_payment_id=razorpay_payment_id,
                 razorpay_signature=razorpay_signature,
             )
-            if payment.status != 'paid':
-                payment.status = interim_status
-                payment.razorpay_payment_id = razorpay_payment_id
-                payment.razorpay_signature = razorpay_signature
-                payment.failure_reason = ''
-                payment.verified_at = timezone.now()
-                payment.save(
-                    update_fields=[
-                        'status',
-                        'razorpay_payment_id',
-                        'razorpay_signature',
-                        'failure_reason',
-                        'verified_at',
-                        'updated_at',
-                    ]
-                )
 
             if locked_order.razorpay_payment_id != razorpay_payment_id:
                 locked_order.razorpay_payment_id = razorpay_payment_id
@@ -946,16 +951,26 @@ def verify_payment(request):
 
             order = locked_order
 
+        order, _processed = confirm_order_payment(order, payment_reference=razorpay_payment_id)
         logger.info(
             _format_log_message(
-                "Payment verified and awaiting webhook finalization",
+                "Payment verified and order finalized",
                 request,
                 order_id=order.id,
                 payment_reference=_redact_reference(razorpay_payment_id),
+                order_processed=_processed,
             )
         )
     except Exception as exc:
-        logger.exception(_format_log_message("Error saving verified payment state", request, order_id=order.id, error=exc))
+        logger.exception(
+            _format_log_message(
+                "Payment verification succeeded but order finalization failed",
+                request,
+                order_id=order.id,
+                payment_reference=_redact_reference(razorpay_payment_id),
+                error=exc,
+            )
+        )
         messages.error(request, 'Payment was received but order processing is pending. Please contact support if this persists.')
         return _payment_response(
             request,
@@ -965,12 +980,12 @@ def verify_payment(request):
             status=500,
         )
 
-    messages.info(request, 'Payment received. We are confirming it now.')
+    messages.success(request, 'Payment successful! Your order has been confirmed.')
     return _payment_response(
         request,
         ok=True,
-        redirect_url=reverse('orders:order_status', args=[order.id]),
-        message='Payment received. Waiting for confirmation.',
+        redirect_url=reverse('orders:order_success', args=[order.id]),
+        message='Payment successful.',
         order_id=order.id,
     )
 
@@ -1445,6 +1460,31 @@ def payment_failure_callback(request):
         return _already_paid_response(request, order)
 
     if order.payment_status != 'paid':
+        existing_successful_payment = Payment.objects.filter(
+            order=order,
+            status__in=('authorized', 'paid', 'captured'),
+        ).exists()
+        if existing_successful_payment:
+            logger.info(
+                _format_log_message(
+                    "Ignoring payment failure callback - existing successful payment record",
+                    request,
+                    order_id=order.id,
+                    razorpay_order_id=razorpay_order_id,
+                )
+            )
+            try:
+                order, _processed = confirm_order_payment(order, payment_reference='')
+            except Exception:
+                logger.exception(
+                    _format_log_message(
+                        "Failed to finalize order from existing payment record",
+                        request,
+                        order_id=order.id,
+                    )
+                )
+            return _already_paid_response(request, order)
+
         _mark_payment_failed(order, razorpay_order_id=razorpay_order_id, failure_reason=failure_reason)
         logger.info(
             _format_log_message(
@@ -1638,11 +1678,10 @@ def retry_payment(request, order_id):
 
 
 @login_required
+@require_POST
 def upi_payment_verify(request):
-    if request.method != 'POST':
-        logger.warning(_format_log_message("UPI verify accessed via GET, redirecting", request))
-        return redirect('cart:cart_view')
-    
+    logger.info(_format_log_message("UPI payment verification started", request))
+
     order_id = request.POST.get('order_id', '')
     transaction_id = _normalize_upi_transaction_id(request.POST.get('transaction_id', ''))
 
@@ -1660,8 +1699,8 @@ def upi_payment_verify(request):
                 payment_reference=_redact_reference(transaction_id),
             )
         )
-        messages.error(request, 'Enter a valid UPI transaction ID.')
-        return redirect('cart:cart_view')
+        messages.error(request, 'Enter a valid UPI transaction ID (8-64 alphanumeric characters).')
+        return redirect('orders:order_status', order_id=order_id)
 
     try:
         order = Order.objects.select_related('user').get(id=order_id, user=request.user)
@@ -1677,30 +1716,32 @@ def upi_payment_verify(request):
 
     payment_settings = PaymentSettings.get_settings()
     try:
-        payment, _created = _upsert_payment_record(
-            order,
-            provider='upi',
-            status='paid',
-            amount=order.total_price,
-            currency=payment_settings.currency if payment_settings else 'INR',
-            receipt=f'upi_order_{order.id}',
-            razorpay_payment_id=f'UPI-{transaction_id}',
-        )
-        payment.status = 'paid'
-        payment.verified_at = timezone.now()
-        payment.failure_reason = ''
-        payment.save(update_fields=['status', 'verified_at', 'failure_reason', 'updated_at'])
-        order, _processed = confirm_order_payment(order, payment_reference=f'UPI-{transaction_id}')
-        logger.info(
-            _format_log_message(
-                "UPI payment verified successfully",
-                request,
-                order_id=order.id,
-                payment_reference=_redact_reference(transaction_id),
+        with transaction.atomic():
+            payment, created = _upsert_payment_record(
+                order,
+                provider='upi',
+                status='paid',
+                amount=order.total_price,
+                currency=payment_settings.currency if payment_settings else 'INR',
+                receipt=f'upi_order_{order.id}',
+                razorpay_payment_id=f'UPI-{transaction_id}',
             )
-        )
+            payment.status = 'paid'
+            payment.verified_at = timezone.now()
+            payment.failure_reason = ''
+            payment.save(update_fields=['status', 'verified_at', 'failure_reason', 'updated_at'])
+            order, _processed = confirm_order_payment(order, payment_reference=f'UPI-{transaction_id}')
+            logger.info(
+                _format_log_message(
+                    "UPI payment verified successfully",
+                    request,
+                    order_id=order.id,
+                    transaction_id=_redact_reference(transaction_id),
+                    processed=_processed,
+                )
+            )
     except Exception as exc:
-        logger.exception(_format_log_message("Error processing UPI order confirmation", request, order_id=order.id, error=exc))
+        logger.exception(_format_log_message("UPI order confirmation failed", request, order_id=order.id, error=exc))
         messages.error(request, 'Payment was verified but order finalization failed. Please contact support.')
         return redirect('cart:cart_view')
 

@@ -2,6 +2,7 @@ import logging
 
 from django.contrib import admin
 from django.contrib import messages
+from django.db import transaction
 from django.utils.html import format_html
 
 from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES, Payment, PaymentSettings, WhatsAppSettings
@@ -137,7 +138,7 @@ class OrderAdmin(admin.ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        """Send order emails directly from the admin action that changed the order."""
+        """Send order emails after the DB transaction commits."""
         is_new = obj.pk is None
         obj._created_via_admin = is_new
         if change:
@@ -151,14 +152,20 @@ class OrderAdmin(admin.ModelAdmin):
         else:
             obj._admin_old_status = None
             obj._admin_old_payment_status = None
-        
+
         super().save_model(request, obj, form, change)
+
         if is_new:
-            print("ADMIN ORDER CREATED - EMAIL")
-            if not send_order_email(obj, "created"):
-                logger.warning("Admin-created order email was not sent | order_id=%s", obj.pk)
+            order_pk = obj.pk
+            transaction.on_commit(
+                lambda pk=order_pk: _send_admin_created_email(pk)
+            )
         elif obj._admin_old_status and obj._admin_old_status != obj.status:
-            self._send_status_email_for_admin_change(obj, obj._admin_old_status)
+            order_pk = obj.pk
+            old_status = obj._admin_old_status
+            transaction.on_commit(
+                lambda pk=order_pk, old=old_status: _send_admin_status_email(pk, old)
+            )
 
     def _send_status_email_for_admin_change(self, order, old_status):
         try:
@@ -177,7 +184,8 @@ class OrderAdmin(admin.ModelAdmin):
                 order.status,
                 exc,
             )
-    
+
+
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
 
@@ -305,6 +313,22 @@ class OrderAdmin(admin.ModelAdmin):
 
     def get_ordering(self, request):
         return ['-created_at']
+
+
+def _send_admin_created_email(order_pk):
+    try:
+        order = Order.objects.get(pk=order_pk)
+        send_order_email(order, "created")
+    except Exception as exc:
+        logger.exception("Admin created email failed | order_id=%s | error=%s", order_pk, exc)
+
+
+def _send_admin_status_email(order_pk, old_status):
+    try:
+        order = Order.objects.get(pk=order_pk)
+        send_order_status_email_if_changed(order, old_status, order.status)
+    except Exception as exc:
+        logger.exception("Admin status email failed | order_id=%s | error=%s", order_pk, exc)
 
 
 @admin.register(OrderItem)

@@ -84,6 +84,57 @@
         .site-nav { top: 0; }
     </style>
     <script>document.documentElement.classList.add('js-enabled');</script>
+    <script>
+    window.showToast = function showToast(message, type, duration) {
+        type = type || 'info';
+        duration = duration || 4000;
+        var container = document.getElementById('toast-container');
+        if (!container) return;
+
+        var toast = document.createElement('div');
+        toast.className = 'max-w-sm w-full rounded-xl border border-gray-200 shadow-lg px-4 py-3 text-sm font-medium transition-all duration-300 transform opacity-0 translate-y-4';
+
+        var colorMap = {
+            success: ['bg-emerald-50', 'border-emerald-200', 'text-emerald-800'],
+            error: ['bg-rose-50', 'border-rose-200', 'text-rose-800'],
+            info: ['bg-sky-50', 'border-sky-200', 'text-sky-800'],
+            warning: ['bg-amber-50', 'border-amber-200', 'text-amber-800']
+        };
+
+        var colors = colorMap[type] || colorMap.info;
+        toast.classList.add(colors[0], colors[1], colors[2]);
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        requestAnimationFrame(function() {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        });
+
+        var hide = function() {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(16px)';
+            setTimeout(function() { toast.remove(); }, 300);
+        };
+
+        toast.addEventListener('click', hide);
+        setTimeout(hide, duration);
+    };
+
+    window.getCookie = function getCookie(name) {
+        var cookieValue = '';
+        if (!document.cookie) return cookieValue;
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i += 1) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+        return cookieValue;
+    };
+    </script>
 </head>
 <body class="bg-white text-black">
     <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-3 items-end"></div>
@@ -264,44 +315,6 @@
     {% block extra_js %}{% endblock %}
     <script src="{% static 'js/animations.js' %}" defer></script>
     <script src="{% static 'js/homepage.js' %}" defer></script>
-    <script>
-    function showToast(message, type, duration) {
-        type = type || 'info';
-        duration = duration || 4000;
-        var container = document.getElementById('toast-container');
-        if (!container) return;
-
-        var toast = document.createElement('div');
-        toast.className = 'max-w-sm w-full rounded-xl border border-gray-200 shadow-lg px-4 py-3 text-sm font-medium transition-all duration-300 transform opacity-0 translate-y-4';
-
-        var colorMap = {
-            success: ['bg-emerald-50', 'border-emerald-200', 'text-emerald-800'],
-            error: ['bg-rose-50', 'border-rose-200', 'text-rose-800'],
-            info: ['bg-sky-50', 'border-sky-200', 'text-sky-800'],
-            warning: ['bg-amber-50', 'border-amber-200', 'text-amber-800']
-        };
-
-        var colors = colorMap[type] || colorMap.info;
-        toast.classList.add(colors[0], colors[1], colors[2]);
-        toast.textContent = message;
-        container.appendChild(toast);
-
-        requestAnimationFrame(function() {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateY(0)';
-        });
-
-        var hide = function() {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(16px)';
-            setTimeout(function() { toast.remove(); }, 300);
-        };
-
-        toast.addEventListener('click', hide);
-        setTimeout(hide, duration);
-    }
-    </script>
-
     <script>
         window.SYAFRA_WISHLIST_LOGIN_URL = '{% url "accounts:login" %}';
         window.SYAFRA_WISHLIST_AUTH = {% if user.is_authenticated %}true{% else %}false{% endif %};

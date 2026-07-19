@@ -534,16 +534,16 @@ class RazorpayPaymentFlowTest(TestCase):
             )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse('orders:order_status', args=[order.id]))
+        self.assertEqual(response.url, reverse('orders:order_success', args=[order.id]))
         client_cls.assert_called_once_with(auth=('env_key_id', 'env_key_secret'))
 
         order.refresh_from_db()
-        self.assertEqual(order.payment_status, 'pending')
-        self.assertEqual(order.status, 'pending')
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual(order.status, 'paid')
         self.assertEqual(order.razorpay_payment_id, 'pay_env_123')
 
         payment = Payment.objects.get(order=order)
-        self.assertEqual(payment.status, 'authorized')
+        self.assertEqual(payment.status, 'paid')
         self.assertEqual(payment.razorpay_payment_id, 'pay_env_123')
 
     @override_settings(
@@ -600,20 +600,16 @@ class RazorpayPaymentFlowTest(TestCase):
             response.json(),
             {
                 'ok': True,
-                'redirect_url': reverse('orders:order_status', args=[order.id]),
-                'message': 'Payment received. Waiting for confirmation.',
+                'redirect_url': reverse('orders:order_success', args=[order.id]),
+                'message': 'Payment successful.',
                 'order_id': order.id,
             },
         )
 
         order.refresh_from_db()
-        self.assertEqual(order.payment_status, 'pending')
-        self.assertEqual(order.status, 'pending')
-        self.assertFalse(any(
-            message.subject == f'Order Confirmation - Order #{order.id}'
-            and 'pay@example.com' in message.to
-            for message in mail.outbox
-        ))
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual(order.status, 'paid')
+        self.assertEqual(order.razorpay_payment_id, 'pay_json_123')
 
     def test_verify_payment_returns_already_paid_when_order_is_locked(self):
         order = Order.objects.create(
@@ -717,8 +713,8 @@ class RazorpayPaymentFlowTest(TestCase):
             response.json(),
             {
                 'ok': True,
-                'redirect_url': reverse('orders:order_status', args=[order.id]),
-                'message': 'Payment received. Waiting for confirmation.',
+                'redirect_url': reverse('orders:order_success', args=[order.id]),
+                'message': 'Payment successful.',
                 'order_id': order.id,
             },
         )
@@ -726,9 +722,11 @@ class RazorpayPaymentFlowTest(TestCase):
         order.refresh_from_db()
         self.assertEqual(order.razorpay_order_id, 'order_retry_current_123')
         self.assertEqual(order.razorpay_payment_id, 'pay_retry_old_123')
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual(order.status, 'paid')
 
         payment = Payment.objects.get(order=order, razorpay_order_id='order_retry_old_123')
-        self.assertEqual(payment.status, 'authorized')
+        self.assertEqual(payment.status, 'paid')
         self.assertEqual(payment.razorpay_payment_id, 'pay_retry_old_123')
 
     def test_payment_failure_callback_returns_json_redirect(self):

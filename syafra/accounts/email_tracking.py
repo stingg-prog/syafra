@@ -56,7 +56,7 @@ def mark_email_attempt(email_log):
     email_log.save(update_fields=["send_attempts", "last_retry_at", "updated_at"])
 
 
-def mark_email_accepted(email_log, *, response_status, message_id="", provider_response=""):
+def mark_email_accepted(email_log, *, response_status, message_id="", provider_response="", elapsed_ms=None):
     email_log.status = EmailLog.STATUS_ACCEPTED
     email_log.retryable = False
     email_log.provider_response_status = response_status
@@ -76,10 +76,14 @@ def mark_email_accepted(email_log, *, response_status, message_id="", provider_r
             "updated_at",
         ]
     )
+    if elapsed_ms is not None:
+        meta = dict(email_log.metadata or {})
+        meta["send_elapsed_ms"] = round(elapsed_ms, 1)
+        EmailLog.objects.filter(pk=email_log.pk).update(metadata=meta)
     return email_log
 
 
-def mark_email_failed(email_log, *, error_message, response_status=None, provider_response="", retryable=False):
+def mark_email_failed(email_log, *, error_message, response_status=None, provider_response="", retryable=False, elapsed_ms=None):
     email_log.status = EmailLog.STATUS_FAILED
     email_log.retryable = retryable
     email_log.error_message = error_message or ""
@@ -96,6 +100,10 @@ def mark_email_failed(email_log, *, error_message, response_status=None, provide
             "updated_at",
         ]
     )
+    if elapsed_ms is not None:
+        meta = dict(email_log.metadata or {})
+        meta["send_elapsed_ms"] = round(elapsed_ms, 1)
+        EmailLog.objects.filter(pk=email_log.pk).update(metadata=meta)
     return email_log
 
 

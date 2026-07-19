@@ -1,8 +1,6 @@
 import logging
-import time
 from email.utils import parseaddr
 
-import resend
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives, send_mail
@@ -18,6 +16,7 @@ from accounts.email_tracking import (
     mark_email_failed,
 )
 from accounts.models import EmailLog
+from accounts.services.email_service import EmailService
 from syafra.logging_context import get_correlation_id
 
 logger = logging.getLogger("syafra.email")
@@ -89,68 +88,50 @@ def _send_via_django_backend(subject, message, recipient_list, html_message=None
 
 
 def _send_via_resend_sdk(email_log, *, subject, message, recipient, html_message=None, from_email=None):
-    api_key = (getattr(settings, "RESEND_API_KEY", "") or "").strip()
-    if not api_key:
-        raise ValueError("RESEND_API_KEY is missing")
-
-    resend.api_key = api_key
-
-    sender = _build_resend_sender(from_email)
-    html_content = html_message or message.replace("\n", "<br>")
-
-    params = {
-        "from": sender,
-        "to": [recipient],
-        "subject": subject,
-        "text": message,
-        "html": html_content,
-    }
-
-    custom_args = build_custom_args(email_log)
-    if custom_args:
-        params["headers"] = {f"X-Syafra-{k}": str(v) for k, v in custom_args.items()}
-
     tags = [{"name": "email_type", "value": email_log.email_type}]
     if email_log.event_type:
         tags.append({"name": "event_type", "value": email_log.event_type})
-    params["tags"] = tags
 
-    try:
-        response = resend.Emails.send(params)
-    except resend.exceptions.ResendError as exc:
-        error_str = str(exc)
-        status_code = getattr(exc, "code", 0)
+    custom_args = build_custom_args(email_log)
+    headers = None
+    if custom_args:
+        headers = {f"X-Syafra-{k}": str(v) for k, v in custom_args.items()}
+
+    success, elapsed_ms, error, message_id = EmailService.send(
+        to=recipient,
+        subject=subject,
+        text=message,
+        html=html_message,
+        from_email=from_email,
+        tags=tags,
+        headers=headers,
+    )
+
+    if success:
+        logger.info(
+            "Resend accepted | email_log_id=%s | recipient=%s | message_id=%s | elapsed=%.1fms",
+            email_log.id, recipient, message_id, elapsed_ms,
+        )
+        mark_email_accepted(
+            email_log,
+            response_status=200,
+            message_id=message_id,
+            provider_response=f"accepted in {elapsed_ms:.0f}ms",
+            elapsed_ms=elapsed_ms,
+        )
+    else:
         logger.error(
-            "Resend API error | email_log_id=%s | recipient=%s | status=%s | error=%s",
-            email_log.id,
-            recipient,
-            status_code,
-            error_str,
+            "Resend API error | email_log_id=%s | recipient=%s | elapsed=%.1fms | error=%s",
+            email_log.id, recipient, elapsed_ms, error,
         )
         mark_email_failed(
             email_log,
-            error_message=error_str,
-            response_status=status_code,
-            provider_response=error_str,
-            retryable=isinstance(exc, (resend.exceptions.RateLimitError,)),
+            error_message=error or "Unknown error",
+            provider_response=f"failed in {elapsed_ms:.0f}ms",
+            elapsed_ms=elapsed_ms,
         )
-        return False
 
-    message_id = response.get("id", "") if isinstance(response, dict) else ""
-    logger.info(
-        "Resend accepted | email_log_id=%s | recipient=%s | message_id=%s",
-        email_log.id,
-        recipient,
-        message_id,
-    )
-
-    mark_email_accepted(
-        email_log,
-        response_status=200,
-        message_id=message_id,
-        provider_response=str(response),
-    )
-    return True
+    return success
 
 
 def _is_retryable_exception(exc):
@@ -209,7 +190,6 @@ def _send_single_email(
         return False
 
     attempts = max_retries if max_retries is not None else max(getattr(settings, "EMAIL_SIMPLE_RETRY_ATTEMPTS", 2), 1)
-    base_delay = max(getattr(settings, "EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS", 1), 0)
 
     for attempt in range(1, attempts + 1):
         mark_email_attempt(email_log)
@@ -254,8 +234,6 @@ def _send_single_email(
         email_log.refresh_from_db(fields=["retryable"])
         if not email_log.retryable or attempt >= attempts:
             return False
-        if base_delay:
-            time.sleep(base_delay * attempt)
 
     return False
 
