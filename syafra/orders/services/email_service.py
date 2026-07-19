@@ -18,12 +18,13 @@ logger = logging.getLogger(__name__)
 FORCE_EMAIL_RETRY = getattr(settings, 'FORCE_EMAIL_RETRY', False)
 ORDER_EVENT_CREATED = 'created'
 ORDER_EVENT_CONFIRMED = 'confirmed'
+ORDER_EVENT_PACKED = 'packed'
 ORDER_EVENT_SHIPPED = 'shipped'
 ORDER_EVENT_DELIVERED = 'delivered'
 ORDER_EVENT_CANCELLED = 'cancelled'
 ORDER_EMAIL_STATUS_EVENT_MAP = {
     'paid': ORDER_EVENT_CONFIRMED,
-    'packed': ORDER_EVENT_CONFIRMED,
+    'packed': ORDER_EVENT_PACKED,
     'confirmed': ORDER_EVENT_CONFIRMED,
     'shipped': ORDER_EVENT_SHIPPED,
     'delivered': ORDER_EVENT_DELIVERED,
@@ -54,6 +55,13 @@ ORDER_EMAIL_EVENT_CONFIG = {
         'headline': 'Your Order Is Confirmed',
         'status_label': 'Confirmed',
         'message': 'Your order has been confirmed and is now being prepared.',
+    },
+    ORDER_EVENT_PACKED: {
+        'email_type': EmailLog.TYPE_ORDER_STATUS,
+        'subject': 'Order Packed - Order #{order_id}',
+        'headline': 'Your Order Has Been Packed',
+        'status_label': 'Packed',
+        'message': 'Your order has been packed and is getting ready for shipment.',
     },
     ORDER_EVENT_SHIPPED: {
         'email_type': EmailLog.TYPE_ORDER_STATUS,

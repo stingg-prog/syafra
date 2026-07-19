@@ -343,12 +343,16 @@ def confirm_order_payment(order, payment_reference='', save=True):
                 locked_order.user_id,
             )
 
-            if save and previous_status is not None and previous_status != status_email_order.status:
+            if save:
                 order_id = status_email_order.id
                 old = previous_status
                 new = status_email_order.status
+                if previous_status is not None and previous_status != new:
+                    transaction.on_commit(
+                        lambda oid=order_id, old_s=old, new_s=new: _send_status_email_on_commit(oid, old_s, new_s)
+                    )
                 transaction.on_commit(
-                    lambda oid=order_id, old_s=old, new_s=new: _send_status_email_on_commit(oid, old_s, new_s)
+                    lambda pid=order_id: _send_order_created_email_on_commit(pid)
                 )
 
         return status_email_order, True
@@ -379,3 +383,18 @@ def _send_status_email_on_commit(order_id, old_status, new_status):
             "Payment confirmation status email failed | order_id=%s | error=%s",
             order_id, exc,
         )
+
+
+def _send_order_created_email_on_commit(order_id):
+    from .email_service import send_order_email
+    from orders.models import Order
+
+    try:
+        order = Order.objects.get(pk=order_id)
+        sent = send_order_email(order, "created")
+        if sent:
+            logger.info("Order created email sent after payment | order_id=%s", order_id)
+        else:
+            logger.warning("Order created email failed after payment | order_id=%s", order_id)
+    except Exception as exc:
+        logger.exception("Order created email exception after payment | order_id=%s | error=%s", order_id, exc)

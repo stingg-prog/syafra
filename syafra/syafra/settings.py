@@ -5,6 +5,7 @@ Single module: development defaults, production enforced via environment variabl
 See `.env.example` for Render / production variables.
 """
 
+import logging
 import os
 import sys
 import warnings
@@ -439,7 +440,8 @@ EMAIL_SIMPLE_RETRY_ATTEMPTS = _env_int("EMAIL_SIMPLE_RETRY_ATTEMPTS", 2)
 EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS = _env_int("EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS", 1)
 
 if _env_bool("SYAFRA_LOG_EMAIL_CONFIG", default=False):
-    _db_logger.info(
+    _config_logger = logging.getLogger("syafra.email")
+    _config_logger.info(
         "Syafra email config | backend=%s | resend_api_key=%s | from_email=%s",
         EMAIL_BACKEND,
         "set" if RESEND_API_KEY else "missing",

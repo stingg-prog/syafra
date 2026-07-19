@@ -574,8 +574,12 @@ def checkout(request):
                 OrderItem.objects.bulk_create(order_items)
                 locked_cart.items.filter(pk__in=locked_item_ids).delete()
 
-                transaction.on_commit(
-                    lambda o=order: _send_order_email_safely(o, "created")
+                logger.info(
+                    _format_log_message(
+                        "Order created, email deferred until after payment",
+                        request,
+                        order_id=order.id,
+                    )
                 )
 
         except (ValueError, TypeError, KeyError) as exc:
@@ -951,6 +955,14 @@ def verify_payment(request):
 
             order = locked_order
 
+        logger.info(
+            _format_log_message(
+                "Calling confirm_order_payment",
+                request,
+                order_id=order.id,
+                payment_reference=_redact_reference(razorpay_payment_id),
+            )
+        )
         order, _processed = confirm_order_payment(order, payment_reference=razorpay_payment_id)
         logger.info(
             _format_log_message(
