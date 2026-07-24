@@ -3,6 +3,7 @@ import logging
 from django.contrib.auth import login, logout, authenticate, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordResetForm
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib import messages
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import IntegrityError, transaction
