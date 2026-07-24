@@ -499,7 +499,7 @@ def shop(request):
         products = products.filter(brand__in=brand_list)
 
     if selected_size:
-        products = products.filter(sizes__size__iexact=selected_size)
+        products = products.filter(sizes__size__iexact=selected_size, sizes__stock__gt=0)
 
     if in_stock == '1' and out_of_stock != '1':
         products = products.filter(stock__gt=0)
@@ -674,6 +674,10 @@ def category_detail(request, slug):
     category = get_object_or_404(Category, slug=slug)
     products_list = Product.objects.filter(category=category, stock__gt=0).order_by('-created_at')
 
+    selected_size = request.GET.get('size')
+    if selected_size:
+        products_list = products_list.filter(sizes__size__iexact=selected_size, sizes__stock__gt=0)
+
     theme = _get_theme()
     per_page = theme.products_per_page if theme else 12
 
@@ -701,6 +705,9 @@ def category_detail(request, slug):
         .values_list('size', flat=True).distinct().order_by()
     )
     available_sizes = sorted(raw_sizes, key=lambda s: SIZE_ORDER.get(s, 99))
+    active_filters = []
+    if selected_size:
+        active_filters.append({'label': f'Size: {selected_size}', 'url': f'?{_url_remove_param(request, "size")}'})
     total_count = paginator.count
     page_start = (products.number - 1) * paginator.per_page + 1 if total_count > 0 else 0
     page_end = min(page_start + paginator.per_page - 1, total_count) if total_count > 0 else 0
@@ -724,7 +731,7 @@ def category_detail(request, slug):
         'sort_by': 'newest',
         'search_query': '',
         'selected_brand_list': [],
-        'selected_size': '',
+        'selected_size': selected_size,
         'in_stock': '',
         'out_of_stock': '',
         'min_price': '',
@@ -734,8 +741,8 @@ def category_detail(request, slug):
         'total_count': total_count,
         'page_start': page_start,
         'page_end': page_end,
-        'active_filters': [],
-        'active_filter_count': 0,
+        'active_filters': active_filters,
+        'active_filter_count': len(active_filters),
         'suggested_products': suggested_products,
         'currency': currency,
     }
