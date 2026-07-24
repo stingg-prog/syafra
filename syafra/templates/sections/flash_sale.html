@@ -1,4 +1,4 @@
-{% load static %}
+{% load static cloudinary_filters %}
 {% with config=section.config data=section_data|get_by_key:section.id products=data.products %}
 <section class="flash-sale-section" style="{% if config.bg_color %}background-color:{{ config.bg_color }};{% endif %}">
   <div class="section-header">

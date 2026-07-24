@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from django.views import generic
 from django.shortcuts import get_object_or_404
 from . import models
@@ -68,7 +69,7 @@ class FAQView(generic.TemplateView):
         context['faq_categories'] = models.FAQCategory.objects.filter(
             is_active=True
         ).prefetch_related(
-            models.Prefetch('items', queryset=models.FAQItem.objects.filter(is_active=True).order_by('display_order'))
+            Prefetch('items', queryset=models.FAQItem.objects.filter(is_active=True).order_by('display_order'))
         ).order_by('display_order')
         return context
 
@@ -89,7 +90,7 @@ class LookbookDetailView(generic.DetailView):
 
     def get_queryset(self):
         return models.Lookbook.objects.filter(is_published=True).prefetch_related(
-            models.Prefetch('items', queryset=models.LookbookItem.objects.filter(is_active=True).order_by('display_order'))
+            Prefetch('items', queryset=models.LookbookItem.objects.filter(is_active=True).order_by('display_order'))
         )
 
 

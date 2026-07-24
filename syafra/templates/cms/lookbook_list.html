@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Lookbook | {{ theme.store_name }}{% endblock %}
+
+{% block content %}{{ block.super }}{% endblock %}
+
+{% block page_title %}Lookbook{% endblock %}
+
+{% block inner_content %}
+<div class="lookbook-grid">
+{% for lookbook in lookbooks %}
+<a href="{% url 'cms:lookbook_detail' lookbook.slug %}" class="lookbook-card">
+  {% if lookbook.cover_image %}
+  <div class="lookbook-card__image">
+    <img src="{{ lookbook.cover_image.url }}" alt="{{ lookbook.title }}" loading="lazy">
+  </div>
+  {% endif %}
+  <div class="lookbook-card__body">
+    <h2 class="lookbook-card__title">{{ lookbook.title }}</h2>
+    {% if lookbook.description %}<p class="lookbook-card__description">{{ lookbook.description }}</p>{% endif %}
+  </div>
+</a>
+{% empty %}
+<p>No lookbooks available.</p>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ lookbook.title }} | {{ theme.store_name }}{% endblock %}
+
+{% block content %}{{ block.super }}{% endblock %}
+
+{% block page_title %}{{ lookbook.title }}{% endblock %}
+
+{% block inner_content %}
+<div class="lookbook-detail">
+  {% if lookbook.description %}<p class="lookbook-detail__description">{{ lookbook.description }}</p>{% endif %}
+  <div class="lookbook-items">
+  {% for item in lookbook.items.all %}
+  <div class="lookbook-item">
+    {% if item.image %}
+    <div class="lookbook-item__image">
+      <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
+    </div>
+    {% endif %}
+    <div class="lookbook-item__body">
+      {% if item.title %}<h3 class="lookbook-item__title">{{ item.title }}</h3>{% endif %}
+      {% if item.description %}<p class="lookbook-item__description">{{ item.description }}</p>{% endif %}
+      {% if item.product %}<a href="{% url 'products:product_detail' item.product.pk %}" class="lookbook-item__link">Shop This Look</a>{% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <p>No items in this lookbook.</p>
+  {% endfor %}
+  </div>
+  <a href="{% url 'cms:lookbook_list' %}" class="lookbook-detail__back">&larr; Back to Lookbook</a>
+</div>
+{% endblock %}

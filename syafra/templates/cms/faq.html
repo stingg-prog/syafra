@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}FAQ | {{ theme.store_name }}{% endblock %}
+
+{% block content %}{{ block.super }}{% endblock %}
+
+{% block page_title %}Frequently Asked Questions{% endblock %}
+
+{% block inner_content %}
+<div class="faq-page">
+{% for category in faq_categories %}
+<div class="faq-category">
+  <h2 class="faq-category__title">{{ category.name }}</h2>
+  {% if category.description %}
+  <p class="faq-category__description">{{ category.description }}</p>
+  {% endif %}
+  <div class="faq-items">
+  {% for item in category.items.all %}
+  <details class="faq-item">
+    <summary class="faq-item__question">{{ item.question }}</summary>
+    <div class="faq-item__answer">{{ item.answer|linebreaks }}</div>
+  </details>
+  {% endfor %}
+  </div>
+</div>
+{% empty %}
+<p>No FAQ categories available.</p>
+{% endfor %}
+</div>
+{% endblock %}

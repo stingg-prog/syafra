@@ -16,7 +16,7 @@ import json
 import re
 
 from .models import (
-    Product, Category, InstagramFeedItem, Testimonial,
+    Product, ProductSize, Category, InstagramFeedItem, Testimonial,
     HomepageSection, NewsletterSubscriber, ProductCollection,
     ShopByCategoryItem, ContentPage, ContactMessage,
     ThemeSettings, WebsiteSettings, HeroSlide,
@@ -453,12 +453,34 @@ def newsletter_subscribe(request):
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
+SIZE_ORDER = {'XS': 0, 'S': 1, 'M': 2, 'L': 3, 'XL': 4, 'XXL': 5}
+
+
+def _url_remove_param(request, key, value=None):
+    params = request.GET.copy()
+    if value is not None:
+        values = params.getlist(key)
+        if value in values:
+            values.remove(value)
+        if values:
+            params.setlist(key, values)
+        else:
+            params.pop(key, None)
+    else:
+        params.pop(key, None)
+    return params.urlencode()
+
+
 def shop(request):
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
     sort_by = request.GET.get('sort', 'newest')
     category_slug = request.GET.get('category')
     search_query = request.GET.get('q', '').strip()
+    brand_list = request.GET.getlist('brand')
+    selected_size = request.GET.get('size')
+    in_stock = request.GET.get('in_stock')
+    out_of_stock = request.GET.get('out_of_stock')
 
     theme = _get_theme()
     per_page = theme.products_per_page if theme else 12
@@ -473,6 +495,19 @@ def shop(request):
         except Category.DoesNotExist:
             pass
 
+    if brand_list:
+        products = products.filter(brand__in=brand_list)
+
+    if selected_size:
+        products = products.filter(sizes__size__iexact=selected_size)
+
+    if in_stock == '1' and out_of_stock != '1':
+        products = products.filter(stock__gt=0)
+    elif out_of_stock == '1' and in_stock != '1':
+        products = products.filter(stock=0)
+    elif in_stock == '1' and out_of_stock == '1':
+        pass
+
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) |
@@ -486,9 +521,9 @@ def shop(request):
     if max_price:
         products = products.filter(price__lte=max_price)
 
-    if sort_by == 'price_low':
+    if sort_by == 'price_low' or sort_by == 'price-asc':
         products = products.order_by('price', 'name')
-    elif sort_by == 'price_high':
+    elif sort_by == 'price_high' or sort_by == 'price-desc':
         products = products.order_by('-price', 'name')
     elif sort_by == 'name_az':
         products = products.order_by('name')
@@ -496,6 +531,10 @@ def shop(request):
         products = products.order_by('-name')
     elif sort_by == 'oldest':
         products = products.order_by('created_at')
+    elif sort_by == 'best_selling':
+        products = products.order_by('-is_featured', '-created_at')
+    elif sort_by == 'popularity':
+        products = products.order_by('-is_featured', '-created_at')
     else:
         products = products.order_by('-created_at')
 
@@ -514,24 +553,86 @@ def shop(request):
         min_price=Min('price'), max_price=Max('price')
     )
 
+    available_brands = list(
+        Product.objects.filter(stock__gt=0)
+        .exclude(brand='').exclude(brand__isnull=True)
+        .values_list('brand', flat=True).distinct().order_by('brand')
+    )
+    raw_sizes = list(
+        ProductSize.objects.filter(stock__gt=0)
+        .values_list('size', flat=True).distinct().order_by()
+    )
+    available_sizes = sorted(raw_sizes, key=lambda s: SIZE_ORDER.get(s, 99))
+
+    total_count = paginator.count
+    page_start = (product_page.number - 1) * paginator.per_page + 1 if total_count > 0 else 0
+    page_end = min(page_start + paginator.per_page - 1, total_count) if total_count > 0 else 0
+
+    active_filters = []
+    if category_slug:
+        active_filters.append({'label': f'Category: {category_slug}', 'url': f'?{_url_remove_param(request, "category")}'})
+    for b in brand_list:
+        active_filters.append({'label': f'Brand: {b}', 'url': f'?{_url_remove_param(request, "brand", b)}'})
+    if selected_size:
+        active_filters.append({'label': f'Size: {selected_size}', 'url': f'?{_url_remove_param(request, "size")}'})
+    if min_price:
+        active_filters.append({'label': f'Min: ₹{min_price}', 'url': f'?{_url_remove_param(request, "min_price")}'})
+    if max_price:
+        active_filters.append({'label': f'Max: ₹{max_price}', 'url': f'?{_url_remove_param(request, "max_price")}'})
+    if search_query:
+        active_filters.append({'label': f'Search: {search_query}', 'url': f'?{_url_remove_param(request, "q")}'})
+
+    suggested_products = []
+    if total_count == 0:
+        suggested_qs = Product.objects.filter(stock__gt=0)
+        if category_slug:
+            suggested_qs = suggested_qs.filter(category__slug=category_slug)
+        suggested_products = list(suggested_qs.order_by('-is_featured', '-created_at')[:4])
+
+    payment_settings = PaymentSettings.get_settings()
+    currency = payment_settings.currency_symbol if payment_settings else '₹'
+
     context = {
         'products': product_page,
         'categories': categories,
         'price_range': price_range,
-        'current_sort': sort_by,
+        'sort_by': sort_by,
         'search_query': search_query,
         'selected_category': category_slug,
+        'selected_brand_list': brand_list,
+        'selected_size': selected_size,
+        'in_stock': in_stock,
+        'out_of_stock': out_of_stock,
         'min_price': min_price,
         'max_price': max_price,
+        'available_brands': available_brands,
+        'available_sizes': available_sizes,
+        'total_count': total_count,
+        'page_start': page_start,
+        'page_end': page_end,
+        'active_filters': active_filters,
+        'active_filter_count': len(active_filters),
+        'suggested_products': suggested_products,
+        'currency': currency,
     }
     return render(request, 'shop.html', context)
 
 
 def product_detail(request, pk):
-    product = get_object_or_404(Product, pk=pk)
+    product = get_object_or_404(
+        Product.objects.select_related('category').prefetch_related('sizes', 'images'),
+        pk=pk
+    )
     product.views = F('views') + 1
     product.save(update_fields=['views'])
     product.refresh_from_db()
+
+    gallery_images = list(product.images.all())
+    primary_image_url = (
+        product.image.url if product.image else (
+            gallery_images[0].image.url if gallery_images else ''
+        )
+    )
 
     related = Product.objects.filter(
         category=product.category, stock__gt=0
@@ -540,10 +641,31 @@ def product_detail(request, pk):
     payment_settings = PaymentSettings.get_settings()
     currency = payment_settings.currency_symbol if payment_settings else '₹'
 
+    request_scheme = 'https' if request.is_secure() else 'http'
+    product_url = f'{request_scheme}://{request.get_host()}{product.get_absolute_url()}'
+
+    og_image_url = primary_image_url
+    og_description = (
+        product.description[:200] if product.description
+        else f'Shop {product.name} at SYAFRA. Premium vintage streetwear.'
+    )
+    share_text = (
+        f'\u2728 {product.name}\n'
+        f'\U0001f4b0 {currency}{product.price}\n'
+        f'\U0001f6cd\ufe0f Shop Now:\n'
+        f'{product_url}'
+    )
+
     context = {
         'product': product,
+        'gallery_images': gallery_images,
+        'primary_image_url': primary_image_url,
         'related_products': related,
         'currency': currency,
+        'og_image_url': og_image_url,
+        'og_description': og_description,
+        'product_url': product_url,
+        'share_text': share_text,
     }
     return render(request, 'product_detail.html', context)
 
@@ -565,41 +687,122 @@ def category_detail(request, slug):
     except EmptyPage:
         products = paginator.page(paginator.num_pages)
 
+    categories = Category.objects.annotate(product_count=Count('products')).order_by('name')
+    price_range = Product.objects.filter(stock__gt=0).aggregate(
+        min_price=Min('price'), max_price=Max('price')
+    )
+    available_brands = list(
+        Product.objects.filter(stock__gt=0)
+        .exclude(brand='').exclude(brand__isnull=True)
+        .values_list('brand', flat=True).distinct().order_by('brand')
+    )
+    raw_sizes = list(
+        ProductSize.objects.filter(stock__gt=0)
+        .values_list('size', flat=True).distinct().order_by()
+    )
+    available_sizes = sorted(raw_sizes, key=lambda s: SIZE_ORDER.get(s, 99))
+    total_count = paginator.count
+    page_start = (products.number - 1) * paginator.per_page + 1 if total_count > 0 else 0
+    page_end = min(page_start + paginator.per_page - 1, total_count) if total_count > 0 else 0
+
+    suggested_products = []
+    if total_count == 0:
+        suggested_products = list(
+            Product.objects.filter(stock__gt=0, category=category)
+            .order_by('-is_featured', '-created_at')[:4]
+        )
+
+    payment_settings = PaymentSettings.get_settings()
+    currency = payment_settings.currency_symbol if payment_settings else '₹'
+
     context = {
         'category': category,
         'products': products,
+        'selected_category': category.slug,
+        'categories': categories,
+        'price_range': price_range,
+        'sort_by': 'newest',
+        'search_query': '',
+        'selected_brand_list': [],
+        'selected_size': '',
+        'in_stock': '',
+        'out_of_stock': '',
+        'min_price': '',
+        'max_price': '',
+        'available_brands': available_brands,
+        'available_sizes': available_sizes,
+        'total_count': total_count,
+        'page_start': page_start,
+        'page_end': page_end,
+        'active_filters': [],
+        'active_filter_count': 0,
+        'suggested_products': suggested_products,
+        'currency': currency,
     }
     return render(request, 'shop.html', context)
 
 
 def content_page(request, slug):
     page = get_object_or_404(ContentPage, slug=slug, is_active=True)
+    meta_title = page.meta_title or f"{page.title} | {ThemeSettings.get_settings().store_name}"
+    meta_description = page.meta_description or page.summary or ''
     context = {
         'page': page,
+        'meta_title': meta_title,
+        'meta_description': meta_description,
     }
     return render(request, 'pages/content_page.html', context)
 
 
 def contact(request):
-    if request.method == 'POST':
-        form = ContactForm(request.POST)
-        if form.is_valid():
-            ContactMessage.objects.create(
-                name=form.cleaned_data['name'],
-                email=form.cleaned_data['email'],
-                phone=form.cleaned_data.get('phone', ''),
-                subject=form.cleaned_data['subject'],
-                message=form.cleaned_data['message'],
-            )
-            messages.success(request, 'Thank you for your message! We will get back to you soon.')
-            return redirect('products:contact')
-        else:
-            messages.error(request, 'Please correct the errors below.')
-    else:
-        form = ContactForm()
-
-    return render(request, 'pages/contact.html', {'form': form})
+    page = ContentPage.objects.filter(slug='contact-us', is_active=True).first()
+    website = WebsiteSettings.get_settings()
+    contact_details = {
+        'email': website.contact_email,
+        'phone': website.contact_phone,
+        'address': website.business_address,
+        'hours': website.business_hours,
+        'whatsapp': website.whatsapp_number,
+    }
+    form = ContactForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        ContactMessage.objects.create(
+            name=form.cleaned_data['name'],
+            email=form.cleaned_data['email'],
+            phone=form.cleaned_data.get('phone', ''),
+            subject=form.cleaned_data['subject'],
+            message=form.cleaned_data['message'],
+        )
+        messages.success(request, 'Thank you for your message! We will get back to you soon.')
+        return redirect('products:contact')
+    meta_title = 'Contact Us'
+    if page:
+        meta_title = page.meta_title or f"{page.title} | {ThemeSettings.get_settings().store_name}"
+    return render(request, 'pages/contact.html', {
+        'page': page,
+        'form': form,
+        'contact_details': {k: v for k, v in contact_details.items() if v},
+        'meta_title': meta_title,
+        'meta_description': page.meta_description if page else '',
+    })
 
 
 def track_order(request):
-    return render(request, 'pages/track_order.html')
+    result = None
+    from orders.models import Order
+    payment_settings = PaymentSettings.get_settings()
+    currency = payment_settings.currency_symbol if payment_settings else '₹'
+    if request.method == 'POST':
+        order_number = request.POST.get('order_number', '').strip()
+        email = request.POST.get('email', '').strip()
+        try:
+            order = Order.objects.prefetch_related('items__product').get(pk=order_number, email=email)
+            result = order
+        except (Order.DoesNotExist, ValueError):
+            result = None
+    return render(request, 'pages/track_order.html', {
+        'result': result,
+        'currency': currency,
+        'meta_title': 'Track Order',
+        'meta_description': '',
+    })

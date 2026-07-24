@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Blog | {{ theme.store_name }}{% endblock %}
+
+{% block content %}{{ block.super }}{% endblock %}
+
+{% block page_title %}Our Blog{% endblock %}
+
+{% block inner_content %}
+<div class="blog-list">
+{% for post in posts %}
+<article class="blog-card">
+  {% if post.featured_image %}
+  <a href="{{ post.get_absolute_url }}" class="blog-card__image">
+    <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" loading="lazy">
+  </a>
+  {% endif %}
+  <div class="blog-card__body">
+    <h2 class="blog-card__title"><a href="{{ post.get_absolute_url }}">{{ post.title }}</a></h2>
+    {% if post.published_at %}<time class="blog-card__date">{{ post.published_at|date:"F j, Y" }}</time>{% endif %}
+    {% if post.excerpt %}<p class="blog-card__excerpt">{{ post.excerpt }}</p>{% endif %}
+    <a href="{{ post.get_absolute_url }}" class="blog-card__link">Read More</a>
+  </div>
+</article>
+{% empty %}
+<p>No blog posts yet.</p>
+{% endfor %}
+
+{% if is_paginated %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}" class="pagination__prev">Previous</a>
+  {% endif %}
+  <span class="pagination__current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}" class="pagination__next">Next</a>
+  {% endif %}
+</div>
+{% endif %}
+</div>
+{% endblock %}

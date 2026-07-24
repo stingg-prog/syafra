@@ -286,7 +286,7 @@
     <div class="shop-searchbar">
       <div class="shop-searchbar__input-wrapper">
         <svg class="shop-searchbar__icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21" stroke-linecap="round"/></svg>
-        <input type="text" value="{{ search_query }}" placeholder="Search products..." id="shop-search-input" class="shop-searchbar__input" autocomplete="off">
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Search products..." id="shop-search-input" class="shop-searchbar__input" autocomplete="off">
         {% if search_query %}
         <a href="{% url 'products:shop' %}" class="shop-searchbar__clear" aria-label="Clear search">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
