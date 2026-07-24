@@ -1,112 +1,295 @@
 {% extends "admin/base_site.html" %}
-{% load i18n static log %}
+{% load i18n static %}
 
-{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}">
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}">
 <style>
-  .analytics-dashboard-card {
-    background: var(--django-admin-bg, #fff);
-    border: 1px solid var(--border-color, #ddd);
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: box-shadow 0.2s;
-  }
-  .analytics-dashboard-card:hover {
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  }
-  .analytics-dashboard-card .info h3 {
-    margin: 0 0 4px;
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .analytics-dashboard-card .info p {
-    margin: 0;
-    color: #666;
-    font-size: 13px;
-  }
-  .analytics-dashboard-card .cta {
-    background: #000;
-    color: #fff;
-    padding: 8px 18px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    transition: background 0.2s;
-  }
-  .analytics-dashboard-card .cta:hover {
-    background: #333;
-  }
-  @media (prefers-color-scheme: dark) {
-    .analytics-dashboard-card {
-      background: #1a1a2e;
-      border-color: #333;
-    }
-    .analytics-dashboard-card .info p {
-      color: #999;
-    }
-    .analytics-dashboard-card .cta {
-      background: #333;
-    }
-    .analytics-dashboard-card .cta:hover {
-      background: #555;
-    }
-  }
+.syafra-dashboard { max-width: 1400px; margin: 0 auto; }
+
+/* --- Stats Grid --- */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 24px; }
+.stat-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--card-radius); padding: 14px 16px; box-shadow: var(--shadow-sm); transition: box-shadow var(--transition), transform var(--transition); cursor: default; position: relative; overflow: hidden; }
+.stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.stat-card .stat-icon { font-size: 18px; margin-bottom: 4px; display: block; }
+.stat-card .stat-value { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.stat-card .stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px; }
+.stat-card .stat-bar { position: absolute; bottom: 0; left: 0; height: 2px; border-radius: 0 2px 2px 0; transition: width 0.6s ease; }
+.stat-card.stat-products .stat-bar { background: #8b5cf6; width: 75%; }
+.stat-card.stat-orders .stat-bar { background: #3b82f6; width: 60%; }
+.stat-card.stat-customers .stat-bar { background: #10b981; width: 45%; }
+.stat-card.stat-pending .stat-bar { background: #f59e0b; width: 20%; }
+.stat-card.stat-collections .stat-bar { background: #f59e0b; width: 55%; }
+.stat-card.stat-brands .stat-bar { background: #ef4444; width: 40%; }
+.stat-card.stat-blog .stat-bar { background: #ec4899; width: 65%; }
+.stat-card.stat-subscribers .stat-bar { background: #14b8a6; width: 35%; }
+.stat-card.stat-testimonials .stat-bar { background: #f97316; width: 30%; }
+.stat-card.stat-sections .stat-bar { background: #6366f1; width: 50%; }
+
+/* --- Quick Actions --- */
+.quick-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
+.quick-action { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; color: var(--text-primary); text-decoration: none; font-size: 12px; font-weight: 500; transition: all var(--transition); box-shadow: var(--shadow-sm); }
+.quick-action:hover { border-color: var(--syafra-primary); color: var(--syafra-primary); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.quick-action .qa-icon { font-size: 14px; }
+
+/* --- Section Cards --- */
+.section-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.section-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--card-radius); overflow: hidden; box-shadow: var(--shadow-sm); transition: box-shadow var(--transition); }
+.section-card:hover { box-shadow: var(--shadow-md); }
+.section-card-header { padding: 14px 16px 0; display: flex; align-items: center; gap: 10px; }
+.section-icon-wrap { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.section-info { flex: 1; min-width: 0; }
+.section-info h3 { margin: 0 0 1px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.section-info p { margin: 0; font-size: 10px; color: var(--text-secondary); line-height: 1.3; }
+.section-card-body { padding: 8px 16px 12px; }
+.section-model-list { list-style: none; margin: 0; padding: 0; }
+.section-model-list li { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f3f4f6; }
+.section-model-list li:last-child { border-bottom: none; }
+.section-model-list .model-link { font-size: 12px; color: var(--text-primary); text-decoration: none; display: flex; align-items: center; gap: 5px; transition: color var(--transition); flex: 1; min-width: 0; }
+.section-model-list .model-link:hover { color: var(--syafra-primary); }
+.section-model-list .model-link .model-icon { font-size: 13px; flex-shrink: 0; }
+.section-model-list .model-count { font-size: 10px; color: var(--text-muted); background: var(--syafra-bg); padding: 1px 7px; border-radius: 10px; margin-left: 6px; white-space: nowrap; flex-shrink: 0; }
+.section-model-list .model-actions { display: flex; gap: 3px; flex-shrink: 0; }
+.section-model-list .model-actions a { font-size: 10px; color: var(--text-secondary); text-decoration: none; padding: 2px 7px; border-radius: 4px; transition: all var(--transition); }
+.section-model-list .model-actions a:hover { background: #f3f4f6; color: var(--syafra-primary); }
+.section-model-list .model-actions .addlink { color: #10b981; }
+.section-model-list .model-actions .addlink:hover { background: #ecfdf5; }
+.section-model-list .external-link { font-size: 12px; color: var(--syafra-primary); text-decoration: none; display: flex; align-items: center; gap: 5px; transition: color var(--transition); flex: 1; min-width: 0; }
+.section-model-list .external-link:hover { opacity: 0.8; }
+
+/* --- Recent Activity --- */
+.recent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+.recent-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--card-radius); padding: 16px; box-shadow: var(--shadow-sm); }
+.recent-card h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+.recent-list { list-style: none; margin: 0; padding: 0; }
+.recent-list li { padding: 5px 0; border-bottom: 1px solid #f3f4f6; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.recent-list li:last-child { border-bottom: none; }
+.recent-list .recent-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.recent-list .recent-dot.added { background: #10b981; }
+.recent-list .recent-dot.changed { background: #3b82f6; }
+.recent-list .recent-dot.deleted { background: #ef4444; }
+.recent-list .recent-icon { font-size: 12px; flex-shrink: 0; }
+.recent-list .recent-time { font-size: 10px; color: var(--text-muted); margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+
+/* --- Global Search --- */
+.global-search-wrap { margin-bottom: 24px; position: relative; }
+.global-search-wrap input { width: 100%; padding: 10px 14px; border: 2px solid var(--card-border); border-radius: 10px; font-size: 14px; outline: none; transition: border-color var(--transition); box-sizing: border-box; background: var(--card-bg); color: var(--text-primary); }
+.global-search-wrap input:focus { border-color: var(--syafra-primary); }
+.global-search-wrap input::placeholder { color: var(--text-muted); }
+.global-search-results { display: none; position: absolute; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); max-height: 380px; overflow-y: auto; width: 100%; z-index: 1000; margin-top: 4px; }
+.global-search-results a { display: flex; align-items: center; gap: 8px; padding: 8px 14px; text-decoration: none; color: var(--text-primary); font-size: 12px; border-bottom: 1px solid #f3f4f6; }
+.global-search-results a:last-child { border-bottom: none; }
+.global-search-results a:hover { background: #f9fafb; }
+.global-search-results .search-type { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-left: auto; white-space: nowrap; }
+.global-search-results .search-icon { font-size: 13px; flex-shrink: 0; }
+
+/* --- Empty State --- */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.empty-state .empty-icon { font-size: 40px; margin-bottom: 10px; display: block; }
+.empty-state p { font-size: 13px; margin: 0; }
+
+/* --- Dark Mode --- */
+@media (prefers-color-scheme: dark) {
+    :root { --card-bg: #1a1a2e; --card-border: #333; --text-primary: #e5e7eb; --text-secondary: #9ca3af; --text-muted: #6b7280; --syafra-bg: #111; --shadow-sm: 0 1px 2px rgba(0,0,0,0.2); --shadow-md: 0 4px 6px rgba(0,0,0,0.3); }
+    .section-model-list li { border-bottom-color: #2a2a3e; }
+    .recent-list li { border-bottom-color: #2a2a3e; }
+    .global-search-results a { border-bottom-color: #2a2a3e; }
+    .global-search-results a:hover { background: #222; }
+    .section-model-list .model-actions a:hover { background: #2a2a3e; }
+    .section-model-list .model-actions .addlink:hover { background: #064e3b; }
+}
+
+/* --- Responsive --- */
+@media (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+    .section-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .stat-card { padding: 10px 12px; }
+    .stat-card .stat-value { font-size: 18px; }
+    .section-grid { grid-template-columns: 1fr; }
+    .recent-grid { grid-template-columns: 1fr; }
+    .quick-actions { gap: 4px; }
+    .quick-action { font-size: 11px; padding: 5px 10px; }
+}
+@media (max-width: 480px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .stat-card .stat-value { font-size: 16px; }
+    .quick-actions { flex-direction: column; }
+    .quick-action { width: 100%; justify-content: center; }
+}
 </style>
 {% endblock %}
 
 {% block coltype %}colMS{% endblock %}
-
 {% block bodyclass %}{{ block.super }} dashboard{% endblock %}
-
 {% block nav-breadcrumbs %}{% endblock %}
-
 {% block nav-sidebar %}{% endblock %}
 
 {% block content %}
-<div id="content-main" class="app-list">
-  <div class="analytics-dashboard-card">
-    <div class="info">
-      <h3>Analytics Dashboard</h3>
-      <p>Revenue, orders, products, customers, wishlist &amp; cart insights</p>
+<div class="syafra-dashboard">
+
+    <!-- Global Search -->
+    <div class="global-search-wrap">
+        <input type="text" id="syafra-global-search" placeholder="🔍  Search products, orders, customers, collections, brands, blog, FAQ..." autocomplete="off">
+        <div class="global-search-results" id="syafra-search-results"></div>
     </div>
-    <a href="{% url 'analytics_dashboard' %}" class="cta">Open Dashboard &rarr;</a>
-  </div>
-  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card stat-products"><span class="stat-icon">📦</span><div class="stat-value">{{ stats.products|default:"0" }}</div><div class="stat-label">Products</div><div class="stat-bar"></div></div>
+        <div class="stat-card stat-orders"><span class="stat-icon">🛒</span><div class="stat-value">{{ stats.orders|default:"0" }}</div><div class="stat-label">Orders</div><div class="stat-bar"></div></div>
+        <div class="stat-card stat-pending"><span class="stat-icon">⏳</span><div class="stat-value">{{ stats.pending_orders|default:"0" }}</div><div class="stat-label">Pending</div><div class="stat-bar"></div></div>
+        <div class="stat-card stat-customers"><span class="stat-icon">👤</span><div class="stat-value">{{ stats.customers|default:"0" }}</div><div class="stat-label">Customers</div><div class="stat-bar"></div></div>
+        <div class="stat-card stat-collections"><span class="stat-icon">🗂️</span><div class="stat-value">{{ stats.collections|default:"0" }}</div><div class="stat-label">Collections</div><div class="stat-bar"></div></div>
+        <div class="stat-card stat-brands"><span class="stat-icon">🏷️</span><div class="stat-value">{{ stats.brands|default:"0" }}</div><div class="stat-label">Brands</div><div class="stat-bar"></div></div>
+        <div class="stat-card stat-blog"><span class="stat-icon">📝</span><div class="stat-value">{{ stats.blog_posts|default:"0" }}</div><div class="stat-label">Blog Posts</div><div class="stat-bar"></div></div>
+        <div class="stat-card stat-subscribers"><span class="stat-icon">✉️</span><div class="stat-value">{{ stats.subscribers|default:"0" }}</div><div class="stat-label">Subscribers</div><div class="stat-bar"></div></div>
+        <div class="stat-card stat-testimonials"><span class="stat-icon">💬</span><div class="stat-value">{{ stats.testimonials|default:"0" }}</div><div class="stat-label">Testimonials</div><div class="stat-bar"></div></div>
+        <div class="stat-card stat-sections"><span class="stat-icon">🏠</span><div class="stat-value">{{ stats.sections|default:"0" }}</div><div class="stat-label">Sections</div><div class="stat-bar"></div></div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        {% for action in quick_actions %}
+        <a href="{{ action.url }}" class="quick-action">
+            <span class="qa-icon">{{ action.icon }}</span>
+            <span>{{ action.label }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Section Cards -->
+    {% if syafra_sections %}
+    <div class="section-grid">
+        {% for section in syafra_sections %}
+        <div class="section-card" onclick="if(!event.target.closest('a')){window.location='{{ section.url|escapejs }}'}" style="cursor:pointer">
+            <div class="section-card-header">
+                <div class="section-icon-wrap" style="background:{{ section.bg_color|default:'#f3f4f6' }};color:{{ section.color|default:'#6b7280' }};">{{ section.icon|default:'📋' }}</div>
+                <div class="section-info">
+                    <h3><a href="{{ section.url }}" style="color: inherit; text-decoration: none;">{{ section.name }}</a></h3>
+                    <p>{{ section.description }}</p>
+                </div>
+            </div>
+            <div class="section-card-body">
+                <ul class="section-model-list">
+                    {% for model in section.models %}
+                    <li>
+                        <a href="{{ model.admin_url }}" class="model-link">
+                            <span class="model-icon">{{ model.icon|default:'📄' }}</span>
+                            <span>{{ model.name }}</span>
+                            {% if model.count is not None %}<span class="model-count">{{ model.count }}</span>{% endif %}
+                        </a>
+                        <div class="model-actions">
+                            <a href="{{ model.admin_url }}" class="changelink">{% translate 'View' %}</a>
+                            {% if model.add_url %}
+                            <a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                    {% for link in section.external_links %}
+                    <li>
+                        <a href="{{ link.url }}" class="external-link" target="_blank">
+                            <span class="model-icon">{{ link.icon }}</span>
+                            <span>{{ link.label }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon">📋</span>
+        <p>{% translate 'No models available. Check your permissions.' %}</p>
+    </div>
+    {% endif %}
+
+    <!-- Recent Activity -->
+    <div class="recent-grid">
+        <div class="recent-card">
+            <h3>⏱️ {% translate 'Recent Activity' %}</h3>
+            <ul class="recent-list">
+                {% for item in recent_items %}
+                <li>
+                    <span class="recent-dot {{ item.action }}"></span>
+                    <span class="recent-icon">{{ item.icon|default:'📄' }}</span>
+                    {% if item.url %}<a href="{{ item.url }}" style="color:var(--text-primary);text-decoration:none;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ item.object_repr|truncatechars:40 }}</a>
+                    {% else %}<span style="color:var(--text-muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ item.object_repr|truncatechars:40 }}</span>{% endif %}
+                    <span class="recent-time">{{ item.time|timesince }} ago</span>
+                </li>
+                {% empty %}
+                <li style="color:var(--text-muted);justify-content:center;">No recent activity.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="recent-card">
+            <h3>🔗 {% translate 'Quick Links' %}</h3>
+            <ul class="recent-list">
+                <li><a href="{% url 'analytics_dashboard' %}" style="color:var(--text-primary);text-decoration:none;flex:1;">📊 Analytics Dashboard</a></li>
+                <li><a href="{% url 'admin:products_homepagesection_changelist' %}" style="color:var(--text-primary);text-decoration:none;flex:1;">🏠 Homepage Builder</a></li>
+                <li><a href="{% url 'admin:products_themesettings_change' 1 %}" style="color:var(--text-primary);text-decoration:none;flex:1;">🎨 Theme Settings</a></li>
+                <li><a href="{% url 'admin:products_websitesettings_change' 1 %}" style="color:var(--text-primary);text-decoration:none;flex:1;">🌐 Website Settings</a></li>
+                <li><a href="{% url 'admin:products_product_add' %}" style="color:var(--text-primary);text-decoration:none;flex:1;">📦 Add New Product</a></li>
+                <li><a href="{% url 'admin:orders_order_changelist' %}" style="color:var(--text-primary);text-decoration:none;flex:1;">🛒 View Orders</a></li>
+                <li><a href="{% url 'admin:auth_user_changelist' %}" style="color:var(--text-primary);text-decoration:none;flex:1;">👤 View Customers</a></li>
+                <li><a href="{% url 'admin:cms_blogpost_add' %}" style="color:var(--text-primary);text-decoration:none;flex:1;">📝 Create Blog Post</a></li>
+            </ul>
+        </div>
+    </div>
+
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var searchInput = document.getElementById('syafra-global-search');
+    var resultsDiv = document.getElementById('syafra-search-results');
+    var searchTimeout;
+
+    if (!searchInput) return;
+
+    var searchIndex = [
+        {% for section in syafra_sections %}{% for model in section.models %}
+        { label: '{{ model.name|escapejs }}', url: '{{ model.admin_url|escapejs }}', type: '{{ section.name|escapejs }}', icon: '{{ model.icon|default:"📄"|escapejs }}' },
+        {% endfor %}{% endfor %}
+    ];
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        var q = this.value.toLowerCase().trim();
+        if (q.length < 1) { resultsDiv.style.display = 'none'; return; }
+
+        searchTimeout = setTimeout(function() {
+            var matches = searchIndex.filter(function(item) {
+                return item.label.toLowerCase().includes(q);
+            }).slice(0, 15);
+
+            if (matches.length === 0) {
+                resultsDiv.innerHTML = '<a href="#" style="cursor:default;color:var(--text-muted);justify-content:center;">No results found</a>';
+            } else {
+                resultsDiv.innerHTML = matches.map(function(item) {
+                    return '<a href="' + item.url + '"><span class="search-icon">' + item.icon + '</span><span>' + item.label + '</span><span class="search-type">' + item.type + '</span></a>';
+                }).join('');
+            }
+            resultsDiv.style.display = 'block';
+        }, 200);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.style.display = 'none';
+        }
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { resultsDiv.style.display = 'none'; searchInput.blur(); }
+    });
+});
+</script>
 {% endblock %}
 
-{% block sidebar %}
-<div id="content-related">
-    <div class="module" id="recent-actions-module">
-        <h2>{% translate 'Recent actions' %}</h2>
-        <h3>{% translate 'My actions' %}</h3>
-            {% get_admin_log 10 as admin_log for_user user %}
-            {% if not admin_log %}
-            <p>{% translate 'None available' %}</p>
-            {% else %}
-            <ul class="actionlist">
-            {% for entry in admin_log %}
-            <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
-                <span class="visually-hidden">{% if entry.is_addition %}{% translate 'Added:' %}{% elif entry.is_change %}{% translate 'Changed:' %}{% elif entry.is_deletion %}{% translate 'Deleted:' %}{% endif %}</span>
-                {% if entry.is_deletion or not entry.get_admin_url %}
-                    {{ entry.object_repr }}
-                {% else %}
-                    <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
-                {% endif %}
-                <br>
-                {% if entry.content_type %}
-                    <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
-                {% else %}
-                    <span class="mini quiet">{% translate 'Unknown content' %}</span>
-                {% endif %}
-            </li>
-            {% endfor %}
-            </ul>
-            {% endif %}
-    </div>
-</div>
-{% endblock %}
+{% block sidebar %}{% endblock %}
