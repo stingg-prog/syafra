@@ -1,7 +1,49 @@
 {% autoescape off %}
-<p>Hello {{ user.first_name|default:user.username }},</p>
-<p>Thank you for registering at SYAFRA. Please activate your account by clicking the link below:</p>
-<p><a href="{{ protocol }}://{{ domain }}{% url 'accounts:activate' uidb64=uid token=token %}">Activate your account</a></p>
-<p>If you did not create an account, you can safely ignore this email.</p>
-<p>Welcome aboard,<br>SYAFRA Team</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify your email — SYAFRA</title>
+    <style>
+        body { margin: 0; padding: 0; background: #f4f4f4; font-family: 'Inter', Arial, sans-serif; }
+        .wrapper { width: 100%; background: #f4f4f4; padding: 40px 0; }
+        .container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .header { background: #000000; padding: 32px 40px; text-align: center; }
+        .header h1 { margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+        .body { padding: 40px; }
+        .body p { color: #374151; font-size: 15px; line-height: 1.6; margin: 0 0 16px; }
+        .btn { display: inline-block; background: #000000; color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-size: 15px; font-weight: 600; margin: 8px 0 24px; }
+        .btn:hover { background: #1f2937; }
+        .footer { padding: 24px 40px; background: #f9fafb; text-align: center; }
+        .footer p { color: #9ca3af; font-size: 12px; margin: 0; }
+        @media only screen and (max-width: 540px) {
+            .container { width: 100%; border-radius: 0; }
+            .header, .body, .footer { padding-left: 24px; padding-right: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <h1>SYAFRA</h1>
+            </div>
+            <div class="body">
+                <p>Hello {{ user.first_name|default:user.username }},</p>
+                <p>Welcome to SYAFRA! To start shopping, please verify your email address by clicking the button below.</p>
+                <p style="text-align: center;">
+                    <a href="{{ activation_link }}" class="btn">Verify Email</a>
+                </p>
+                <p style="color: #6b7280; font-size: 13px;">Or copy and paste this link into your browser:</p>
+                <p style="color: #6b7280; font-size: 13px; word-break: break-all;">{{ activation_link }}</p>
+                <p style="color: #9ca3af; font-size: 13px; margin-top: 24px;">This link expires in 24 hours. If you did not create an account, you can safely ignore this email.</p>
+            </div>
+            <div class="footer">
+                <p>&copy; {% now "Y" %} SYAFRA. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
 {% endautoescape %}

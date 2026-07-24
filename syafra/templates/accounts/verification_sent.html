@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Verify Email — {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pages/account.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="auth-page-shell">
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div style="text-align: center; margin-bottom: 16px;">
+                <svg width="48" height="48" fill="none" stroke="#059669" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <h1 class="auth-card__title">Verify your email</h1>
+            <p class="auth-card__subtitle" style="max-width: 360px; margin: 0 auto 24px;">
+                We've sent a verification email to your email address. Please check your inbox and click the verification link to activate your account.
+            </p>
+
+            {% if messages %}
+                {% for message in messages %}
+                <div class="account-message account-message--{% if message.tags == 'error' %}error{% else %}success{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="auth-links" style="margin-top: 24px;">
+                <p class="auth-links__item">
+                    Didn't receive the email? <a href="{% url 'accounts:resend_verification' %}" class="auth-links__link">Resend verification email</a>
+                </p>
+                <p class="auth-links__item">
+                    <a href="{% url 'accounts:login' %}" class="auth-links__link">Back to sign in</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

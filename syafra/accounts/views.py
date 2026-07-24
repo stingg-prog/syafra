@@ -2,7 +2,6 @@ import logging
 
 from django.contrib.auth import login, logout, authenticate, get_user_model
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.tokens import default_token_generator
 from django.contrib import messages
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import IntegrityError, transaction
@@ -10,10 +9,6 @@ from django.shortcuts import render, redirect, resolve_url
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
-from django.utils.http import urlsafe_base64_encode
-
-from .forms import PasswordResetForm
-from accounts.utils.email import send_email, send_password_reset_email
 from django.utils.html import strip_tags
 from django.utils.http import (
     urlsafe_base64_encode,
@@ -24,8 +19,10 @@ from django.views.decorators.http import require_http_methods
 from django.conf import settings
 
 from orders.models import Order, PaymentSettings
+from accounts.utils.email import send_email
 
 from .forms import RegisterForm
+from accounts.models import UserProfile
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -146,17 +143,20 @@ def _authenticate_by_identifier(request, identifier, password):
 
 
 def _send_activation_email(user, request):
+    profile = user.profile
+    raw_token = profile.set_verification_token()
+    profile.save(update_fields=['email_verification_token_hash', 'email_verification_sent_at'])
+
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    token = default_token_generator.make_token(user)
     activation_link = request.build_absolute_uri(
-        reverse('accounts:activate', kwargs={'uidb64': uid, 'token': token})
+        reverse('accounts:activate', kwargs={'uidb64': uid, 'token': raw_token})
     )
-    subject = 'Activate your SYAFRA account'
+    subject = 'Verify your email — SYAFRA'
     context = {
         'user': user,
         'activation_link': activation_link,
         'uid': uid,
-        'token': token,
+        'token': raw_token,
         'domain': request.get_host(),
         'protocol': 'https' if request.is_secure() else 'http',
     }
@@ -198,9 +198,12 @@ def register_view(request):
             form.add_error('email', error_message)
             return render(request, 'register.html', {'form': form, 'next': next_url})
 
-        login(request, user, backend=_default_auth_backend())
-        messages.success(request, 'Your account has been created and you are now signed in.')
-        return redirect(_get_safe_redirect_url(request, next_url, settings.LOGIN_REDIRECT_URL))
+        messages.success(
+            request,
+            'We\'ve sent a verification email to your email address. '
+            'Please verify your email before logging in.'
+        )
+        return redirect('accounts:verification_sent')
 
     return render(request, 'register.html', {'form': RegisterForm(), 'next': next_url})
 
@@ -228,17 +231,19 @@ def login_view(request):
             return redirect(_get_safe_redirect_url(request, next_url, settings.LOGIN_REDIRECT_URL))
 
         candidate = _find_user_by_identifier(username)
-        if (
-            candidate is not None
-            and not candidate.is_active
-            and candidate.last_login is None
-            and candidate.check_password(password)
-        ):
-            candidate.is_active = True
-            candidate.save(update_fields=['is_active'])
-            login(request, candidate, backend=_default_auth_backend())
-            messages.success(request, 'Your account has been activated and you are now signed in.')
-            return redirect(_get_safe_redirect_url(request, next_url, settings.LOGIN_REDIRECT_URL))
+        if candidate is not None and candidate.check_password(password):
+            if not candidate.is_active:
+                profile = candidate.profile
+                if not profile.email_verified:
+                    uid = urlsafe_base64_encode(force_bytes(candidate.pk))
+                    resend_url = reverse('accounts:resend_verification', kwargs={'uidb64': uid})
+                    return render(request, 'login.html', {
+                        'next': next_url,
+                        'email_unverified': True,
+                        'resend_url': resend_url,
+                    })
+                messages.error(request, 'Your account has been deactivated. Contact support.')
+                return render(request, 'login.html', {'next': next_url})
 
         messages.error(request, 'Invalid username/email or password.')
         return render(request, 'login.html', {'next': next_url})
@@ -274,6 +279,51 @@ def profile_view(request):
     })
 
 
+def verification_sent(request):
+    return render(request, 'accounts/verification_sent.html')
+
+
+@require_http_methods(['GET', 'POST', 'HEAD', 'OPTIONS'])
+def resend_verification(request, uidb64=None):
+    uid = None
+    email = ''
+
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        if email:
+            try:
+                user = User.objects.get(email__iexact=email)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+            except User.DoesNotExist:
+                messages.error(request, 'No account found with that email address.')
+                return render(request, 'accounts/resend_verification.html')
+        else:
+            messages.error(request, 'Please enter your email address.')
+            return render(request, 'accounts/resend_verification.html')
+
+    if uidb64:
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            messages.error(request, 'Invalid verification request.')
+            return redirect('accounts:login')
+
+    if not uid:
+        return render(request, 'accounts/resend_verification.html')
+
+    if user.is_active and user.profile.email_verified:
+        messages.info(request, 'Your email is already verified. Please sign in.')
+        return redirect('accounts:login')
+
+    _send_activation_email(user, request)
+    messages.success(
+        request,
+        'A new verification email has been sent. Please check your inbox.'
+    )
+    return redirect('accounts:verification_sent')
+
+
 def activate_account(request, uidb64, token):
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
@@ -281,11 +331,23 @@ def activate_account(request, uidb64, token):
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
 
-    if user is not None and default_token_generator.check_token(user, token):
-        user.is_active = True
-        user.save(update_fields=['is_active'])
-        messages.success(request, 'Your account has been activated. Please sign in.')
-        return redirect('accounts:login')
+    if user is not None:
+        profile = user.profile
+        token_valid = profile.check_verification_token(token)
+        token_expired = profile.is_token_expired()
 
-    messages.error(request, 'Activation link is invalid or has expired.')
+        if token_valid and not token_expired:
+            profile.verify_email()
+            messages.success(request, 'Email verified successfully! You can now sign in.')
+            return redirect('accounts:login')
+
+        if token_expired:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            messages.error(request, 'Verification link has expired. A new one has been sent.')
+            return redirect('accounts:resend_verification', uidb64=uid)
+
+    messages.error(request, 'Verification link is invalid.')
+    uid = urlsafe_base64_encode(force_bytes(user.pk)) if user else ''
+    if uid:
+        return redirect('accounts:resend_verification', uidb64=uid)
     return redirect('accounts:register')

@@ -13,11 +13,11 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('profile/', views.profile_view, name='profile'),
     path('activate/<uidb64>/<token>/', views.activate_account, name='activate'),
+    path('verify-email/sent/', views.verification_sent, name='verification_sent'),
+    path('verify-email/resend/', views.resend_verification, name='resend_verification'),
+    path('verify-email/resend/<uidb64>/', views.resend_verification, name='resend_verification'),
 
     # Password Reset - Using custom views with no-cache headers
     path("password-reset/", password_reset_request, name="password_reset"),
-    
-    
     path("reset/<uidb64>/<token>/", password_reset_confirm, name="password_reset_confirm"),
-
 ]

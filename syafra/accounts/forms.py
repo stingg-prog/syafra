@@ -82,11 +82,13 @@ class RegisterForm(forms.Form):
             **{
                 username_field: self.cleaned_data['username'],
                 'email': self.cleaned_data['email'],
-                'is_active': True,
+                'is_active': False,
             }
         )
         user.set_password(self.cleaned_data['password'])
         user.save()
+        from accounts.models import UserProfile
+        UserProfile.objects.create(user=user)
         return user
 
 

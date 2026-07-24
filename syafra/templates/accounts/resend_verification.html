@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Resend Verification — {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pages/account.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="auth-page-shell">
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <h1 class="auth-card__title">Resend Verification Email</h1>
+            <p class="auth-card__subtitle">Enter your email address and we'll send you a new verification link.</p>
+            <div class="auth-card__divider"></div>
+
+            {% if messages %}
+                {% for message in messages %}
+                <div class="account-message account-message--{% if message.tags == 'error' %}error{% else %}success{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" novalidate>
+                {% csrf_token %}
+
+                <div class="auth-field">
+                    <label class="auth-field__label" for="id_email">Email Address</label>
+                    <input type="email" name="email" id="id_email" required
+                           class="auth-field__input"
+                           placeholder="Enter your email address"
+                           value="{{ request.POST.email|default:'' }}">
+                </div>
+
+                <button type="submit" class="auth-btn">Send Verification Email</button>
+            </form>
+
+            <div class="auth-links">
+                <p class="auth-links__item">
+                    <a href="{% url 'accounts:login' %}" class="auth-links__link">Back to sign in</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

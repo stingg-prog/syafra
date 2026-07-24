@@ -1,6 +1,68 @@
+import hashlib
+import secrets
+
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
+
+
+UserModel = get_user_model()
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        UserModel,
+        on_delete=models.CASCADE,
+        related_name='profile',
+    )
+    email_verified = models.BooleanField(default=False)
+    email_verification_token_hash = models.CharField(max_length=128, blank=True, default='')
+    email_verification_sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'User Profile'
+        verbose_name_plural = 'User Profiles'
+
+    def __str__(self):
+        return f'Profile: {self.user.get_username()}'
+
+    @staticmethod
+    def _hash_token(token):
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def set_verification_token(self):
+        raw = secrets.token_urlsafe(32)
+        self.email_verification_token_hash = self._hash_token(raw)
+        self.email_verification_sent_at = timezone.now()
+        return raw
+
+    def check_verification_token(self, raw_token):
+        if not self.email_verification_token_hash:
+            return False
+        return secrets.compare_digest(
+            self._hash_token(raw_token),
+            self.email_verification_token_hash,
+        )
+
+    def is_token_expired(self, hours=24):
+        if not self.email_verification_sent_at:
+            return True
+        expiry = self.email_verification_sent_at + timezone.timedelta(hours=hours)
+        return timezone.now() > expiry
+
+    def verify_email(self):
+        self.email_verified = True
+        self.email_verification_token_hash = ''
+        self.user.is_active = True
+        self.user.save(update_fields=['is_active'])
+        self.save(update_fields=['email_verified', 'email_verification_token_hash'])
+
+
+UserModel.profile = property(
+    lambda u: UserProfile.objects.get_or_create(user=u)[0]
+)
 
 
 class EmailLog(models.Model):
