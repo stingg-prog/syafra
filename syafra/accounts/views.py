@@ -20,7 +20,7 @@ from django.views.decorators.http import require_http_methods
 from django.conf import settings
 
 from orders.models import Order, PaymentSettings
-from accounts.utils.email import send_email
+from accounts.utils.email import send_email, send_password_reset_email
 
 from .forms import RegisterForm
 from accounts.models import UserProfile
