@@ -6,7 +6,6 @@ from django.shortcuts import redirect
 from django.views.generic.base import RedirectView
 
 from orders import views as order_views
-import syafra.admin_site
 
 handler404 = 'syafra.views.custom_page_not_found'
 handler500 = 'syafra.views.custom_server_error'
