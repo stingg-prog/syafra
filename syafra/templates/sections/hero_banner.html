@@ -1,0 +1,13 @@
+{% load static %}
+{% with config=section.config %}
+<section class="hero-banner" style="{% if config.bg_color %}background-color:{{ config.bg_color }};{% endif %}">
+  <div class="hero-banner-content">
+    {% if section.overline %}<span class="hero-banner-overline">{{ section.overline }}</span>{% endif %}
+    {% if section.title %}<h2 class="hero-banner-title">{{ section.title }}</h2>{% endif %}
+    {% if config.description %}<p class="hero-banner-desc">{{ config.description }}</p>{% endif %}
+    {% if config.button_text and config.button_url %}
+    <a href="{{ config.button_url }}" class="hero-banner-btn">{{ config.button_text }}</a>
+    {% endif %}
+  </div>
+</section>
+{% endwith %}

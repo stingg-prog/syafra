@@ -1,0 +1,19 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: {{ popup.title }} — Popup{% endblock %}
+{% block preview_content %}
+<div style="max-width:400px;margin:0 auto;border:2px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+  {% if popup.image %}<img src="{{ popup.image.url }}" alt="{{ popup.title }}" style="width:100%;max-height:200px;object-fit:cover;">{% endif %}
+  <div style="padding:2rem;text-align:center;">
+    <h3 style="margin:0 0 0.5rem;">{{ popup.title }}</h3>
+    {% if popup.description %}<p style="color:#6b7280;margin:0 0 1.5rem;">{{ popup.description }}</p>{% endif %}
+    {% if popup.button_text %}
+    <a href="{{ popup.button_url|default:'#' }}" style="display:inline-block;background:#000;color:#fff;padding:0.75rem 2rem;border-radius:6px;text-decoration:none;font-weight:600;">{{ popup.button_text }}</a>
+    {% endif %}
+    <p style="margin-top:1rem;font-size:0.8rem;color:#9ca3af;">
+      Trigger: {{ popup.get_trigger_display }} |
+      Frequency: {{ popup.get_display_frequency_display }}
+    </p>
+  </div>
+</div>
+{% endblock %}

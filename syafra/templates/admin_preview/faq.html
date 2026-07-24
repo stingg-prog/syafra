@@ -1,0 +1,15 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: FAQ — SYAFRA{% endblock %}
+{% block preview_content %}
+{% if category %}<h2 style="margin-bottom:1rem;">{{ category.name }}</h2>{% endif %}
+{% if category and category.description %}<p style="color:#6b7280;margin-bottom:1.5rem;">{{ category.description }}</p>{% endif %}
+{% for item in items %}
+<details style="margin-bottom:0.75rem;border:1px solid #e5e7eb;border-radius:8px;padding:0.75rem 1rem;{% if single_item and single_item.id == item.id %}border-color:#3b82f6;background:#eff6ff;{% endif %}" {% if single_item and single_item.id == item.id %}open{% endif %}>
+  <summary style="cursor:pointer;font-weight:600;">{{ item.question }}</summary>
+  <div style="margin-top:0.75rem;color:#4b5563;line-height:1.7;">{{ item.answer|linebreaks }}</div>
+</details>
+{% empty %}
+<p style="color:#9ca3af;">No FAQ items.</p>
+{% endfor %}
+{% endblock %}

@@ -35,13 +35,6 @@
     <link rel="stylesheet" href="{% static 'css/core/fonts.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/core/variables.css' %}">
-    <style>
-        :root {
-            --color-primary: {{ theme.primary_color|default:'#000000' }};
-            --color-secondary: {{ theme.secondary_color|default:'#FFFFFF' }};
-            --color-accent: {{ theme.accent_color|default:'#E8DCC4' }};
-        }
-    </style>
     <link rel="stylesheet" href="{% static 'css/core/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/core/typography.css' %}">
     <link rel="stylesheet" href="{% static 'css/core/spacing.css' %}">
@@ -78,11 +71,53 @@
     <link rel="stylesheet" href="{% static 'css/pages/cart.css' %}">
     <link rel="stylesheet" href="{% static 'css/pages/checkout.css' %}">
     <link rel="stylesheet" href="{% static 'css/pages/content-page.css' %}">
-    {% block extra_head %}{% endblock %}
 
     <style>
         .site-nav { top: 0; }
+        :root {
+            --color-primary: {{ theme.primary_color|default:'#000000' }};
+            --color-secondary: {{ theme.secondary_color|default:'#FFFFFF' }};
+            --color-accent: {{ theme.accent_color|default:'#E8DCC4' }};
+            --color-success: {{ theme.success_color|default:'#10b981' }};
+            --color-warning: {{ theme.warning_color|default:'#f59e0b' }};
+            --color-danger: {{ theme.danger_color|default:'#ef4444' }};
+            --color-info: {{ theme.info_color|default:'#3b82f6' }};
+            --color-bg: {{ theme.background_color|default:'#ffffff' }};
+            --color-surface: {{ theme.surface_color|default:'#f9fafb' }};
+            --color-card: {{ theme.card_color|default:'#ffffff' }};
+            --color-border: {{ theme.border_color|default:'#e5e7eb' }};
+            --color-text: {{ theme.text_color|default:'#111827' }};
+            --color-muted: {{ theme.muted_text_color|default:'#6b7280' }};
+            --heading-font: '{{ theme.heading_font|default:"Cormorant Garamond" }}', serif;
+            --body-font: '{{ theme.body_font|default:"Inter" }}', sans-serif;
+            --font-size-scale: {{ theme.font_size_scale|default:"1.0" }};
+            --heading-weight: {{ theme.heading_font_weight|default:"600" }};
+            --body-weight: {{ theme.body_font_weight|default:"400" }};
+            --letter-spacing: {{ theme.letter_spacing|default:"normal" }};
+            --line-height: {{ theme.line_height|default:"1.6" }};
+        }
+        body { font-family: var(--body-font); font-weight: var(--body-weight); letter-spacing: var(--letter-spacing); line-height: var(--line-height); }
+        h1, h2, h3, h4, h5, h6 { font-family: var(--heading-font); font-weight: var(--heading-weight); }
     </style>
+    {% if theme.global_css %}
+    <style>{{ theme.global_css }}</style>
+    {% endif %}
+    {% if theme.header_css %}
+    <style>{{ theme.header_css }}</style>
+    {% endif %}
+    {% if theme.homepage_css %}
+    <style>{{ theme.homepage_css }}</style>
+    {% endif %}
+    {% if theme.product_css %}
+    <style>{{ theme.product_css }}</style>
+    {% endif %}
+    {% if theme.checkout_css %}
+    <style>{{ theme.checkout_css }}</style>
+    {% endif %}
+    {% if theme.footer_css %}
+    <style>{{ theme.footer_css }}</style>
+    {% endif %}
+    {% block extra_head %}{% endblock %}
     <script>document.documentElement.classList.add('js-enabled');</script>
     <script>
     window.showToast = function showToast(message, type, duration) {
@@ -381,6 +416,9 @@
     <style>
         @keyframes loading { 0% { width: 0; } 50% { width: 70%; } 100% { width: 100%; } }
     </style>
+    {% endif %}
+    {% if theme.custom_js %}
+    <script>{{ theme.custom_js }}</script>
     {% endif %}
 </body>
 </html>

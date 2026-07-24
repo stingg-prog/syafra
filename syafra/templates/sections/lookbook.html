@@ -1,0 +1,23 @@
+{% load static %}
+{% with data=section_data|get_by_key:section.id lookbooks=data.lookbooks %}
+<section class="lookbook-section">
+  <div class="section-header">
+    {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
+    <h2 class="section-title">{{ section.title|default:'Lookbook' }}</h2>
+    {% if section.subtitle %}<p class="section-subtitle">{{ section.subtitle }}</p>{% endif %}
+  </div>
+  {% if lookbooks %}
+  <div class="lookbook-grid">
+    {% for lookbook in lookbooks %}
+    <a href="{% url 'cms:lookbook_detail' lookbook.slug %}" class="lookbook-card">
+      {% if lookbook.cover_image %}<img src="{{ lookbook.cover_image.url }}" alt="{{ lookbook.title }}" loading="lazy">{% endif %}
+      <h3 class="lookbook-card-title">{{ lookbook.title }}</h3>
+      {% if lookbook.description %}<p class="lookbook-card-desc">{{ lookbook.description|truncatewords:20 }}</p>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="section-empty">No lookbooks available.</p>
+  {% endif %}
+</section>
+{% endwith %}

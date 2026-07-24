@@ -1,0 +1,10 @@
+{% load static %}
+{% with config=section.config %}
+<section class="custom-html-section">
+  {% if config.custom_html %}
+  {{ config.custom_html|safe }}
+  {% else %}
+  <p class="section-empty">No custom HTML content.</p>
+  {% endif %}
+</section>
+{% endwith %}

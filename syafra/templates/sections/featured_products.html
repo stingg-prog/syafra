@@ -1,0 +1,29 @@
+{% load static %}
+{% with data=section_data|get_by_key:section.id products=data.products %}
+<section class="product-grid-section">
+  <div class="section-header">
+    {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
+    <h2 class="section-title">{{ section.title|default:'Featured Products' }}</h2>
+    {% if section.subtitle %}<p class="section-subtitle">{{ section.subtitle }}</p>{% endif %}
+  </div>
+  {% if products %}
+  <div class="product-grid">
+    {% for product in products %}
+    <article class="product-card">
+      <a href="{% url 'products:product_detail' product.pk %}">
+        <div class="product-card-image">
+          {% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy">{% endif %}
+        </div>
+        <div class="product-card-info">
+          <h3 class="product-card-name">{{ product.name }}</h3>
+          <span class="product-card-price">{{ currency }}{{ product.price|floatformat:2 }}</span>
+        </div>
+      </a>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="section-empty">No featured products available.</p>
+  {% endif %}
+</section>
+{% endwith %}

@@ -1,0 +1,13 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: {{ brand.name }} — SYAFRA{% endblock %}
+{% block preview_content %}
+<div style="display:flex;align-items:center;gap:1.5rem;padding:1.5rem;border:1px solid #e5e7eb;border-radius:12px;">
+  {% if brand.logo %}<img src="{{ brand.logo.url }}" alt="{{ brand.name }}" style="max-width:120px;max-height:80px;">{% endif %}
+  <div>
+    <h2 style="margin:0 0 0.25rem;">{{ brand.name }}</h2>
+    {% if brand.description %}<p style="color:#6b7280;margin:0;">{{ brand.description }}</p>{% endif %}
+    {% if brand.website %}<a href="{{ brand.website }}" target="_blank" style="font-size:0.875rem;color:#3b82f6;">{{ brand.website }}</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

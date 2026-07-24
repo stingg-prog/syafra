@@ -1,0 +1,17 @@
+{% load static %}
+{% with config=section.config %}
+<section class="video-banner" style="{% if config.bg_color %}background-color:{{ config.bg_color }};{% endif %}">
+  {% if config.video_url %}
+  <video class="video-banner-video" autoplay{% if config.video_muted %} muted{% endif %}{% if config.video_loop %} loop{% endif %} playsinline>
+    <source src="{{ config.video_url }}" type="video/mp4">
+  </video>
+  {% endif %}
+  <div class="video-banner-overlay">
+    {% if section.title %}<h2 class="video-banner-title">{{ section.title }}</h2>{% endif %}
+    {% if config.description %}<p class="video-banner-desc">{{ config.description }}</p>{% endif %}
+    {% if config.button_text and config.button_url %}
+    <a href="{{ config.button_url }}" class="video-banner-btn">{{ config.button_text }}</a>
+    {% endif %}
+  </div>
+</section>
+{% endwith %}

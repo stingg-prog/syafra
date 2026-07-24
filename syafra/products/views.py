@@ -6,25 +6,54 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.cache import cache
 from django.contrib import messages
 from django.db.models import F, Q, Max, Min, Count
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.csrf import csrf_exempt
+import json
 import re
 
 from .models import (
     Product, Category, InstagramFeedItem, Testimonial,
     HomepageSection, NewsletterSubscriber, ProductCollection,
     ShopByCategoryItem, ContentPage, ContactMessage,
-    ThemeSettings, WebsiteSettings,
+    ThemeSettings, WebsiteSettings, HeroSlide,
 )
 from .forms import ContactForm
 from orders.models import PaymentSettings
 
 
-def home(request):
-    sections = list(HomepageSection.objects.filter(is_active=True).order_by('display_order'))
+CACHE_KEY_THEME = 'syafra_theme_settings'
+CACHE_TTL = 300
 
+
+def _get_theme():
+    data = cache.get(CACHE_KEY_THEME)
+    if data is None:
+        data = ThemeSettings.get_settings()
+        cache.set(CACHE_KEY_THEME, data, CACHE_TTL)
+    return data
+
+
+def _get_active_sections():
+    now = timezone.now()
+    qs = HomepageSection.objects.filter(is_active=True).order_by('display_order')
+    active = []
+    for s in qs:
+        if s.publish_at and s.publish_at > now:
+            continue
+        if s.unpublish_at and s.unpublish_at <= now:
+            continue
+        active.append(s)
+    return active
+
+
+def home(request):
+    sections = _get_active_sections()
     section_data = {}
+
     for section in sections:
         data = {'section': section}
         st = section.section_type
@@ -33,26 +62,39 @@ def home(request):
             data['slides'] = list(section.hero_slides.filter(is_active=True).order_by('display_order'))
             data['secondary_cta_label'] = section.config.get('secondary_cta_label', '')
             data['secondary_cta_url'] = section.config.get('secondary_cta_url', '')
+            data['autoplay'] = section.config.get('autoplay', True)
+            data['autoplay_speed'] = section.config.get('autoplay_speed', 5000)
+            data['transition_speed'] = section.config.get('transition_speed', 600)
+            data['transition_type'] = section.config.get('transition_type', '')
 
-        elif st in ('product_collection', 'womens_tops', 'trending_now', 'best_sellers'):
+        elif st in ('product_collection', 'womens_tops', 'trending_now', 'best_sellers',
+                    'featured_products', 'new_arrivals', 'trending_products', 'jackets',
+                    'flash_sale'):
             if section.collection:
+                limit = section.config.get('max_products', 12)
                 data['products'] = list(
                     section.collection.products.filter(stock__gt=0)
-                    .select_related('category')[:12]
+                    .select_related('category')[:limit]
                 )
             else:
                 data['products'] = []
+
+        elif st == 'hero_banner':
+            data['products'] = list(
+                section.collection.products.filter(stock__gt=0)
+                .select_related('category')[:8]
+            ) if section.collection else []
 
         elif st == 'shop_by_category':
             data['category_items'] = list(
                 section.category_items.filter(is_active=True)
                 .select_related('category')
-                .order_by('display_order')[:2]
+                .order_by('display_order')[:4]
             )
 
         elif st == 'customer_reviews':
             max_items = section.config.get('max_items', 3)
-            data['testimonials'] = list(Testimonial.objects.filter(is_active=True)[:max_items])
+            data['testimonials'] = list(Testimonial.objects.filter(is_active=True).order_by('display_order')[:max_items])
 
         elif st == 'instagram_feed':
             max_items = section.config.get('max_items', 6)
@@ -61,12 +103,64 @@ def home(request):
                 .exclude(image='').exclude(image__isnull=True)[:max_items]
             )
 
+        elif st == 'brands':
+            brand_ids = section.config.get('brand_ids', '')
+            from cms.models import Brand
+            qs = Brand.objects.filter(is_active=True).order_by('display_order')
+            if brand_ids:
+                ids = [int(x.strip()) for x in brand_ids.split(',') if x.strip().isdigit()]
+                if ids:
+                    qs = qs.filter(id__in=ids)
+            data['brands'] = list(qs)
+
+        elif st == 'collections':
+            from cms.models import Collection
+            data['collections'] = list(
+                Collection.objects.filter(is_active=True)
+                .prefetch_related('collection_products__product')
+                .order_by('display_order')[:8]
+            )
+
+        elif st == 'lookbook':
+            from cms.models import Lookbook
+            data['lookbooks'] = list(
+                Lookbook.objects.filter(is_published=True).order_by('display_order', '-created_at')[:6]
+            )
+
+        elif st == 'faq_section':
+            from cms.models import FAQItem, FAQCategory
+            cat_id = section.config.get('faq_category_id', '')
+            qs = FAQItem.objects.filter(is_active=True).order_by('display_order')
+            if cat_id:
+                qs = qs.filter(category_id=int(cat_id))
+            data['faq_items'] = list(qs)
+
+        elif st in ('recently_viewed', 'recommended_products'):
+            limit = section.config.get('max_products', 8)
+            data['products'] = list(
+                Product.objects.filter(stock__gt=0, is_featured=True)
+                .select_related('category')[:limit]
+            ) if st == 'recommended_products' else []
+
         section_data[section.id] = data
 
-    _COLLECTION_TYPES = frozenset({'product_collection', 'womens_tops', 'trending_now', 'best_sellers'})
+    _COLLECTION_TYPES = frozenset({
+        'product_collection', 'womens_tops', 'trending_now', 'best_sellers',
+        'featured_products', 'new_arrivals', 'trending_products', 'jackets',
+        'flash_sale', 'recently_viewed', 'recommended_products',
+    })
     hide_ids = {s.id for s in sections
                 if s.section_type in _COLLECTION_TYPES
                 and not section_data.get(s.id, {}).get('products')}
+    hide_ids |= {s.id for s in sections
+                 if s.section_type == 'shop_by_category'
+                 and not section_data.get(s.id, {}).get('category_items')}
+    hide_ids |= {s.id for s in sections
+                 if s.section_type == 'customer_reviews'
+                 and not section_data.get(s.id, {}).get('testimonials')}
+    hide_ids |= {s.id for s in sections
+                 if s.section_type == 'instagram_feed'
+                 and not section_data.get(s.id, {}).get('posts')}
     sections = [s for s in sections if s.id not in hide_ids]
 
     payment_settings = PaymentSettings.get_settings()
@@ -78,6 +172,252 @@ def home(request):
         'currency': currency,
     }
     return render(request, 'home.html', context)
+
+
+@staff_member_required
+@never_cache
+def admin_preview(request, model_name, object_id):
+    from django.template.response import TemplateResponse
+
+    if model_name == 'homepagesection':
+        return section_preview(request, object_id)
+
+    elif model_name == 'blogpost':
+        from cms.models import BlogPost
+        obj = get_object_or_404(BlogPost, pk=object_id)
+        return render(request, 'admin_preview/blog_post.html', {'post': obj})
+
+    elif model_name == 'faqcategory':
+        from cms.models import FAQCategory
+        obj = get_object_or_404(FAQCategory, pk=object_id)
+        items = obj.items.filter(is_active=True).order_by('display_order')
+        return render(request, 'admin_preview/faq.html', {'category': obj, 'items': items})
+
+    elif model_name == 'faqitem':
+        from cms.models import FAQItem
+        obj = get_object_or_404(FAQItem, pk=object_id)
+        return render(request, 'admin_preview/faq.html', {'single_item': obj, 'items': [obj]})
+
+    elif model_name == 'lookbook':
+        from cms.models import Lookbook
+        obj = get_object_or_404(Lookbook, pk=object_id)
+        return render(request, 'admin_preview/lookbook.html', {'lookbook': obj})
+
+    elif model_name == 'promobanner':
+        from cms.models import PromoBanner
+        obj = get_object_or_404(PromoBanner, pk=object_id)
+        return render(request, 'admin_preview/promo_banner.html', {'banner': obj})
+
+    elif model_name == 'announcementbarconfig':
+        from cms.models import AnnouncementBarConfig
+        obj = AnnouncementBarConfig.get_settings()
+        return render(request, 'admin_preview/announcement_bar.html', {'announcement': obj})
+
+    elif model_name == 'seosettings':
+        from cms.models import SEOSettings
+        obj = get_object_or_404(SEOSettings, pk=object_id)
+        page_type = obj.get_page_type_display()
+        return render(request, 'admin_preview/seo.html', {'seo': obj, 'page_type': page_type})
+
+    elif model_name == 'legalpage':
+        from cms.models import LegalPage
+        obj = get_object_or_404(LegalPage, pk=object_id)
+        return render(request, 'admin_preview/legal_page.html', {'page': obj})
+
+    elif model_name == 'collection':
+        from cms.models import Collection
+        obj = get_object_or_404(Collection, pk=object_id)
+        products = obj.collection_products.select_related('product').order_by('display_order')[:12]
+        return render(request, 'admin_preview/collection.html', {'collection': obj, 'collection_products': products})
+
+    elif model_name == 'brand':
+        from cms.models import Brand
+        obj = get_object_or_404(Brand, pk=object_id)
+        return render(request, 'admin_preview/brand.html', {'brand': obj})
+
+    elif model_name == 'productlabel':
+        from cms.models import ProductLabel
+        obj = get_object_or_404(ProductLabel, pk=object_id)
+        return render(request, 'admin_preview/product_label.html', {'label': obj})
+
+    elif model_name == 'productbadge':
+        from cms.models import ProductBadge
+        obj = get_object_or_404(ProductBadge, pk=object_id)
+        return render(request, 'admin_preview/product_badge.html', {'badge': obj})
+
+    elif model_name == 'sizechart':
+        from cms.models import SizeChart
+        obj = get_object_or_404(SizeChart, pk=object_id)
+        return render(request, 'admin_preview/size_chart.html', {'size_chart': obj})
+
+    elif model_name == 'careinstruction':
+        from cms.models import CareInstruction
+        obj = get_object_or_404(CareInstruction, pk=object_id)
+        return render(request, 'admin_preview/care_instruction.html', {'care': obj})
+
+    elif model_name == 'themesettings':
+        from products.models import ThemeSettings
+        return render(request, 'home.html')
+
+    elif model_name == 'promotionalpopup':
+        from cms.models import PromotionalPopup
+        obj = get_object_or_404(PromotionalPopup, pk=object_id)
+        return render(request, 'admin_preview/popup.html', {'popup': obj})
+
+    elif model_name == 'contentpage':
+        from products.models import ContentPage
+        obj = get_object_or_404(ContentPage, pk=object_id)
+        return render(request, 'admin_preview/legal_page.html', {'page': obj})
+
+    raise Http404('Unknown model for preview')
+
+
+@staff_member_required
+@never_cache
+def section_preview(request, section_id):
+    section = get_object_or_404(HomepageSection, pk=section_id)
+    payment_settings = PaymentSettings.get_settings()
+    currency = payment_settings.currency_symbol if payment_settings else '₹'
+    section_data = {}
+    data = {'section': section}
+    st = section.section_type
+
+    if st == 'hero_slider':
+        data['slides'] = list(section.hero_slides.filter(is_active=True).order_by('display_order'))
+        data['secondary_cta_label'] = section.config.get('secondary_cta_label', '')
+        data['secondary_cta_url'] = section.config.get('secondary_cta_url', '')
+        data['autoplay'] = False
+    elif st in ('product_collection', 'womens_tops', 'trending_now', 'best_sellers',
+                'featured_products', 'new_arrivals', 'trending_products', 'jackets', 'flash_sale'):
+        if section.collection:
+            data['products'] = list(section.collection.products.filter(stock__gt=0).select_related('category')[:12])
+        else:
+            data['products'] = []
+    elif st == 'shop_by_category':
+        data['category_items'] = list(
+            section.category_items.filter(is_active=True).select_related('category').order_by('display_order')[:4]
+        )
+    elif st == 'customer_reviews':
+        max_items = section.config.get('max_items', 3)
+        data['testimonials'] = list(Testimonial.objects.filter(is_active=True)[:max_items])
+    elif st == 'instagram_feed':
+        max_items = section.config.get('max_items', 6)
+        data['posts'] = list(InstagramFeedItem.objects.filter(is_active=True).exclude(image='').exclude(image__isnull=True)[:max_items])
+    elif st == 'brands':
+        from cms.models import Brand
+        data['brands'] = list(Brand.objects.filter(is_active=True).order_by('display_order'))
+    elif st == 'collections':
+        from cms.models import Collection
+        data['collections'] = list(Collection.objects.filter(is_active=True).order_by('display_order')[:8])
+    elif st == 'lookbook':
+        from cms.models import Lookbook
+        data['lookbooks'] = list(Lookbook.objects.filter(is_published=True).order_by('display_order', '-created_at')[:6])
+    elif st == 'faq_section':
+        from cms.models import FAQItem
+        data['faq_items'] = list(FAQItem.objects.filter(is_active=True).order_by('display_order'))
+    elif st in ('recently_viewed', 'recommended_products'):
+        limit = section.config.get('max_products', 8)
+        data['products'] = list(Product.objects.filter(stock__gt=0, is_featured=True).select_related('category')[:limit])
+
+    section_data[section.id] = data
+
+    context = {
+        'sections': [section],
+        'section_data': section_data,
+        'currency': currency,
+        'is_preview': True,
+    }
+    return render(request, 'home.html', context)
+
+
+@staff_member_required
+def theme_export(request):
+    theme = ThemeSettings.get_settings()
+    data = theme.export_to_dict()
+    response = HttpResponse(
+        json.dumps(data, indent=2),
+        content_type='application/json',
+    )
+    response['Content-Disposition'] = 'attachment; filename="syafra-theme.json"'
+    return response
+
+
+@csrf_exempt
+@staff_member_required
+def theme_import(request):
+    if request.method == 'POST':
+        try:
+            if request.FILES.get('file'):
+                data = json.loads(request.FILES['file'].read())
+            else:
+                data = json.loads(request.body)
+            theme = ThemeSettings.get_settings()
+            theme.import_from_dict(data)
+            cache.delete(CACHE_KEY_THEME)
+            messages.success(request, 'Theme settings imported successfully.')
+        except Exception as e:
+            messages.error(request, f'Import failed: {e}')
+        return redirect('admin:products_themesettings_change', args=[1])
+    return HttpResponse('Method not allowed', status=405)
+
+
+@staff_member_required
+def theme_reset(request):
+    if request.method == 'POST':
+        theme = ThemeSettings.get_settings()
+        theme.delete()
+        theme = ThemeSettings.get_settings()
+        cache.delete(CACHE_KEY_THEME)
+        messages.success(request, 'Theme settings reset to defaults.')
+        return redirect('admin:products_themesettings_change', args=[1])
+    return HttpResponse('Method not allowed', status=405)
+
+
+@staff_member_required
+def backup_list(request):
+    from cms.models import ThemeBackup
+    backups = ThemeBackup.objects.all().order_by('-created_at')
+    return render(request, 'admin/theme_backups.html', {'backups': backups})
+
+
+@staff_member_required
+def backup_create(request):
+    if request.method == 'POST':
+        from cms.models import ThemeBackup
+        theme = ThemeSettings.get_settings()
+        name = request.POST.get('name', f'Backup {timezone.now().strftime("%Y-%m-%d %H:%M")}')
+        ThemeBackup.objects.create(
+            name=name,
+            data=theme.export_to_dict(),
+            created_by=request.user,
+        )
+        messages.success(request, f'Backup "{name}" created.')
+        return redirect('admin:products_themesettings_change', args=[1])
+    return HttpResponse('Method not allowed', status=405)
+
+
+@staff_member_required
+def backup_restore(request, backup_id):
+    if request.method == 'POST':
+        from cms.models import ThemeBackup
+        backup = get_object_or_404(ThemeBackup, pk=backup_id)
+        theme = ThemeSettings.get_settings()
+        theme.import_from_dict(backup.data)
+        cache.delete(CACHE_KEY_THEME)
+        messages.success(request, f'Backup "{backup.name}" restored.')
+        return redirect('admin:products_themesettings_change', args=[1])
+    return HttpResponse('Method not allowed', status=405)
+
+
+@staff_member_required
+def backup_delete(request, backup_id):
+    if request.method == 'POST':
+        from cms.models import ThemeBackup
+        backup = get_object_or_404(ThemeBackup, pk=backup_id)
+        backup.delete()
+        messages.success(request, f'Backup "{backup.name}" deleted.')
+        return redirect('admin:products_themesettings_change', args=[1])
+    return HttpResponse('Method not allowed', status=405)
 
 
 @require_POST
@@ -98,119 +438,124 @@ def newsletter_subscribe(request):
 
     if created:
         msg = 'Thank you for subscribing to SYAFRA.'
-    elif not subscriber.is_active:
-        subscriber.is_active = True
-        subscriber.unsubscribed_at = None
-        subscriber.save(update_fields=['is_active', 'unsubscribed_at'])
-        msg = 'Thank you for subscribing to SYAFRA.'
     else:
-        msg = "You're already subscribed."
+        if subscriber.is_active:
+            msg = 'You are already subscribed!'
+        else:
+            subscriber.is_active = True
+            subscriber.unsubscribed_at = None
+            subscriber.save()
+            msg = 'Welcome back! You have been resubscribed.'
 
     if is_ajax:
         return JsonResponse({'success': True, 'message': msg})
-
     messages.success(request, msg)
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
-SIZE_ORDER = {'XS': 0, 'S': 1, 'M': 2, 'L': 3, 'XL': 4, 'XXL': 5}
-
-
 def shop(request):
-    products = Product.objects.select_related('category').prefetch_related('sizes').all()
-
-    search_query = request.GET.get('search', '').strip()
-    category_slug = request.GET.get('category', '')
-    size_filter = request.GET.get('size', '')
-    stock_filter = request.GET.get('stock', '')
-    in_stock = request.GET.get('in_stock', '')
-    out_of_stock = request.GET.get('out_of_stock', '')
-    brand_filter = ','.join(request.GET.getlist('brand'))
-    min_price = request.GET.get('min_price', '')
-    max_price = request.GET.get('max_price', '')
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
     sort_by = request.GET.get('sort', 'newest')
+    category_slug = request.GET.get('category')
+    search_query = request.GET.get('q', '').strip()
+
+    theme = _get_theme()
+    per_page = theme.products_per_page if theme else 12
+
+    products = Product.objects.all()
+    products = products.filter(stock__gt=0)
+
+    if category_slug:
+        try:
+            category = Category.objects.get(slug=category_slug)
+            products = products.filter(category=category)
+        except Category.DoesNotExist:
+            pass
 
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) |
+            Q(description__icontains=search_query) |
             Q(brand__icontains=search_query) |
-            Q(description__icontains=search_query)
+            Q(category__name__icontains=search_query)
         )
-
-    if category_slug:
-        products = products.filter(category__slug=category_slug)
-
-    if size_filter:
-        products = products.filter(sizes__size__iexact=size_filter, sizes__stock__gt=0)
-
-    if stock_filter == 'in_stock':
-        in_stock = '1'
-    elif stock_filter == 'sold_out':
-        out_of_stock = '1'
-
-    in_stock_active = in_stock == '1'
-    out_of_stock_active = out_of_stock == '1'
-    if in_stock_active and not out_of_stock_active:
-        products = products.filter(stock__gt=0)
-    elif out_of_stock_active and not in_stock_active:
-        products = products.filter(stock=0)
-
-    if brand_filter:
-        brand_list = [b.strip() for b in brand_filter.split(',') if b.strip()]
-        if brand_list:
-            products = products.filter(brand__in=brand_list)
 
     if min_price:
-        try:
-            products = products.filter(price__gte=Decimal(min_price.strip()))
-        except Exception:
-            pass
-
+        products = products.filter(price__gte=min_price)
     if max_price:
-        try:
-            products = products.filter(price__lte=Decimal(max_price.strip()))
-        except Exception:
-            pass
+        products = products.filter(price__lte=max_price)
 
-    sort_map = {
-        'newest': ['-created_at'],
-        'oldest': ['created_at'],
-        'price-asc': ['price'],
-        'price-desc': ['-price'],
-        'best_selling': ['-is_featured', '-created_at'],
-        'popularity': ['-is_featured', '-created_at'],
-    }
-    order_fields = sort_map.get(sort_by, ['-created_at'])
-    products = products.order_by(*order_fields)
+    if sort_by == 'price_low':
+        products = products.order_by('price', 'name')
+    elif sort_by == 'price_high':
+        products = products.order_by('-price', 'name')
+    elif sort_by == 'name_az':
+        products = products.order_by('name')
+    elif sort_by == 'name_za':
+        products = products.order_by('-name')
+    elif sort_by == 'oldest':
+        products = products.order_by('created_at')
+    else:
+        products = products.order_by('-created_at')
 
-    available_brands = list(
-        Product.objects.values_list('brand', flat=True)
-        .distinct().order_by('brand')
-    )
+    paginator = Paginator(products, per_page)
+    page = request.GET.get('page', 1)
 
-    categories = cache.get('all_categories')
-    if categories is None:
-        categories = list(Category.objects.all().order_by('name'))
-        cache.set('all_categories', categories, 3600)
+    try:
+        product_page = paginator.page(page)
+    except PageNotAnInteger:
+        product_page = paginator.page(1)
+    except EmptyPage:
+        product_page = paginator.page(paginator.num_pages)
 
-    raw_sizes = cache.get('available_sizes')
-    if raw_sizes is None:
-        from products.models import ProductSize
-        raw_sizes = list(
-            ProductSize.objects.filter(stock__gt=0)
-            .values_list('size', flat=True)
-            .order_by().distinct()
-        )
-        cache.set('available_sizes', raw_sizes, 3600)
-    available_sizes = sorted(raw_sizes, key=lambda s: SIZE_ORDER.get(s, 99))
-
-    price_extents = products.aggregate(
+    categories = Category.objects.annotate(product_count=Count('products')).order_by('name')
+    price_range = Product.objects.filter(stock__gt=0).aggregate(
         min_price=Min('price'), max_price=Max('price')
     )
-    price_min = price_extents['min_price'] or 0
-    price_max = price_extents['max_price'] or 0
 
-    paginator = Paginator(products, 12)
+    context = {
+        'products': product_page,
+        'categories': categories,
+        'price_range': price_range,
+        'current_sort': sort_by,
+        'search_query': search_query,
+        'selected_category': category_slug,
+        'min_price': min_price,
+        'max_price': max_price,
+    }
+    return render(request, 'shop.html', context)
+
+
+def product_detail(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    product.views = F('views') + 1
+    product.save(update_fields=['views'])
+    product.refresh_from_db()
+
+    related = Product.objects.filter(
+        category=product.category, stock__gt=0
+    ).exclude(pk=product.pk)[:4]
+
+    payment_settings = PaymentSettings.get_settings()
+    currency = payment_settings.currency_symbol if payment_settings else '₹'
+
+    context = {
+        'product': product,
+        'related_products': related,
+        'currency': currency,
+    }
+    return render(request, 'product_detail.html', context)
+
+
+def category_detail(request, slug):
+    category = get_object_or_404(Category, slug=slug)
+    products_list = Product.objects.filter(category=category, stock__gt=0).order_by('-created_at')
+
+    theme = _get_theme()
+    per_page = theme.products_per_page if theme else 12
+
+    paginator = Paginator(products_list, per_page)
     page = request.GET.get('page', 1)
 
     try:
@@ -220,256 +565,41 @@ def shop(request):
     except EmptyPage:
         products = paginator.page(paginator.num_pages)
 
-    active_filter_count = sum([
-        1 if search_query else 0,
-        1 if category_slug else 0,
-        1 if size_filter else 0,
-        1 if brand_filter else 0,
-        1 if min_price else 0,
-        1 if max_price else 0,
-        1 if in_stock_active else 0,
-        1 if out_of_stock_active else 0,
-    ])
-
-    payment_settings = PaymentSettings.get_settings()
-    currency = payment_settings.currency_symbol if payment_settings else '₹'
-
-    selected_brand_list = [b.strip() for b in brand_filter.split(',') if b.strip()]
-
-    import urllib.parse
-    current_params = request.GET.copy()
-
-    def build_remove_url(remove_map):
-        p = current_params.copy()
-        for k, v in remove_map.items():
-            if v is None:
-                p.pop(k, None)
-            else:
-                p[k] = v
-        return '?' + p.urlencode()
-
-    active_filters = []
-    if search_query:
-        active_filters.append({
-            'label': f'"{search_query}"',
-            'url': build_remove_url({'search': None})
-        })
-    if category_slug:
-        cat_name = ''
-        for c in categories:
-            if c.slug == category_slug:
-                cat_name = c.name
-                break
-        active_filters.append({
-            'label': cat_name,
-            'url': build_remove_url({'category': None})
-        })
-    if size_filter:
-        active_filters.append({
-            'label': f'Size {size_filter}',
-            'url': build_remove_url({'size': None})
-        })
-    if brand_filter:
-        for b in selected_brand_list:
-            remaining = [x for x in selected_brand_list if x != b]
-            active_filters.append({
-                'label': b,
-                'url': build_remove_url({'brand': ','.join(remaining) if remaining else None})
-            })
-    if min_price or max_price:
-        parts = []
-        if min_price:
-            parts.append(f'{currency}{min_price}')
-        if max_price:
-            parts.append(f'{currency}{max_price}')
-        active_filters.append({
-            'label': '–'.join(parts),
-            'url': build_remove_url({'min_price': None, 'max_price': None})
-        })
-    if in_stock_active:
-        active_filters.append({
-            'label': 'In Stock',
-            'url': build_remove_url({'in_stock': None})
-        })
-    if out_of_stock_active:
-        active_filters.append({
-            'label': 'Out of Stock',
-            'url': build_remove_url({'out_of_stock': None})
-        })
-
-    suggested_products = []
-    total_count = paginator.count
-    if total_count == 0:
-        suggested_qs = Product.objects.select_related('category').prefetch_related('sizes')
-        if category_slug:
-            suggested_qs = suggested_qs.filter(category__slug=category_slug)
-        suggested_products = list(suggested_qs.order_by('-is_featured', '-created_at')[:4])
-
-    page_start = (products.number - 1) * paginator.per_page + 1 if total_count > 0 else 0
-    page_end = min(page_start + paginator.per_page - 1, total_count) if total_count > 0 else 0
-
-    return render(request, 'shop.html', {
+    context = {
+        'category': category,
         'products': products,
-        'categories': categories,
-        'available_sizes': available_sizes,
-        'available_brands': available_brands,
-        'search_query': search_query,
-        'selected_category': category_slug,
-        'selected_size': size_filter,
-        'in_stock': in_stock,
-        'out_of_stock': out_of_stock,
-        'selected_brand': brand_filter,
-        'selected_brand_list': selected_brand_list,
-        'min_price': min_price,
-        'max_price': max_price,
-        'sort_by': sort_by,
-        'price_min': price_min,
-        'price_max': price_max,
-        'active_filter_count': active_filter_count,
-        'active_filters': active_filters,
-        'suggested_products': suggested_products,
-        'page_start': page_start,
-        'page_end': page_end,
-        'total_count': total_count,
-        'currency': currency,
-    })
-
-
-def product_detail(request, pk):
-    product = get_object_or_404(
-        Product.objects.select_related('category').prefetch_related('sizes', 'images'),
-        pk=pk
-    )
-    Product.objects.filter(pk=pk).update(views=F('views') + 1)
-    product.refresh_from_db()
-    gallery_images = list(product.images.all())
-    related_products = Product.objects.filter(category=product.category).exclude(pk=pk)[:6]
-    primary_image_url = (
-        product.image.url if product.image else (
-            gallery_images[0].image.url if gallery_images else ""
-        )
-    )
-
-    payment_settings = PaymentSettings.get_settings()
-    currency = payment_settings.currency_symbol if payment_settings else '₹'
-
-    og_image_url = primary_image_url
-    og_description = product.description[:200] if product.description else f'Shop {product.name} at SYAFRA. Premium vintage streetwear.'
-
-    request_scheme = 'https' if request.is_secure() else 'http'
-    product_url = f'{request_scheme}://{request.get_host()}{product.get_absolute_url()}'
-
-    share_text = (
-        f'\u2728 {product.name}\n'
-        f'\U0001f4b0 {currency}{product.price}\n'
-        f'\U0001f6cd\ufe0f Shop Now:\n'
-        f'{product_url}'
-    )
-
-    wa_text = f'Hi, I am interested in {product.name} ({product.brand}). Is it available?'
-    return render(request, 'product_detail.html', {
-        'product': product,
-        'gallery_images': gallery_images,
-        'primary_image_url': primary_image_url,
-        'related_products': related_products,
-        'currency': currency,
-        'whatsapp_product_message': wa_text,
-        'og_image_url': og_image_url,
-        'og_description': og_description,
-        'product_url': product_url,
-        'share_text': share_text,
-    })
-
-
-def category_detail(request, slug):
-    get_object_or_404(Category, slug=slug)
-    params = request.GET.copy()
-    params['category'] = slug
-    params.pop('page', None)
-    return redirect(f"{reverse('products:shop')}?{params.urlencode()}")
+    }
+    return render(request, 'shop.html', context)
 
 
 def content_page(request, slug):
     page = get_object_or_404(ContentPage, slug=slug, is_active=True)
-    meta_title = page.meta_title or f"{page.title} | {ThemeSettings.get_settings().store_name}"
-    meta_description = page.meta_description or page.summary or WebsiteSettings.get_settings().seo_description or ''
-    return render(request, 'pages/content_page.html', {
+    context = {
         'page': page,
-        'meta_title': meta_title,
-        'meta_description': meta_description,
-    })
+    }
+    return render(request, 'pages/content_page.html', context)
 
 
 def contact(request):
-    page = ContentPage.objects.filter(slug='contact-us', is_active=True).first()
-    website = WebsiteSettings.get_settings()
-    contact_details = {
-        'email': website.contact_email,
-        'phone': website.contact_phone,
-        'address': website.business_address,
-        'hours': website.business_hours,
-        'whatsapp': website.whatsapp_number,
-    }
-    form = ContactForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        message = ContactMessage.objects.create(
-            name=form.cleaned_data['name'],
-            email=form.cleaned_data['email'],
-            phone=form.cleaned_data.get('phone', ''),
-            subject=form.cleaned_data['subject'],
-            message=form.cleaned_data['message'],
-        )
-        _send_contact_notification(message)
-        from django.contrib import messages
-        messages.success(request, 'Thank you! Your message has been received.')
-        return redirect('products:contact')
-    meta_title = 'Contact Us'
-    if page:
-        meta_title = page.meta_title or f"{page.title} | {ThemeSettings.get_settings().store_name}"
-    return render(request, 'pages/contact.html', {
-        'page': page,
-        'form': form,
-        'contact_details': {k: v for k, v in contact_details.items() if v},
-        'meta_title': meta_title,
-        'meta_description': page.meta_description if page else '',
-    })
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            ContactMessage.objects.create(
+                name=form.cleaned_data['name'],
+                email=form.cleaned_data['email'],
+                phone=form.cleaned_data.get('phone', ''),
+                subject=form.cleaned_data['subject'],
+                message=form.cleaned_data['message'],
+            )
+            messages.success(request, 'Thank you for your message! We will get back to you soon.')
+            return redirect('products:contact')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ContactForm()
+
+    return render(request, 'pages/contact.html', {'form': form})
 
 
 def track_order(request):
-    result = None
-    from orders.models import Order, PaymentSettings
-    payment_settings = PaymentSettings.get_settings()
-    currency = payment_settings.currency_symbol if payment_settings else '₹'
-    if request.method == 'POST':
-        order_number = request.POST.get('order_number', '').strip()
-        email = request.POST.get('email', '').strip()
-        try:
-            order = Order.objects.prefetch_related('items__product').get(pk=order_number, email=email)
-            result = order
-        except (Order.DoesNotExist, ValueError):
-            result = None
-    return render(request, 'pages/track_order.html', {
-        'result': result,
-        'currency': currency,
-        'meta_title': 'Track Order',
-        'meta_description': '',
-    })
-
-
-def _send_contact_notification(message):
-    import logging
-    logger = logging.getLogger(__name__)
-    try:
-        from django.core.mail import send_mail
-        from django.conf import settings
-        website = WebsiteSettings.get_settings()
-        if website.contact_email:
-            send_mail(
-                subject=f"Contact Form: {message.subject}",
-                message=f"From: {message.name} ({message.email})\nPhone: {message.phone or 'Not provided'}\n\n{message.message}",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[website.contact_email],
-                fail_silently=False,
-            )
-    except Exception as e:
-        logger.error(f"Failed to send contact notification for message {message.pk}: {e}")
+    return render(request, 'pages/track_order.html')

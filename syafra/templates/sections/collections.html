@@ -1,0 +1,23 @@
+{% load static %}
+{% with data=section_data|get_by_key:section.id collections=data.collections %}
+<section class="collections-grid-section">
+  <div class="section-header">
+    {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
+    <h2 class="section-title">{{ section.title|default:'Collections' }}</h2>
+    {% if section.subtitle %}<p class="section-subtitle">{{ section.subtitle }}</p>{% endif %}
+  </div>
+  {% if collections %}
+  <div class="collections-grid">
+    {% for collection in collections %}
+    <a href="{% url 'products:shop' %}?collection={{ collection.slug }}" class="collection-card">
+      {% if collection.image %}<img src="{{ collection.image.url }}" alt="{{ collection.name }}" loading="lazy">{% endif %}
+      <h3 class="collection-card-name">{{ collection.name }}</h3>
+      {% if collection.description %}<p class="collection-card-desc">{{ collection.description }}</p>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="section-empty">No collections available.</p>
+  {% endif %}
+</section>
+{% endwith %}

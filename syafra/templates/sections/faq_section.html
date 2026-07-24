@@ -1,0 +1,22 @@
+{% load static %}
+{% with data=section_data|get_by_key:section.id faq_items=data.faq_items %}
+<section class="faq-section">
+  <div class="section-header">
+    {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
+    <h2 class="section-title">{{ section.title|default:'FAQ' }}</h2>
+    {% if section.subtitle %}<p class="section-subtitle">{{ section.subtitle }}</p>{% endif %}
+  </div>
+  {% if faq_items %}
+  <div class="faq-list">
+    {% for item in faq_items %}
+    <details class="faq-item">
+      <summary class="faq-question">{{ item.question }}</summary>
+      <div class="faq-answer">{{ item.answer|linebreaks }}</div>
+    </details>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="section-empty">No FAQ items available.</p>
+  {% endif %}
+</section>
+{% endwith %}

@@ -1,0 +1,32 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview — {{ title|default:"SYAFRA" }}</title>
+  <link rel="stylesheet" href="{% static 'css/output.css' %}">
+  <link rel="stylesheet" href="{% static 'css/core/fonts.css' %}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/core/variables.css' %}">
+  <link rel="stylesheet" href="{% static 'css/core/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/core/typography.css' %}">
+  <style>
+    body { padding: 2rem; max-width: 1200px; margin: 0 auto; background: #f9fafb; }
+    .preview-banner { background: #1e40af; color: #fff; padding: 0.75rem 1.5rem; border-radius: 8px; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; }
+    .preview-banner a { color: #93c5fd; text-decoration: underline; }
+    .preview-content { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 2rem; }
+    .preview-footer { text-align: center; margin-top: 2rem; font-size: 0.75rem; color: #9ca3af; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="preview-banner">
+    <span>Preview Mode</span>
+    <a href="{% url 'admin:index' %}">Back to Admin</a>
+  </div>
+  <div class="preview-content">
+    {% block preview_content %}{% endblock %}
+  </div>
+  <div class="preview-footer">SYAFRA — Admin Preview</div>
+</body>
+</html>

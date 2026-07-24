@@ -1,0 +1,8 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: {{ page.title }} — SYAFRA{% endblock %}
+{% block preview_content %}
+<h2 style="margin-bottom:0.5rem;">{{ page.title }}</h2>
+<p style="color:#6b7280;font-size:0.875rem;margin-bottom:1.5rem;">Last updated: {{ page.updated_at|date:"F j, Y" }}</p>
+<div style="line-height:1.8;">{{ page.content|linebreaks }}</div>
+{% endblock %}

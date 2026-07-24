@@ -1,0 +1,14 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: {{ banner.title }} — SYAFRA Promo Banner{% endblock %}
+{% block preview_content %}
+<div style="background:{% if banner.bg_color %}{{ banner.bg_color }}{% else %}#000{% endif %};border-radius:12px;overflow:hidden;color:#fff;padding:3rem 2rem;text-align:center;">
+  <h2 style="font-size:2rem;margin:0 0 0.5rem;">{{ banner.title }}</h2>
+  {% if banner.subtitle %}<p style="font-size:.9rem;opacity:.8;margin:0 0 0.25rem;">{{ banner.subtitle }}</p>{% endif %}
+  {% if banner.description %}<p style="margin:0 0 1.5rem;max-width:600px;margin-left:auto;margin-right:auto;">{{ banner.description }}</p>{% endif %}
+  {% if banner.button_text and banner.button_url %}
+  <a href="{{ banner.button_url }}" style="display:inline-block;padding:0.75rem 2rem;background:#fff;color:#000;border-radius:6px;text-decoration:none;font-weight:600;">{{ banner.button_text }}</a>
+  {% endif %}
+  {% if banner.desktop_image %}<div style="margin-top:1.5rem;"><img src="{{ banner.desktop_image.url }}" alt="{{ banner.title }}" style="max-width:100%;border-radius:8px;"></div>{% endif %}
+</div>
+{% endblock %}

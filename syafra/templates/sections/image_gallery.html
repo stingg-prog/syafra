@@ -1,0 +1,23 @@
+{% load static %}
+{% with config=section.config %}
+{% with images=config.gallery_images %}
+<section class="image-gallery-section">
+  <div class="section-header">
+    {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
+    <h2 class="section-title">{{ section.title|default:'Gallery' }}</h2>
+    {% if section.subtitle %}<p class="section-subtitle">{{ section.subtitle }}</p>{% endif %}
+  </div>
+  {% if images %}
+  <div class="image-gallery-grid">
+    {% for url in images|cut:" "|split:"," %}
+    <div class="gallery-item">
+      <img src="{{ url }}" alt="Gallery image {{ forloop.counter }}" loading="lazy">
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="section-empty">No gallery images configured.</p>
+  {% endif %}
+</section>
+{% endwith %}
+{% endwith %}

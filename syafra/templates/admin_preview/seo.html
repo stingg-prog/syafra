@@ -1,0 +1,19 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: SEO — {{ seo.get_page_type_display }}{% endblock %}
+{% block preview_content %}
+<h2>SEO Preview: {{ seo.get_page_type_display }}</h2>
+<div style="background:#fff;border:2px solid #e5e7eb;border-radius:12px;padding:1.5rem;margin:1.5rem 0;max-width:650px;">
+  <p style="font-size:0.75rem;color:#006621;margin:0 0 4px;">{{ request.get_host }}{{ seo.canonical_url|default:"/page" }}</p>
+  <h3 style="font-size:1.25rem;color:#1a0dab;font-weight:400;margin:0 0 4px;cursor:pointer;">{{ seo.meta_title|default:"Page Title" }}</h3>
+  <p style="font-size:0.875rem;color:#545454;margin:0;line-height:1.4;">{{ seo.meta_description|default:"Page description for search results." }}</p>
+</div>
+<table style="width:100%;border-collapse:collapse;margin-top:1.5rem;">
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">Page Type</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;">{{ seo.get_page_type_display }}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">Meta Title</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;">{{ seo.meta_title|default:"—" }}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">Meta Description</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;">{{ seo.meta_description|default:"—" }}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">Keywords</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;">{{ seo.meta_keywords|default:"—" }}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">Robots</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;">{{ seo.robots|default:"index, follow" }}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">Canonical URL</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;">{{ seo.canonical_url|default:"—" }}</td></tr>
+</table>
+{% endblock %}

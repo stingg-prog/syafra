@@ -1,0 +1,26 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: {{ badge.name }} — Product Badge{% endblock %}
+{% block preview_content %}
+<h3 style="margin-bottom:1rem;">Product Badge Preview</h3>
+<div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+  <span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;padding:4px 12px;border-radius:4px;font-size:0.875rem;">
+    {% if badge.icon %}<i class="{{ badge.icon }}" style="font-size:1rem;"></i>{% endif %}
+    {{ badge.name }}
+  </span>
+  <span style="display:inline-flex;align-items:center;gap:4px;background:#000;color:#fff;padding:4px 12px;border-radius:4px;font-size:0.8rem;">
+    {% if badge.icon %}<i class="{{ badge.icon }}" style="font-size:0.9rem;"></i>{% endif %}
+    {{ badge.name }}
+  </span>
+</div>
+<div style="margin-top:2rem;padding:1.5rem;border:1px solid #e5e7eb;border-radius:8px;max-width:300px;">
+  <div style="position:relative;background:#f3f4f6;height:200px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:0.8rem;">
+    Product Image
+    <span style="position:absolute;top:8px;right:8px;display:inline-flex;align-items:center;gap:4px;background:#000;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.7rem;">
+      {% if badge.icon %}<i class="{{ badge.icon }}"></i>{% endif %}
+      {{ badge.name }}
+    </span>
+  </div>
+  <p style="margin:0.5rem 0 0;font-weight:600;">Product Name</p>
+</div>
+{% endblock %}

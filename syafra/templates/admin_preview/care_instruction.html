@@ -1,0 +1,13 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: {{ care.name }} — Care Instruction{% endblock %}
+{% block preview_content %}
+<h3 style="margin-bottom:1rem;">Care Instruction Preview</h3>
+<div style="display:flex;align-items:center;gap:1rem;padding:1.5rem;border:1px solid #e5e7eb;border-radius:12px;max-width:500px;">
+  {% if care.icon %}<i class="{{ care.icon }}" style="font-size:2rem;color:#6b7280;width:48px;text-align:center;"></i>{% endif %}
+  <div>
+    <h4 style="margin:0 0 0.25rem;">{{ care.name }}</h4>
+    {% if care.description %}<p style="margin:0;color:#6b7280;font-size:0.875rem;">{{ care.description }}</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: {{ size_chart.name }} — Size Chart{% endblock %}
+{% block preview_content %}
+<h3 style="margin-bottom:0.5rem;">{{ size_chart.name }}</h3>
+{% if size_chart.description %}<p style="color:#6b7280;margin-bottom:1rem;">{{ size_chart.description }}</p>{% endif %}
+{% if size_chart.category %}<p style="font-size:0.875rem;color:#6b7280;">Category: {{ size_chart.category.name }}</p>{% endif %}
+{% if size_chart.image %}<img src="{{ size_chart.image.url }}" alt="{{ size_chart.name }}" style="max-width:400px;border-radius:8px;margin:1rem 0;">{% endif %}
+{% with entries=size_chart.entries.all %}
+{% if entries %}
+<table style="width:100%;border-collapse:collapse;margin-top:1rem;">
+  <thead><tr style="background:#f9fafb;">
+    <th style="padding:10px;border:1px solid #e5e7eb;text-align:left;">Size</th>
+    <th style="padding:10px;border:1px solid #e5e7eb;text-align:left;">Measurements</th>
+  </tr></thead>
+  <tbody>
+  {% for entry in entries %}
+  <tr>
+    <td style="padding:10px;border:1px solid #e5e7eb;font-weight:600;">{{ entry.label }}</td>
+    <td style="padding:10px;border:1px solid #e5e7eb;">
+      {% if entry.measurements %}
+      <ul style="margin:0;padding-left:1rem;">
+      {% for key, val in entry.measurements.items %}
+        <li><strong>{{ key }}:</strong> {{ val }}</li>
+      {% endfor %}
+      </ul>
+      {% else %}<span style="color:#9ca3af;">No measurements</span>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p style="color:#9ca3af;">No size entries.</p>
+{% endif %}
+{% endwith %}
+{% endblock %}

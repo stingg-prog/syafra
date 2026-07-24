@@ -1,0 +1,15 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: Announcement Bar — SYAFRA{% endblock %}
+{% block preview_content %}
+<div style="background:{% if announcement.bg_color %}{{ announcement.bg_color }}{% else %}#000{% endif %};color:{% if announcement.text_color %}{{ announcement.text_color }}{% else %}#fff{% endif %};padding:1rem 2rem;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+  {% if announcement.link_url %}<a href="{{ announcement.link_url }}" style="color:inherit;text-decoration:none;flex:1;">{% endif %}
+  <span style="font-weight:500;">{{ announcement.text }}</span>
+  {% if announcement.link_url %}</a>{% endif %}
+  {% if announcement.dismissible %}<button style="background:none;border:none;color:inherit;cursor:pointer;font-size:1.25rem;opacity:.6;">×</button>{% endif %}
+</div>
+<p style="color:#6b7280;margin-top:1rem;font-size:0.875rem;">
+  Sticky: {{ announcement.is_sticky|yesno:"Yes,No" }} |
+  Dismissible: {{ announcement.dismissible|yesno:"Yes,No" }}
+</p>
+{% endblock %}

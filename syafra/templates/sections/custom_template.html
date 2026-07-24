@@ -1,0 +1,10 @@
+{% load static %}
+{% with config=section.config %}
+{% if config.custom_template_name %}
+{% include config.custom_template_name %}
+{% else %}
+<section class="custom-template-section">
+  <p class="section-empty">No template specified. Set a template name in section settings.</p>
+</section>
+{% endif %}
+{% endwith %}

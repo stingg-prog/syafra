@@ -1,0 +1,19 @@
+{% extends "admin_preview/base_preview.html" %}
+{% load static %}
+{% block title %}Preview: {{ label.name }} — Product Label{% endblock %}
+{% block preview_content %}
+<h3 style="margin-bottom:1rem;">Product Label Preview</h3>
+<div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+  <span style="display:inline-block;background:{{ label.bg_color|default:'#fef2f2' }};color:{{ label.color|default:'#ef4444' }};padding:4px 12px;border-radius:4px;font-size:0.875rem;font-weight:600;">{{ label.name }}</span>
+  <span style="display:inline-block;background:{{ label.bg_color|default:'#fef2f2' }};color:{{ label.color|default:'#ef4444' }};padding:6px 16px;border-radius:999px;font-size:0.8rem;font-weight:600;">{{ label.name }} (Pill)</span>
+  <span style="display:inline-block;background:{{ label.color|default:'#ef4444' }};color:#fff;padding:2px 8px;font-size:0.7rem;font-weight:700;text-transform:uppercase;">{{ label.name }} (Badge)</span>
+</div>
+<div style="margin-top:2rem;padding:1.5rem;border:1px solid #e5e7eb;border-radius:8px;max-width:300px;">
+  <div style="position:relative;background:#f3f4f6;height:200px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:0.8rem;">
+    Product Image
+    <span style="position:absolute;top:8px;left:8px;background:{{ label.bg_color|default:'#fef2f2' }};color:{{ label.color|default:'#ef4444' }};padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:700;">{{ label.name }}</span>
+  </div>
+  <p style="margin:0.5rem 0 0;font-weight:600;">Product Name</p>
+  <p style="margin:0;color:#6b7280;font-size:0.875rem;">₹1,299.00</p>
+</div>
+{% endblock %}

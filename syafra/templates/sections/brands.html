@@ -1,0 +1,22 @@
+{% load static %}
+{% with data=section_data|get_by_key:section.id brands=data.brands %}
+<section class="brands-section">
+  <div class="section-header">
+    {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
+    <h2 class="section-title">{{ section.title|default:'Our Brands' }}</h2>
+    {% if section.subtitle %}<p class="section-subtitle">{{ section.subtitle }}</p>{% endif %}
+  </div>
+  {% if brands %}
+  <div class="brands-grid">
+    {% for brand in brands %}
+    <div class="brand-card">
+      {% if brand.logo %}<img src="{{ brand.logo.url }}" alt="{{ brand.name }}" class="brand-logo" loading="lazy">{% endif %}
+      <h3 class="brand-name">{{ brand.name }}</h3>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="section-empty">No brands available.</p>
+  {% endif %}
+</section>
+{% endwith %}

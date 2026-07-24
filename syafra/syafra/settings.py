@@ -147,6 +147,7 @@ INSTALLED_APPS = [
     "orders",
     "accounts",
     "wishlist",
+    "cms",
 ]
 
 # WhiteNoise must sit directly after SecurityMiddleware — https://whitenoise.readthedocs.io/
@@ -182,6 +183,8 @@ TEMPLATES = [
                 "syafra.context_processors.global_context",
                 "syafra.context_processors.theme_context",
                 "syafra.context_processors.website_context",
+                "cms.context_processors.navigation_context",
+                "cms.context_processors.cms_context",
             ],
         },
     },

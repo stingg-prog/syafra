@@ -1,0 +1,19 @@
+{% load static %}
+{% with config=section.config %}
+<section class="countdown-banner" data-end="{{ config.countdown_end|default:'' }}" style="{% if config.bg_color %}background-color:{{ config.bg_color }};{% endif %}">
+  <div class="countdown-content">
+    {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
+    <h2 class="countdown-title">{{ section.title|default:'Limited Time Offer' }}</h2>
+    {% if section.subtitle %}<p class="countdown-subtitle">{{ section.subtitle }}</p>{% endif %}
+    {% if config.countdown_end %}
+    <div class="countdown-timer" data-end="{{ config.countdown_end }}">
+      <div class="countdown-unit"><span class="countdown-days">00</span><span class="countdown-label">Days</span></div>
+      <div class="countdown-unit"><span class="countdown-hours">00</span><span class="countdown-label">Hours</span></div>
+      <div class="countdown-unit"><span class="countdown-minutes">00</span><span class="countdown-label">Mins</span></div>
+      <div class="countdown-unit"><span class="countdown-seconds">00</span><span class="countdown-label">Secs</span></div>
+    </div>
+    {% endif %}
+    {% if config.countdown_label %}<p class="countdown-label-text">{{ config.countdown_label }}</p>{% endif %}
+  </div>
+</section>
+{% endwith %}

@@ -5,33 +5,37 @@
 
 {% block content %}
 {% for section in sections %}
-    {% if section.section_type == 'trending_now' %}
-        {% with next_index=forloop.counter %}
-        {% with next_sec=sections|get_by_index:next_index %}
-        {% if next_sec and next_sec.section_type == 'best_sellers' %}
-            {% with trending_section=section %}
-            {% with trending_data=section_data|get_by_key:section.id %}
-            {% with best_sellers_data=section_data|get_by_key:next_sec.id %}
-            {% include "sections/trending_best_sellers.html" %}
-            {% endwith %}
-            {% endwith %}
-            {% endwith %}
-        {% else %}
-            {% include "sections/"|add:section.section_type|add:".html" %}
-        {% endif %}
+<div {% render_section_attrs section %}>
+{% with section_type=section.section_type %}
+{% if section_type == 'trending_now' %}
+    {% with next_index=forloop.counter %}
+    {% with next_sec=sections|get_by_index:next_index %}
+    {% if next_sec and next_sec.section_type == 'best_sellers' %}
+        {% with trending_section=section %}
+        {% with trending_data=section_data|get_by_key:section.id %}
+        {% with best_sellers_data=section_data|get_by_key:next_sec.id %}
+        {% include "sections/trending_best_sellers.html" %}
         {% endwith %}
-        {% endwith %}
-    {% elif section.section_type == 'best_sellers' %}
-        {% with prev_index=forloop.counter0|add:"-1" %}
-        {% with prev_sec=sections|get_by_index:prev_index %}
-        {% if not prev_sec or prev_sec.section_type != 'trending_now' %}
-            {% include "sections/"|add:section.section_type|add:".html" %}
-        {% endif %}
         {% endwith %}
         {% endwith %}
     {% else %}
-        {% include "sections/"|add:section.section_type|add:".html" %}
+        {% include "sections/"|add:section_type|add:".html" %}
     {% endif %}
+    {% endwith %}
+    {% endwith %}
+{% elif section_type == 'best_sellers' %}
+    {% with prev_index=forloop.counter0|add:"-1" %}
+    {% with prev_sec=sections|get_by_index:prev_index %}
+    {% if not prev_sec or prev_sec.section_type != 'trending_now' %}
+        {% include "sections/"|add:section_type|add:".html" %}
+    {% endif %}
+    {% endwith %}
+    {% endwith %}
+{% else %}
+    {% include "sections/"|add:section_type|add:".html" %}
+{% endif %}
+{% endwith %}
+</div>
 {% endfor %}
 {% endblock %}
 

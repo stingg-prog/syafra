@@ -1,0 +1,45 @@
+{% load static %}
+{% with config=section.config data=section_data|get_by_key:section.id products=data.products %}
+<section class="flash-sale-section" style="{% if config.bg_color %}background-color:{{ config.bg_color }};{% endif %}">
+  <div class="section-header">
+    {% if section.overline %}<span class="section-overline flash-sale-overline">⚡ {{ section.overline }}</span>{% endif %}
+    <h2 class="section-title flash-sale-title">{{ section.title|default:'Flash Sale' }}</h2>
+    {% if section.subtitle %}<p class="section-subtitle">{{ section.subtitle }}</p>{% endif %}
+    {% if config.flash_sale_end %}
+    <div class="flash-sale-countdown" data-end="{{ config.flash_sale_end }}">
+      <span class="flash-sale-countdown-label">Ends in:</span>
+      <span class="flash-sale-timer">
+        <span class="flash-h">00</span>:<span class="flash-m">00</span>:<span class="flash-s">00</span>
+      </span>
+    </div>
+    {% endif %}
+  </div>
+  {% if products %}
+  <div class="product-grid">
+    {% for product in products %}
+    <article class="product-card flash-sale-card">
+      <a href="{% url 'products:product_detail' product.pk %}">
+        <div class="product-card-image">
+          {% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy">{% endif %}
+          {% if config.flash_sale_discount %}
+          <span class="badge badge-discount">-{{ config.flash_sale_discount }}%</span>
+          {% endif %}
+        </div>
+        <div class="product-card-info">
+          <h3 class="product-card-name">{{ product.name }}</h3>
+          <div class="product-card-price">
+            <span class="sale-price">{{ currency }}{{ product.price|floatformat:2 }}</span>
+            {% if config.flash_sale_original_price_label %}
+            <span class="original-price">{{ config.flash_sale_original_price_label }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="section-empty">No flash sale products.</p>
+  {% endif %}
+</section>
+{% endwith %}

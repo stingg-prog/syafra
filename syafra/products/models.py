@@ -8,9 +8,12 @@ class Category(models.Model):
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True, db_index=True)
     description = models.TextField(blank=True)
+    image = models.ImageField(upload_to='categories/', blank=True)
+    display_order = models.PositiveIntegerField(default=0)
 
     class Meta:
         verbose_name_plural = 'categories'
+        ordering = ['display_order', 'name']
 
     def __str__(self):
         return self.name
@@ -28,6 +31,7 @@ class Product(models.Model):
 
     name = models.CharField(max_length=200)
     brand = models.CharField(max_length=100)
+    brand_ref = models.ForeignKey('cms.Brand', on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='new')
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -109,10 +113,11 @@ class InstagramFeedItem(models.Model):
     image = CloudinaryField('image', blank=True)
     link = models.URLField(default='https://www.instagram.com/syafra.thrift/')
     is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['display_order']
         verbose_name = 'Instagram Feed Item'
         verbose_name_plural = 'Instagram Feed Items'
 
@@ -124,10 +129,11 @@ class Testimonial(models.Model):
     name = models.CharField(max_length=100)
     review = models.TextField()
     is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['display_order']
 
     def __str__(self):
         return self.name
@@ -206,16 +212,32 @@ class HomepageSection(models.Model):
     SECTION_TYPE_CHOICES = [
         ('announcement_bar', 'Announcement Bar'),
         ('hero_slider', 'Hero Slider'),
-        ('trust_bar', 'Trust Bar'),
+        ('hero_banner', 'Hero Banner'),
         ('shop_by_category', 'Shop By Category'),
-        ('product_collection', 'Product Collection'),
-        ('womens_tops', "Women's Tops"),
-        ('trending_now', 'Trending Now'),
+        ('featured_products', 'Featured Products'),
+        ('new_arrivals', 'New Arrivals'),
+        ('trending_products', 'Trending Products'),
         ('best_sellers', 'Best Sellers'),
-        ('promotional_banner', 'Promotional Banner'),
+        ('collections', 'Collections'),
+        ('brands', 'Brands'),
+        ('womens_tops', "Women's Tops"),
+        ('jackets', 'Jackets'),
+        ('lookbook', 'Lookbook'),
         ('customer_reviews', 'Customer Reviews'),
         ('instagram_feed', 'Instagram Feed'),
         ('newsletter', 'Newsletter'),
+        ('promotional_banner', 'Promotional Banner'),
+        ('faq_section', 'FAQ'),
+        ('custom_html', 'Custom HTML'),
+        ('custom_template', 'Custom Template'),
+        ('video_banner', 'Video Banner'),
+        ('image_gallery', 'Image Gallery'),
+        ('countdown_banner', 'Countdown Banner'),
+        ('recently_viewed', 'Recently Viewed'),
+        ('recommended_products', 'Recommended Products'),
+        ('flash_sale', 'Flash Sale'),
+        ('trust_bar', 'Trust Bar'),
+        ('product_collection', 'Product Collection'),
         ('footer', 'Footer'),
     ]
 
@@ -238,8 +260,39 @@ class HomepageSection(models.Model):
         ('max-w-6xl', 'Medium'),
         ('max-w-7xl', 'Wide'),
     ]
+    MARGIN_CHOICES = [
+        ('m-0', 'None'),
+        ('mt-4', 'Top Small'),
+        ('mt-8', 'Top Medium'),
+        ('mt-16', 'Top Large'),
+        ('mb-4', 'Bottom Small'),
+        ('mb-8', 'Bottom Medium'),
+        ('mb-16', 'Bottom Large'),
+        ('my-4', 'Both Small'),
+        ('my-8', 'Both Medium'),
+        ('my-16', 'Both Large'),
+    ]
+    ANIMATION_CHOICES = [
+        ('', 'None'),
+        ('fade-in', 'Fade In'),
+        ('fade-up', 'Fade Up'),
+        ('fade-down', 'Fade Down'),
+        ('slide-left', 'Slide Left'),
+        ('slide-right', 'Slide Right'),
+        ('zoom-in', 'Zoom In'),
+        ('zoom-out', 'Zoom Out'),
+        ('flip', 'Flip'),
+    ]
+    BORDER_RADIUS_CHOICES = [
+        ('rounded-none', 'None'),
+        ('rounded-sm', 'Small'),
+        ('rounded', 'Medium'),
+        ('rounded-lg', 'Large'),
+        ('rounded-xl', 'Extra Large'),
+        ('rounded-full', 'Full'),
+    ]
 
-    section_type = models.CharField(max_length=50, choices=SECTION_TYPE_CHOICES, unique=True)
+    section_type = models.CharField(max_length=50, choices=SECTION_TYPE_CHOICES)
     title = models.CharField(max_length=200, blank=True, default='')
     subtitle = models.CharField(max_length=300, blank=True, default='')
     overline = models.CharField(max_length=100, blank=True, default='', help_text='Small label above the title (e.g. "NEW ARRIVALS", "THE EDIT")')
@@ -249,6 +302,25 @@ class HomepageSection(models.Model):
     )
     display_order = models.PositiveIntegerField(default=0, db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
+
+    publish_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='Schedule publish date')
+    unpublish_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='Schedule unpublish date')
+
+    bg_color = models.CharField(max_length=7, blank=True, default='', help_text='Section background color (hex)')
+    bg_image = models.ImageField(upload_to='sections/bg/', blank=True, help_text='Section background image')
+    padding_top = models.CharField(max_length=20, blank=True, default='', choices=[('', 'Default')] + [(c, c) for c in ['py-8', 'py-12', 'py-16', 'py-20', 'py-24', 'py-32']])
+    padding_bottom = models.CharField(max_length=20, blank=True, default='', choices=[('', 'Default')] + [(c, c) for c in ['py-8', 'py-12', 'py-16', 'py-20', 'py-24', 'py-32']])
+    margin = models.CharField(max_length=20, blank=True, default='', choices=MARGIN_CHOICES, help_text='Section margin')
+    border_radius = models.CharField(max_length=20, blank=True, default='', choices=BORDER_RADIUS_CHOICES, help_text='Section border radius')
+    container_width = models.CharField(max_length=20, blank=True, default='', choices=[('', 'Default')] + [(c, c) for c in ['max-w-5xl', 'max-w-6xl', 'max-w-7xl', 'max-w-full']])
+    full_width = models.BooleanField(default=False, help_text='Stretch to full viewport width')
+    animation = models.CharField(max_length=50, blank=True, default='', choices=ANIMATION_CHOICES, help_text='Scroll animation')
+    hide_on_mobile = models.BooleanField(default=False, help_text='Hide on mobile devices')
+    hide_on_tablet = models.BooleanField(default=False, help_text='Hide on tablet devices')
+    hide_on_desktop = models.BooleanField(default=False, help_text='Hide on desktop devices')
+    custom_css_class = models.CharField(max_length=200, blank=True, default='', help_text='Custom CSS class(es) for the section')
+    anchor_id = models.CharField(max_length=200, blank=True, default='', help_text='Section anchor ID for linking')
+
     config = models.JSONField(default=dict, blank=True)
     device_settings = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -262,10 +334,7 @@ class HomepageSection(models.Model):
     def __str__(self):
         return f"{self.get_section_type_display()} (order={self.display_order})"
 
-    def clean(self):
-        from django.core.exceptions import ValidationError
-        if HomepageSection.objects.filter(section_type=self.section_type).exclude(pk=self.pk).exists():
-            raise ValidationError(f'A section of type "{self.get_section_type_display()}" already exists.')
+
 
     def get_device_setting(self, device, key, default=''):
         return self.device_settings.get(device, {}).get(key, default)
@@ -386,17 +455,152 @@ class ThemeSettings(models.Model):
         ('pulse', 'Pulse'),
         ('bar', 'Bar'),
     ]
+    HEADER_STYLE_CHOICES = [
+        ('classic', 'Classic'),
+        ('centered', 'Centered'),
+        ('minimal', 'Minimal'),
+        ('hamburger', 'Hamburger Only'),
+    ]
+    LAYOUT_CHOICES = [
+        ('boxed', 'Boxed'),
+        ('full_width', 'Full Width'),
+    ]
+    SORTING_CHOICES = [
+        ('newest', 'Newest First'),
+        ('oldest', 'Oldest First'),
+        ('price_low', 'Price: Low to High'),
+        ('price_high', 'Price: High to Low'),
+        ('name_az', 'Name: A-Z'),
+        ('name_za', 'Name: Z-A'),
+    ]
+    GRID_LAYOUT_CHOICES = [
+        ('2cols', '2 Columns'),
+        ('3cols', '3 Columns'),
+        ('4cols', '4 Columns'),
+        ('5cols', '5 Columns'),
+    ]
+    GALLERY_LAYOUT_CHOICES = [
+        ('single', 'Single Image'),
+        ('grid', 'Grid'),
+        ('carousel', 'Carousel'),
+        ('sticky', 'Sticky Gallery'),
+    ]
 
     store_name = models.CharField(max_length=100, default='SYAFRA')
     tagline = models.CharField(max_length=200, blank=True, default='Fashion-Forward Vintage Streetwear')
-    primary_color = models.CharField(max_length=7, default='#000000', help_text='Primary brand color')
-    secondary_color = models.CharField(max_length=7, default='#FFFFFF', help_text='Secondary brand color')
-    accent_color = models.CharField(max_length=7, default='#E8DCC4', help_text='Accent/highlight color')
     logo = models.ImageField(upload_to='theme/', blank=True)
     favicon = models.ImageField(upload_to='theme/', blank=True)
     enable_loader = models.BooleanField(default=False)
     loader_type = models.CharField(max_length=20, choices=LOADER_TYPE_CHOICES, default='spinner')
     loader_color = models.CharField(max_length=7, default='#000000')
+
+    # Brand colors
+    primary_color = models.CharField(max_length=7, default='#000000', help_text='Primary brand color')
+    secondary_color = models.CharField(max_length=7, default='#FFFFFF', help_text='Secondary brand color')
+    accent_color = models.CharField(max_length=7, default='#E8DCC4', help_text='Accent/highlight color')
+    success_color = models.CharField(max_length=7, default='#10b981', help_text='Success/confirmation color')
+    warning_color = models.CharField(max_length=7, default='#f59e0b', help_text='Warning color')
+    danger_color = models.CharField(max_length=7, default='#ef4444', help_text='Danger/error color')
+    info_color = models.CharField(max_length=7, default='#3b82f6', help_text='Info color')
+    background_color = models.CharField(max_length=7, default='#ffffff', help_text='Page background')
+    surface_color = models.CharField(max_length=7, default='#f9fafb', help_text='Surface background')
+    card_color = models.CharField(max_length=7, default='#ffffff', help_text='Card background')
+    border_color = models.CharField(max_length=7, default='#e5e7eb', help_text='Border color')
+    text_color = models.CharField(max_length=7, default='#111827', help_text='Body text color')
+    muted_text_color = models.CharField(max_length=7, default='#6b7280', help_text='Muted/secondary text')
+
+    # Typography
+    heading_font = models.CharField(max_length=100, default='Cormorant Garamond', help_text='Heading font family')
+    body_font = models.CharField(max_length=100, default='Inter', help_text='Body font family')
+    font_size_scale = models.DecimalField(max_digits=3, decimal_places=1, default=1.0, help_text='Font size scale multiplier (0.8 - 1.5)')
+    heading_font_weight = models.CharField(max_length=20, default='600', help_text='Heading font weight (e.g. 400, 500, 600, 700)')
+    body_font_weight = models.CharField(max_length=20, default='400', help_text='Body font weight')
+    letter_spacing = models.CharField(max_length=20, default='normal', help_text='Global letter spacing (e.g. normal, 0.5px, 1px)')
+    line_height = models.DecimalField(max_digits=3, decimal_places=1, default=1.6, help_text='Global line height')
+
+    # Buttons
+    primary_btn_bg = models.CharField(max_length=7, default='#000000', help_text='Primary button background')
+    primary_btn_text = models.CharField(max_length=7, default='#ffffff', help_text='Primary button text color')
+    primary_btn_border_radius = models.CharField(max_length=20, default='rounded', choices=[('rounded-none', 'None'), ('rounded-sm', 'Small'), ('rounded', 'Medium'), ('rounded-lg', 'Large'), ('rounded-full', 'Full')])
+    primary_btn_shadow = models.BooleanField(default=False, help_text='Enable shadow on primary button')
+    primary_btn_hover_animation = models.CharField(max_length=50, blank=True, default='', help_text='Hover animation effect')
+    secondary_btn_bg = models.CharField(max_length=7, default='#ffffff', help_text='Secondary button background')
+    secondary_btn_text = models.CharField(max_length=7, default='#000000', help_text='Secondary button text color')
+    secondary_btn_border_radius = models.CharField(max_length=20, default='rounded', choices=[('rounded-none', 'None'), ('rounded-sm', 'Small'), ('rounded', 'Medium'), ('rounded-lg', 'Large'), ('rounded-full', 'Full')])
+    secondary_btn_shadow = models.BooleanField(default=False)
+    secondary_btn_hover_animation = models.CharField(max_length=50, blank=True, default='')
+
+    # Navigation
+    header_style = models.CharField(max_length=20, choices=HEADER_STYLE_CHOICES, default='classic')
+    sticky_header = models.BooleanField(default=True)
+    transparent_header = models.BooleanField(default=False)
+    mega_menu_enabled = models.BooleanField(default=True)
+    mobile_menu_style = models.CharField(max_length=50, blank=True, default='slide', help_text='Mobile menu animation style')
+
+    # Footer
+    footer_columns = models.PositiveIntegerField(default=4, help_text='Number of footer columns')
+    footer_copyright = models.CharField(max_length=200, blank=True, default='', help_text='Copyright text')
+    social_links_enabled = models.BooleanField(default=True, help_text='Show social media links in footer')
+    payment_icons_enabled = models.BooleanField(default=True, help_text='Show payment method icons in footer')
+    footer_newsletter_enabled = models.BooleanField(default=True, help_text='Show newsletter signup in footer')
+
+    # Layout
+    layout_style = models.CharField(max_length=20, choices=LAYOUT_CHOICES, default='full_width')
+    container_width = models.CharField(max_length=20, default='max-w-7xl', help_text='Main container width class')
+    sidebar_width = models.CharField(max_length=20, default='w-72', help_text='Sidebar width class')
+    product_grid_layout = models.CharField(max_length=20, choices=GRID_LAYOUT_CHOICES, default='4cols')
+    category_grid_layout = models.CharField(max_length=20, choices=GRID_LAYOUT_CHOICES, default='3cols')
+    blog_layout = models.CharField(max_length=20, default='grid', choices=[('list', 'List'), ('grid', 'Grid')])
+    spacing_scale = models.CharField(max_length=20, default='default', help_text='Global spacing scale')
+
+    # Shop settings
+    products_per_page = models.PositiveIntegerField(default=12)
+    default_sorting = models.CharField(max_length=20, choices=SORTING_CHOICES, default='newest')
+    wishlist_enabled = models.BooleanField(default=True)
+    compare_enabled = models.BooleanField(default=False)
+    quick_view_enabled = models.BooleanField(default=True)
+    recently_viewed_enabled = models.BooleanField(default=True)
+    infinite_scroll_enabled = models.BooleanField(default=False)
+    pagination_style = models.CharField(max_length=20, default='numbers', choices=[('numbers', 'Page Numbers'), ('prev_next', 'Prev/Next'), ('load_more', 'Load More')])
+
+    # Product page
+    image_zoom_enabled = models.BooleanField(default=True)
+    gallery_layout = models.CharField(max_length=20, choices=GALLERY_LAYOUT_CHOICES, default='carousel')
+    sticky_gallery_enabled = models.BooleanField(default=False)
+    sticky_buy_box_enabled = models.BooleanField(default=False)
+    size_chart_enabled = models.BooleanField(default=True)
+    delivery_info_enabled = models.BooleanField(default=True)
+    related_products_enabled = models.BooleanField(default=True)
+    recently_viewed_products_enabled = models.BooleanField(default=True)
+    trust_badges_enabled = models.BooleanField(default=True)
+
+    # Cart
+    mini_cart_enabled = models.BooleanField(default=True)
+    slide_cart_enabled = models.BooleanField(default=False)
+    cart_notes_enabled = models.BooleanField(default=False)
+    shipping_progress_bar_enabled = models.BooleanField(default=False)
+    cross_sell_enabled = models.BooleanField(default=True)
+    upsell_enabled = models.BooleanField(default=False)
+
+    # Animations
+    page_transitions_enabled = models.BooleanField(default=False)
+    button_animations_enabled = models.BooleanField(default=True)
+    hover_effects_enabled = models.BooleanField(default=True)
+    card_animations_enabled = models.BooleanField(default=True)
+    scroll_animations_enabled = models.BooleanField(default=True)
+    loading_animations_enabled = models.BooleanField(default=True)
+
+    # Custom CSS/JS
+    global_css = models.TextField(blank=True, default='', help_text='Custom CSS applied globally')
+    header_css = models.TextField(blank=True, default='', help_text='Custom CSS for header')
+    footer_css = models.TextField(blank=True, default='', help_text='Custom CSS for footer')
+    homepage_css = models.TextField(blank=True, default='', help_text='Custom CSS for homepage')
+    product_css = models.TextField(blank=True, default='', help_text='Custom CSS for product pages')
+    checkout_css = models.TextField(blank=True, default='', help_text='Custom CSS for checkout')
+    custom_js = models.TextField(blank=True, default='', help_text='Custom JavaScript')
+
+    # Preview mode
+    preview_mode = models.BooleanField(default=False, help_text='Enable live preview mode')
 
     class Meta:
         verbose_name = 'Theme Settings'
@@ -416,6 +620,47 @@ class ThemeSettings(models.Model):
     def get_settings(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+    def export_to_dict(self):
+        return {
+            'store_name': self.store_name,
+            'tagline': self.tagline,
+            'primary_color': self.primary_color,
+            'secondary_color': self.secondary_color,
+            'accent_color': self.accent_color,
+            'success_color': self.success_color,
+            'warning_color': self.warning_color,
+            'danger_color': self.danger_color,
+            'info_color': self.info_color,
+            'background_color': self.background_color,
+            'surface_color': self.surface_color,
+            'card_color': self.card_color,
+            'border_color': self.border_color,
+            'text_color': self.text_color,
+            'muted_text_color': self.muted_text_color,
+            'heading_font': self.heading_font,
+            'body_font': self.body_font,
+            'font_size_scale': float(self.font_size_scale),
+            'heading_font_weight': self.heading_font_weight,
+            'body_font_weight': self.body_font_weight,
+            'letter_spacing': self.letter_spacing,
+            'line_height': float(self.line_height),
+            'header_style': self.header_style,
+            'sticky_header': self.sticky_header,
+            'transparent_header': self.transparent_header,
+            'mega_menu_enabled': self.mega_menu_enabled,
+            'layout_style': self.layout_style,
+            'container_width': self.container_width,
+            'products_per_page': self.products_per_page,
+            'default_sorting': self.default_sorting,
+            'product_grid_layout': self.product_grid_layout,
+        }
+
+    def import_from_dict(self, data):
+        for key, value in data.items():
+            if hasattr(self, key) and key not in ('pk', 'id', 'preview_mode'):
+                setattr(self, key, value)
+        self.save()
 
 
 class WebsiteSettings(models.Model):
