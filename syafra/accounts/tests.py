@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from django.core import mail
 from django.utils import timezone
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.test import override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
@@ -152,7 +152,7 @@ class LogoutViewTest(TestCase):
     EMAIL_SIMPLE_RETRY_ATTEMPTS=1,
     EMAIL_SIMPLE_RETRY_BASE_DELAY_SECONDS=0,
 )
-class PasswordResetViewTest(TestCase):
+class PasswordResetViewTest(TransactionTestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             username='resetuser',
@@ -235,7 +235,7 @@ class EmailInfrastructureTest(TestCase):
             payment_status='paid',
         )
 
-    @mock.patch('accounts.utils.email.resend.Emails.send')
+    @mock.patch('accounts.services.email_service.resend.Emails.send')
     @override_settings(EMAIL_SIMPLE_RETRY_ATTEMPTS=1)
     def test_send_email_creates_accepted_email_log(self, mock_send):
         mock_send.return_value = {'id': 'msg-123'}
@@ -258,7 +258,7 @@ class EmailInfrastructureTest(TestCase):
         self.assertEqual(email_log.user, self.user)
         self.assertEqual(email_log.order, self.order)
 
-    @mock.patch('accounts.utils.email.resend.Emails.send')
+    @mock.patch('accounts.services.email_service.resend.Emails.send')
     @override_settings(EMAIL_SIMPLE_RETRY_ATTEMPTS=1)
     def test_send_email_marks_retryable_failure(self, mock_send):
         import resend.exceptions
@@ -284,7 +284,7 @@ class EmailInfrastructureTest(TestCase):
         self.assertEqual(email_log.status, EmailLog.STATUS_FAILED)
         self.assertFalse(email_log.retryable)
 
-    @mock.patch('accounts.utils.email.resend.Emails.send')
+    @mock.patch('accounts.services.email_service.resend.Emails.send')
     @override_settings(EMAIL_SIMPLE_RETRY_ATTEMPTS=1)
     def test_resend_rate_limit_is_retryable(self, mock_send):
         import resend.exceptions

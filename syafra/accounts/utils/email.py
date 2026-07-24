@@ -97,7 +97,7 @@ def _send_via_resend_sdk(email_log, *, subject, message, recipient, html_message
     if custom_args:
         headers = {f"X-Syafra-{k}": str(v) for k, v in custom_args.items()}
 
-    success, elapsed_ms, error, message_id = EmailService.send(
+    success, elapsed_ms, error, message_id, is_retryable = EmailService.send(
         to=recipient,
         subject=subject,
         text=message,
@@ -129,6 +129,7 @@ def _send_via_resend_sdk(email_log, *, subject, message, recipient, html_message
             error_message=error or "Unknown error",
             provider_response=f"failed in {elapsed_ms:.0f}ms",
             elapsed_ms=elapsed_ms,
+            retryable=is_retryable,
         )
 
     return success
@@ -270,8 +271,18 @@ def send_email(
     if from_email is None:
         from_email = settings.DEFAULT_FROM_EMAIL
 
+    # Defensive guard: ensure the from domain is a verified syafra.com address
+    _name, _addr = parseaddr(str(from_email))
+    if _addr and not _addr.lower().endswith("@syafra.com"):
+        logger.critical(
+            "OVERRIDING unverified from_email in send_email | original=%s | new=%s",
+            from_email, settings.DEFAULT_FROM_EMAIL,
+        )
+        from_email = settings.DEFAULT_FROM_EMAIL
+
     logger.info(
-        "EMAIL SEND REQUEST | subject=%s | to=%s | backend=%s | email_type=%s | order_id=%s | user_id=%s",
+        "EMAIL SEND REQUEST | from=%s | subject=%s | to=%s | backend=%s | email_type=%s | order_id=%s | user_id=%s",
+        from_email,
         subject,
         recipient_list,
         settings.EMAIL_BACKEND,
@@ -302,7 +313,8 @@ def send_email(
     sent = all(results)
     if sent:
         logger.info(
-            "EMAIL SENT SUCCESS | subject=%s | recipients=%s | email_type=%s | order_id=%s | user_id=%s",
+            "EMAIL SENT SUCCESS | from=%s | subject=%s | recipients=%s | email_type=%s | order_id=%s | user_id=%s",
+            from_email,
             subject,
             recipient_list,
             email_type,
@@ -311,7 +323,8 @@ def send_email(
         )
     else:
         logger.error(
-            "EMAIL FAILED | subject=%s | recipients=%s | email_type=%s | order_id=%s | user_id=%s",
+            "EMAIL FAILED | from=%s | subject=%s | recipients=%s | email_type=%s | order_id=%s | user_id=%s",
+            from_email,
             subject,
             recipient_list,
             email_type,

@@ -34,6 +34,7 @@ class Product(models.Model):
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='products/', blank=True)
     stock = models.PositiveIntegerField(default=0)
+    views = models.PositiveIntegerField(default=0, help_text='Number of times this product has been viewed')
     is_featured = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)

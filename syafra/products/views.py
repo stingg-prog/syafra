@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.cache import cache
 from django.contrib import messages
-from django.db.models import Q, Max, Min, Count
+from django.db.models import F, Q, Max, Min, Count
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
@@ -340,6 +340,8 @@ def product_detail(request, pk):
         Product.objects.select_related('category').prefetch_related('sizes', 'images'),
         pk=pk
     )
+    Product.objects.filter(pk=pk).update(views=F('views') + 1)
+    product.refresh_from_db()
     gallery_images = list(product.images.all())
     related_products = Product.objects.filter(category=product.category).exclude(pk=pk)[:6]
     primary_image_url = (

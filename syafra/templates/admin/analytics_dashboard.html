@@ -1,356 +1,1501 @@
 {% extends "base.html" %}
+{% load static %}
+{% block title %}Analytics — {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
 
-{% block title %}Admin Analytics - {{ theme.store_name|default:'SYAFRA' }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pages/admin-analytics.css' %}">
+<style>
+  .admin-header {
+    background: rgba(0,0,0,0.98); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .dark .admin-header { background: rgba(3,7,18,0.98); }
+  @media (prefers-color-scheme: dark) {
+    .admin-header { background: rgba(3,7,18,0.98); }
+  }
+</style>
+{% endblock %}
 
 {% block navbar %}
-<header class="fixed top-0 left-0 right-0 z-50 bg-black text-white border-b border-white/10">
-    <div class="max-w-7xl mx-auto px-6 py-5 flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <p class="text-xs tracking-[0.3em] text-syafra-beige uppercase">SYAFRA Admin</p>
-            <h1 class="text-2xl font-bold tracking-tight">Analytics Dashboard</h1>
-        </div>
-        <div class="flex items-center gap-3 text-sm tracking-wider">
-            <a href="/admin/" class="px-4 py-2 border border-white/15 hover:border-syafra-beige hover:text-syafra-beige transition-colors">DJANGO ADMIN</a>
-            <a href="{% url 'products:home' %}" class="px-4 py-2 border border-white/15 hover:border-syafra-beige hover:text-syafra-beige transition-colors">VIEW STORE</a>
-        </div>
+<header class="admin-header fixed top-0 left-0 right-0 z-50 text-white">
+  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <a href="/admin/" class="text-white/40 hover:text-white transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-white/5">
+        <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      </a>
+      <div class="w-px h-6 bg-white/10"></div>
+      <div>
+        <p class="text-[9px] tracking-[0.3em] text-white/50 uppercase font-medium">SYAFRA</p>
+        <h1 class="text-sm font-semibold tracking-tight">Command Center</h1>
+      </div>
     </div>
+    <div class="flex items-center gap-2">
+      <span class="hidden sm:inline-flex text-[10px] tracking-wider text-white/40 px-3 py-1.5 bg-white/5 rounded-lg">{{ filters.range_label }}</span>
+      <a href="/" class="text-[10px] tracking-wider text-white/50 hover:text-white px-3 py-1.5 border border-white/10 hover:border-white/30 rounded-lg transition-all">VIEW STORE</a>
+    </div>
+  </div>
 </header>
 {% endblock %}
 
 {% block footer %}{% endblock %}
 
 {% block content %}
-<section class="pt-32 pb-16 px-6 bg-[#f7f3ec] min-h-screen">
-    <div class="max-w-7xl mx-auto space-y-8">
-        <div class="bg-white border border-black/10 p-6">
-            <div class="flex flex-wrap items-end justify-between gap-6">
-                <div>
-                    <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Reporting Window</p>
-                    <h2 class="text-3xl font-bold tracking-tight mt-2">{{ filters.range_label }}</h2>
-                    <p class="text-sm text-gray-500 mt-2">Orders, revenue, user growth, top products, and recent activity.</p>
-                </div>
-                <form method="get" class="grid gap-3 md:grid-cols-4 items-end w-full md:w-auto">
-                    <div>
-                        <label for="range" class="block text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">Range</label>
-                        <select id="range" name="range" class="w-full border border-gray-300 px-4 py-3 text-sm bg-white">
-                            <option value="7" {% if filters.selected_range == "7" %}selected{% endif %}>Last 7 days</option>
-                            <option value="30" {% if filters.selected_range == "30" %}selected{% endif %}>Last 30 days</option>
-                            <option value="custom" {% if filters.selected_range == "custom" %}selected{% endif %}>Custom</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="start_date" class="block text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">Start date</label>
-                        <input id="start_date" name="start_date" type="date" value="{{ filters.start_date_value }}" class="w-full border border-gray-300 px-4 py-3 text-sm bg-white">
-                    </div>
-                    <div>
-                        <label for="end_date" class="block text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">End date</label>
-                        <input id="end_date" name="end_date" type="date" value="{{ filters.end_date_value }}" class="w-full border border-gray-300 px-4 py-3 text-sm bg-white">
-                    </div>
-                    <button type="submit" class="bg-black text-white px-5 py-3 text-sm tracking-[0.2em] uppercase hover:bg-gray-800 transition-colors">Apply</button>
-                </form>
-            </div>
-            {% if filters.filter_error %}
-            <div class="mt-4 border border-amber-300 bg-amber-50 text-amber-900 px-4 py-3 text-sm">
-                {{ filters.filter_error }}
-            </div>
-            {% endif %}
+
+{% with s=overview curr=overview.currency_symbol %}
+
+<div class="min-h-screen bg-gray-50 dark:bg-gray-950 pt-14 pb-12">
+  <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 space-y-8 py-8">
+
+    {# ============================================ #}
+    {# SECTION: FILTERS / DATE RANGE PICKER         #}
+    {# ============================================ #}
+    <div class="filter-section flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in">
+      <div>
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Analytics Dashboard</h2>
+        <p class="text-sm text-gray-400 dark:text-gray-500 mt-0.5">Real-time performance overview for your store</p>
+      </div>
+      <form method="get" class="flex flex-wrap items-center gap-2">
+        <div class="date-range-picker">
+          <button type="submit" name="range" value="today" class="date-range-picker__btn {% if filters.selected_range == 'today' %}date-range-picker__btn--active{% endif %}">Today</button>
+          <button type="submit" name="range" value="7" class="date-range-picker__btn {% if filters.selected_range == '7' %}date-range-picker__btn--active{% endif %}">7 Days</button>
+          <button type="submit" name="range" value="30" class="date-range-picker__btn {% if filters.selected_range == '30' %}date-range-picker__btn--active{% endif %}">30 Days</button>
+          <button type="submit" name="range" value="90" class="date-range-picker__btn {% if filters.selected_range == '90' %}date-range-picker__btn--active{% endif %}">90 Days</button>
+          <button type="submit" name="range" value="365" class="date-range-picker__btn {% if filters.selected_range == '365' %}date-range-picker__btn--active{% endif %}">This Year</button>
+          <button type="submit" name="range" value="custom" class="date-range-picker__btn {% if filters.selected_range == 'custom' %}date-range-picker__btn--active{% endif %}">Custom</button>
         </div>
-
-        <div class="grid gap-4 md:grid-cols-3">
-            <article class="bg-white border border-black/10 p-6">
-                <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Total Orders</p>
-                <p class="text-4xl font-bold mt-4">{{ summary.total_orders }}</p>
-                <p class="text-sm text-gray-500 mt-3">{{ summary.orders_in_range }} orders in the selected range</p>
-            </article>
-            <article class="bg-white border border-black/10 p-6">
-                <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Total Revenue</p>
-                <p class="text-4xl font-bold mt-4">{{ summary.currency_symbol }}{{ summary.total_revenue|floatformat:2 }}</p>
-                <p class="text-sm text-gray-500 mt-3">{{ summary.paid_orders_in_range }} paid orders in the selected range</p>
-            </article>
-            <article class="bg-white border border-black/10 p-6">
-                <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Total Users</p>
-                <p class="text-4xl font-bold mt-4">{{ summary.total_users }}</p>
-                <p class="text-sm text-gray-500 mt-3">{{ summary.new_users_in_range }} new users in the selected range</p>
-            </article>
+        {% if filters.selected_range == "custom" %}
+        <div class="flex items-center gap-2">
+          <input type="date" name="start_date" value="{{ filters.start_date_value }}" class="text-xs border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 rounded-lg px-3 py-1.5 bg-white">
+          <span class="text-gray-400 text-xs">—</span>
+          <input type="date" name="end_date" value="{{ filters.end_date_value }}" class="text-xs border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 rounded-lg px-3 py-1.5 bg-white">
+          <button type="submit" class="px-4 py-1.5 bg-gray-900 dark:bg-white dark:text-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-800 transition-colors">Apply</button>
         </div>
-
-        <div class="grid gap-4 lg:grid-cols-3">
-            <article class="bg-white border border-black/10 p-5">
-                <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Average Order Value</p>
-                <p class="text-2xl font-semibold mt-3">{{ summary.currency_symbol }}{{ summary.average_order_value|floatformat:2 }}</p>
-            </article>
-            <article class="bg-white border border-black/10 p-5">
-                <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Active Users</p>
-                <p class="text-2xl font-semibold mt-3">{{ summary.active_users }}</p>
-                <p class="text-sm text-gray-500 mt-2">Recent orders or logins in the selected range</p>
-            </article>
-            <article class="bg-white border border-black/10 p-5">
-                <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Order Status Mix</p>
-                <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
-                    {% for status, total in orders_by_status.items %}
-                    <div class="flex items-center justify-between border border-gray-200 px-3 py-2">
-                        <span>{{ status|title }}</span>
-                        <strong>{{ total }}</strong>
-                    </div>
-                    {% endfor %}
-                </div>
-            </article>
-        </div>
-
-        <div class="grid gap-6 xl:grid-cols-2">
-            <article class="bg-white border border-black/10 p-6">
-                <div class="flex items-center justify-between gap-4 mb-6">
-                    <div>
-                        <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Orders Per Day</p>
-                        <h3 class="text-2xl font-semibold mt-2">Order Volume Trend</h3>
-                    </div>
-                </div>
-                <div class="h-80">
-                    <canvas id="ordersChart"></canvas>
-                </div>
-            </article>
-
-            <article class="bg-white border border-black/10 p-6">
-                <div class="flex items-center justify-between gap-4 mb-6">
-                    <div>
-                        <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Revenue Per Day</p>
-                        <h3 class="text-2xl font-semibold mt-2">Paid Revenue Trend</h3>
-                    </div>
-                </div>
-                <div class="h-80">
-                    <canvas id="revenueChart"></canvas>
-                </div>
-            </article>
-        </div>
-
-        <div class="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-            <article class="bg-white border border-black/10 p-6">
-                <div class="flex items-center justify-between gap-4 mb-6">
-                    <div>
-                        <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Top Selling Products</p>
-                        <h3 class="text-2xl font-semibold mt-2">Best Sellers In This Range</h3>
-                    </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="text-left text-gray-500 uppercase tracking-[0.2em] text-xs">
-                            <tr>
-                                <th class="pb-3">Product</th>
-                                <th class="pb-3 text-right">Qty Sold</th>
-                                <th class="pb-3 text-right">Orders</th>
-                                <th class="pb-3 text-right">Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            {% for item in top_products %}
-                            <tr>
-                                <td class="py-4">
-                                    <div class="font-medium">{{ item.product__name }}</div>
-                                    <div class="text-gray-500 text-xs uppercase tracking-[0.15em] mt-1">{{ item.product__brand }}</div>
-                                </td>
-                                <td class="py-4 text-right">{{ item.quantity_sold }}</td>
-                                <td class="py-4 text-right">{{ item.order_count }}</td>
-                                <td class="py-4 text-right font-medium">{{ summary.currency_symbol }}{{ item.revenue|floatformat:2 }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="py-8 text-center text-gray-500">No paid product sales in this date range.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </article>
-
-            <div class="space-y-6">
-                <article class="bg-white border border-black/10 p-6">
-                    <div class="flex items-center justify-between gap-4 mb-6">
-                        <div>
-                            <p class="text-xs uppercase tracking-[0.25em] text-gray-500">User Growth</p>
-                            <h3 class="text-2xl font-semibold mt-2">New Users Per Day</h3>
-                        </div>
-                    </div>
-                    <div class="h-72">
-                        <canvas id="usersChart"></canvas>
-                    </div>
-                </article>
-
-                <article class="bg-white border border-black/10 p-6">
-                    <div class="flex items-center justify-between gap-4 mb-6">
-                        <div>
-                            <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Order Status Distribution</p>
-                            <h3 class="text-2xl font-semibold mt-2">Selected Range Mix</h3>
-                        </div>
-                    </div>
-                    <div class="h-80">
-                        <canvas id="statusChart"></canvas>
-                    </div>
-                </article>
-            </div>
-        </div>
-
-        <article class="bg-white border border-black/10 p-6">
-            <div class="flex items-center justify-between gap-4 mb-6">
-                <div>
-                    <p class="text-xs uppercase tracking-[0.25em] text-gray-500">Recent Orders</p>
-                    <h3 class="text-2xl font-semibold mt-2">Latest Order Activity</h3>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="text-left text-gray-500 uppercase tracking-[0.2em] text-xs">
-                        <tr>
-                            <th class="pb-3">Order</th>
-                            <th class="pb-3">Customer</th>
-                            <th class="pb-3">Status</th>
-                            <th class="pb-3">Payment</th>
-                            <th class="pb-3 text-right">Total</th>
-                            <th class="pb-3 text-right">Created</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        {% for order in recent_orders %}
-                        <tr>
-                            <td class="py-4 font-medium">#{{ order.id }}</td>
-                            <td class="py-4">
-                                <div>{{ order.customer_name|default:order.user.username }}</div>
-                                <div class="text-gray-500 text-xs mt-1">{{ order.email }}</div>
-                            </td>
-                            <td class="py-4">{{ order.get_status_display }}</td>
-                            <td class="py-4">{{ order.get_payment_status_display }}</td>
-                            <td class="py-4 text-right font-medium">{{ summary.currency_symbol }}{{ order.total_price|floatformat:2 }}</td>
-                            <td class="py-4 text-right text-gray-500">{{ order.created_at|date:"M j, Y H:i" }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="py-8 text-center text-gray-500">No orders available yet.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </article>
+        {% endif %}
+      </form>
     </div>
-</section>
 
-{{ order_chart|json_script:"order-chart-data" }}
-{{ revenue_chart|json_script:"revenue-chart-data" }}
-{{ status_chart|json_script:"status-chart-data" }}
-{{ user_chart|json_script:"user-chart-data" }}
+    {% if filters.filter_error %}
+    <div class="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 px-4 py-3 text-xs rounded-xl">{{ filters.filter_error }}</div>
+    {% endif %}
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {# ============================================ #}
+    {# SECTION: TOP KPI CARDS                      #}
+    {# ============================================ #}
+
+    {# Revenue KPIs #}
+    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div class="kpi-card kpi-card--gradient-emerald animate-in animate-in--d1">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--emerald">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Today</p>
+            <p class="metric-value text-emerald-700 dark:text-emerald-400">{{ curr }}{{ s.today_revenue|floatformat:2 }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="trend-indicator trend-indicator--up">
+              <svg width="12" height="12" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+              {{ s.today_revenue|floatformat:0 }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-card--gradient-blue animate-in animate-in--d2">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--blue">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Revenue This Month</p>
+            <p class="metric-value text-blue-700 dark:text-blue-400">{{ curr }}{{ s.monthly_revenue|floatformat:2 }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="text-[10px] font-medium text-blue-600 dark:text-blue-400">Month</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-card--gradient-purple animate-in animate-in--d3">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--purple">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Total Revenue</p>
+            <p class="metric-value text-purple-700 dark:text-purple-400">{{ curr }}{{ s.total_revenue|floatformat:2 }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="text-[10px] font-medium text-purple-600 dark:text-purple-400">All Time</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-card--gradient-amber animate-in animate-in--d4">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--amber">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Orders Today</p>
+            <p class="metric-value text-amber-700 dark:text-amber-400">{{ s.orders_today }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="trend-indicator trend-indicator--up">
+              <svg width="12" height="12" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+              {{ s.orders_today }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d5">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--indigo">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Total Orders</p>
+            <p class="metric-value text-gray-900 dark:text-white">{{ s.total_orders }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="text-[10px] font-medium text-gray-500 dark:text-gray-400">Total</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d6">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--rose">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Pending Orders</p>
+            <p class="metric-value text-rose-700 dark:text-rose-400">{{ s.pending_orders }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="status-badge status-badge--pending">{{ s.pending_orders }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d7">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--blue">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Paid Orders</p>
+            <p class="metric-value text-blue-700 dark:text-blue-400">{{ s.paid_orders }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="status-badge status-badge--paid">{{ s.paid_orders }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d8">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--emerald">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Delivered Orders</p>
+            <p class="metric-value text-emerald-700 dark:text-emerald-400">{{ s.delivered_orders }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="status-badge status-badge--delivered">{{ s.delivered_orders }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d9">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--rose">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Cancelled Orders</p>
+            <p class="metric-value text-rose-700 dark:text-rose-400">{{ s.cancelled_orders }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="status-badge status-badge--cancelled">{{ s.cancelled_orders }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d10">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--indigo">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Total Customers</p>
+            <p class="metric-value text-indigo-700 dark:text-indigo-400">{{ s.total_customers }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="text-[10px] font-medium text-gray-500 dark:text-gray-400">Users</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d1">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--cyan">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">New Customers</p>
+            <p class="metric-value text-cyan-700 dark:text-cyan-400">{{ s.new_customers }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="text-[10px] font-medium text-cyan-600 dark:text-cyan-400">+{{ s.new_customers }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d2">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--orange">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Returning Customers</p>
+            <p class="metric-value text-orange-700 dark:text-orange-400">{{ s.returning_customers }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="text-[10px] font-medium text-orange-600 dark:text-orange-400">{{ s.returning_customers }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-card--gradient-teal animate-in animate-in--d3">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--teal">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Conversion Rate</p>
+            <p class="metric-value text-teal-700 dark:text-teal-400">{{ s.conversion_rate }}%</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="trend-indicator trend-indicator--up">{{ s.conversion_rate }}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d4">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--emerald">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Avg Cart Value</p>
+            <p class="metric-value metric-value--sm text-emerald-700 dark:text-emerald-400">{{ curr }}{{ s.average_cart_value|floatformat:2 }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">Average</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d5">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--blue">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Total Products</p>
+            <p class="metric-value text-blue-700 dark:text-blue-400">{{ s.total_products }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="text-[10px] font-medium text-gray-500 dark:text-gray-400">{{ s.total_products }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d6">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--amber">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Low Stock Products</p>
+            <p class="metric-value metric-value--sm text-amber-700 dark:text-amber-400">{{ s.low_stock_products }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="status-badge status-badge--pending">{{ s.low_stock_products }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card animate-in animate-in--d7">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--rose">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Out Of Stock</p>
+            <p class="metric-value metric-value--sm text-rose-700 dark:text-rose-400">{{ s.out_of_stock_products }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="status-badge status-badge--cancelled">{{ s.out_of_stock_products }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ============================================ #}
+    {# SECTION: CHARTS LAYOUT                      #}
+    {# ============================================ #}
+
+    <div class="grid gap-4 lg:grid-cols-3">
+      {# Revenue Trend #}
+      <div class="chart-card lg:col-span-2 animate-in animate-in--d2">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Revenue</p>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5">Revenue Trend</h3>
+          </div>
+          <span class="text-[10px] text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">{{ filters.range_label }}</span>
+        </div>
+        <div class="chart-container"><canvas id="revenueChart"></canvas></div>
+      </div>
+      {# Order Status Donut #}
+      <div class="chart-card animate-in animate-in--d3">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Orders</p>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5">Order Status</h3>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="statusChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-3">
+      {# Orders Trend #}
+      <div class="chart-card animate-in animate-in--d3">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Volume</p>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5">Orders Trend</h3>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="ordersChart"></canvas></div>
+      </div>
+      {# Sales Trend (AOV) #}
+      <div class="chart-card animate-in animate-in--d4">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Value</p>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5">Avg Order Value</h3>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="aovChart"></canvas></div>
+      </div>
+      {# Customer Growth #}
+      <div class="chart-card animate-in animate-in--d5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Growth</p>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5">Customer Growth</h3>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="customerChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-3">
+      {# Wishlist Growth #}
+      <div class="chart-card animate-in animate-in--d4">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Interest</p>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5">Wishlist Growth</h3>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="wishlistChart"></canvas></div>
+      </div>
+      {# Cart Growth #}
+      <div class="chart-card animate-in animate-in--d5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Abandonment</p>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5">Cart Growth</h3>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="cartChart"></canvas></div>
+      </div>
+      {# Top Categories #}
+      <div class="chart-card animate-in animate-in--d6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Categories</p>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5">Top Categories</h3>
+          </div>
+        </div>
+        <div class="chart-container"><canvas id="categoryChart"></canvas></div>
+      </div>
+    </div>
+
+    {# ============================================ #}
+    {# SECTION: ORDER STATUS BREAKDOWN             #}
+    {# ============================================ #}
+
+    <div class="chart-card animate-in">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="metric-label">Fulfillment</p>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5">Order Status Breakdown</h3>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3">
+        {% for status, count in order_status.items %}
+        <div class="rounded-xl border border-gray-100 dark:border-gray-800 p-3 text-center hover:shadow-sm hover:border-gray-200 dark:hover:border-gray-700 transition-all">
+          <p class="text-xl font-bold text-gray-900 dark:text-white">{{ count }}</p>
+          <p class="status-badge status-badge--{{ status }} mt-1.5 justify-center">{{ status|title }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# ============================================ #}
+    {# SECTION: WISHLIST ANALYTICS                 #}
+    {# ============================================ #}
+
+    <div class="section-title animate-in">
+      <svg width="16" height="16" class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">Wishlist Analytics</h3>
+      <span class="section-title__line"></span>
+    </div>
+
+    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div class="kpi-card kpi-card--gradient-pink animate-in animate-in--d1">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--pink">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Total Wishlist Items</p>
+            <p class="metric-value text-pink-700 dark:text-pink-400">{{ wishlist_analytics.total_items }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--gradient-purple animate-in animate-in--d2">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--purple">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Unique Users</p>
+            <p class="metric-value text-purple-700 dark:text-purple-400">{{ wishlist_analytics.unique_users }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card animate-in animate-in--d3">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--amber">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 11l7-7 7 7M5 19l7-7 7 7"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Most Wishlisted</p>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ s.most_wishlisted_product|default:"—" }}</p>
+          </div>
+          <div class="kpi-card__meta">
+            <span class="trend-indicator trend-indicator--up">{{ wishlist_analytics.added_today }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--gradient-rose animate-in animate-in--d4">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--rose">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Added Today</p>
+            <p class="metric-value text-rose-700 dark:text-rose-400">{{ wishlist_analytics.added_today }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card animate-in animate-in--d5">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--indigo">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Added This Week</p>
+            <p class="metric-value text-indigo-700 dark:text-indigo-400">{{ wishlist_analytics.added_week }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--gradient-teal animate-in animate-in--d6">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--teal">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">→ Purchase Rate</p>
+            <p class="metric-value text-teal-700 dark:text-teal-400">{{ wishlist_analytics.purchase_conversion_rate }}%</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Top 10 Most Wishlisted Products Table #}
+    <div class="table-card animate-in">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="metric-label">Wishlist</p>
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">Top 10 Most Wishlisted Products</h3>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <div class="table-wrapper">
+        <table class="analytics-table" role="table" aria-label="Top wishlisted products">
+          <thead>
+            <tr>
+              <th class="w-8">#</th>
+              <th>Product</th>
+              <th class="text-right">Brand</th>
+              <th class="text-right">Wishlists</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in wishlist_analytics.top_products %}
+            <tr>
+              <td class="text-gray-400 dark:text-gray-500 text-center">{{ forloop.counter }}</td>
+              <td><span class="font-medium text-gray-900 dark:text-white">{{ p.product__name }}</span></td>
+              <td class="text-right text-gray-500 dark:text-gray-400">{{ p.product__brand }}</td>
+              <td class="text-right"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300">{{ p.count }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4"><div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></div><p class="empty-state__title">No wishlist data yet</p><p class="empty-state__text">Products will appear here when users add them to their wishlist.</p></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    {# ============================================ #}
+    {# SECTION: CART ANALYTICS                     #}
+    {# ============================================ #}
+
+    <div class="section-title animate-in">
+      <svg width="16" height="16" class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">Cart Analytics</h3>
+      <span class="section-title__line"></span>
+    </div>
+
+    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div class="kpi-card kpi-card--gradient-cyan animate-in animate-in--d1">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--cyan">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Active Carts</p>
+            <p class="metric-value text-cyan-700 dark:text-cyan-400">{{ cart_analytics.active_carts }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card animate-in animate-in--d2">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--blue">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Total Cart Items</p>
+            <p class="metric-value text-blue-700 dark:text-blue-400">{{ cart_analytics.total_items }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--gradient-emerald animate-in animate-in--d3">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--emerald">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Avg Cart Value</p>
+            <p class="metric-value metric-value--sm text-emerald-700 dark:text-emerald-400">{{ curr }}{{ cart_analytics.average_value|floatformat:2 }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--gradient-rose animate-in animate-in--d4">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--rose">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Abandoned Carts</p>
+            <p class="metric-value text-rose-700 dark:text-rose-400">{{ cart_analytics.abandoned }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--gradient-teal animate-in animate-in--d5">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--teal">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Recovered Carts</p>
+            <p class="metric-value text-teal-700 dark:text-teal-400">{{ cart_analytics.recovered }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card animate-in animate-in--d6">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--purple">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Cart Conv. Rate</p>
+            <p class="metric-value text-purple-700 dark:text-purple-400">{{ cart_analytics.conversion_rate }}%</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card animate-in animate-in--d7">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--amber">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Cart Recovery Rate</p>
+            <p class="metric-value metric-value--sm text-amber-700 dark:text-amber-400">{% if cart_analytics.abandoned %}{% widthratio cart_analytics.recovered cart_analytics.abandoned 100 %}%{% else %}0%{% endif %}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Top Products Left In Cart #}
+    <div class="table-card animate-in">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="metric-label">Cart</p>
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">Top Products Left In Cart</h3>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <div class="table-wrapper">
+        <table class="analytics-table" role="table" aria-label="Products left in cart">
+          <thead>
+            <tr><th>Product</th><th class="text-right">Brand</th><th class="text-right">Qty in Carts</th></tr>
+          </thead>
+          <tbody>
+            {% for p in cart_analytics.top_products %}
+            <tr>
+              <td><span class="font-medium text-gray-900 dark:text-white">{{ p.product__name }}</span></td>
+              <td class="text-right text-gray-500 dark:text-gray-400">{{ p.product__brand }}</td>
+              <td class="text-right"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300">{{ p.total_qty }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3"><div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg></div><p class="empty-state__title">No cart data yet</p><p class="empty-state__text">Products will appear here when users add them to their cart.</p></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    {# ============================================ #}
+    {# SECTION: PRODUCT ANALYTICS                  #}
+    {# ============================================ #}
+
+    <div class="section-title animate-in">
+      <svg width="16" height="16" class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">Product Analytics</h3>
+      <span class="section-title__line"></span>
+    </div>
+
+    {# Product Tables Grid #}
+    <div class="grid gap-4 lg:grid-cols-2">
+      {# Top Selling #}
+      <div class="table-card animate-in animate-in--d1">
+        <p class="metric-label mb-4">Top Selling Products</p>
+        {% if product_analytics.top_selling %}
+        <div class="overflow-x-auto">
+          <div class="table-wrapper">
+          <table class="analytics-table analytics-table--compact" role="table" aria-label="Top selling products">
+            <thead><tr><th>Product</th><th class="text-right">Sold</th><th class="text-right">Revenue</th></tr></thead>
+            <tbody>
+              {% for p in product_analytics.top_selling %}
+              <tr>
+                <td><span class="font-medium text-gray-900 dark:text-white text-[13px]">{{ p.product__name|truncatechars:32 }}</span></td>
+                <td class="text-right text-gray-700 dark:text-gray-300">{{ p.quantity_sold }}</td>
+                <td class="text-right font-semibold text-gray-900 dark:text-white">{{ curr }}{{ p.revenue|floatformat:0 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></div><p class="empty-state__title">No sales data yet</p></div>
+        {% endif %}
+      </div>
+      {# Most Viewed #}
+      <div class="table-card animate-in animate-in--d2">
+        <p class="metric-label mb-4">Most Viewed Products</p>
+        {% if product_analytics.most_viewed %}
+        <div class="overflow-x-auto">
+          <div class="table-wrapper">
+          <table class="analytics-table analytics-table--compact" role="table" aria-label="Most viewed products">
+            <thead><tr><th>Product</th><th class="text-right">Views</th><th class="text-right">Price</th></tr></thead>
+            <tbody>
+              {% for p in product_analytics.most_viewed %}
+              <tr>
+                <td><span class="font-medium text-gray-900 dark:text-white text-[13px]">{{ p.name|truncatechars:32 }}</span></td>
+                <td class="text-right"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">{{ p.views }}</span></td>
+                <td class="text-right text-gray-700 dark:text-gray-300">{{ curr }}{{ p.price|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div><p class="empty-state__title">No view data yet</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+      {# Highest Revenue #}
+      <div class="table-card animate-in animate-in--d3">
+        <p class="metric-label mb-4">Highest Revenue Products</p>
+        {% if product_analytics_extended.highest_revenue %}
+        <div class="overflow-x-auto">
+          <div class="table-wrapper">
+          <table class="analytics-table analytics-table--compact" role="table" aria-label="Highest revenue products">
+            <thead><tr><th>Product</th><th class="text-right">Sold</th><th class="text-right">Revenue</th></tr></thead>
+            <tbody>
+              {% for p in product_analytics_extended.highest_revenue %}
+              <tr>
+                <td><span class="font-medium text-gray-900 dark:text-white text-[13px]">{{ p.product__name|truncatechars:32 }}</span></td>
+                <td class="text-right text-gray-700 dark:text-gray-300">{{ p.quantity_sold }}</td>
+                <td class="text-right font-semibold text-emerald-600 dark:text-emerald-400">{{ curr }}{{ p.revenue|floatformat:0 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><p class="empty-state__title">No revenue data yet</p></div>
+        {% endif %}
+      </div>
+      {# Most Wishlisted #}
+      <div class="table-card animate-in animate-in--d4">
+        <p class="metric-label mb-4">Most Wishlisted Products</p>
+        {% if product_analytics.most_wishlisted %}
+        <div class="overflow-x-auto">
+          <div class="table-wrapper">
+          <table class="analytics-table analytics-table--compact" role="table" aria-label="Most wishlisted products">
+            <thead><tr><th>Product</th><th class="text-right">Brand</th><th class="text-right">Wishlists</th></tr></thead>
+            <tbody>
+              {% for p in product_analytics.most_wishlisted %}
+              <tr>
+                <td><span class="font-medium text-gray-900 dark:text-white text-[13px]">{{ p.product__name|truncatechars:32 }}</span></td>
+                <td class="text-right text-gray-500 dark:text-gray-400">{{ p.product__brand }}</td>
+                <td class="text-right"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300">{{ p.count }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></div><p class="empty-state__title">No wishlist data yet</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+      {# Low Stock #}
+      <div class="table-card animate-in animate-in--d4">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Low Stock</p>
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">Low Stock Products <span class="text-amber-500 dark:text-amber-400">({{ s.low_stock_products }})</span></h3>
+          </div>
+        </div>
+        {% if product_analytics.low_stock %}
+        <div class="overflow-x-auto">
+          <div class="table-wrapper">
+          <table class="analytics-table analytics-table--compact" role="table" aria-label="Low stock products">
+            <thead><tr><th>Product</th><th class="text-right">Stock</th><th class="text-right">Price</th></tr></thead>
+            <tbody>
+              {% for p in product_analytics.low_stock %}
+              <tr>
+                <td><span class="font-medium text-gray-900 dark:text-white text-[13px]">{{ p.name|truncatechars:30 }}</span></td>
+                <td class="text-right"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{{ p.stock }}</span></td>
+                <td class="text-right text-gray-700 dark:text-gray-300">{{ curr }}{{ p.price|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><p class="empty-state__title">All well stocked</p></div>
+        {% endif %}
+      </div>
+      {# Out of Stock #}
+      <div class="table-card animate-in animate-in--d5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="metric-label">Out of Stock</p>
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">Out of Stock Products <span class="text-red-500 dark:text-red-400">({{ s.out_of_stock_products }})</span></h3>
+          </div>
+        </div>
+        {% if product_analytics.out_of_stock %}
+        <div class="overflow-x-auto">
+          <div class="table-wrapper">
+          <table class="analytics-table analytics-table--compact" role="table" aria-label="Out of stock products">
+            <thead><tr><th>Product</th><th class="text-right">Stock</th><th class="text-right">Price</th></tr></thead>
+            <tbody>
+              {% for p in product_analytics.out_of_stock %}
+              <tr>
+                <td><span class="font-medium text-gray-900 dark:text-white text-[13px]">{{ p.name|truncatechars:30 }}</span></td>
+                <td class="text-right"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">0</span></td>
+                <td class="text-right text-gray-700 dark:text-gray-300">{{ curr }}{{ p.price|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><p class="empty-state__title">No out of stock products</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Recently Added Products #}
+    <div class="table-card animate-in animate-in--d6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="metric-label">Inventory</p>
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">Recently Added Products</h3>
+        </div>
+      </div>
+      {% if product_analytics_extended.recently_added %}
+      <div class="overflow-x-auto">
+        <div class="table-wrapper">
+        <table class="analytics-table analytics-table--compact" role="table" aria-label="Recently added products">
+          <thead><tr><th>Product</th><th class="text-right">Brand</th><th class="text-right">Price</th><th class="text-right">Stock</th><th class="text-right">Added</th></tr></thead>
+          <tbody>
+            {% for p in product_analytics_extended.recently_added %}
+            <tr>
+              <td><span class="font-medium text-gray-900 dark:text-white text-[13px]">{{ p.name|truncatechars:30 }}</span></td>
+              <td class="text-right text-gray-500 dark:text-gray-400">{{ p.brand }}</td>
+              <td class="text-right text-gray-700 dark:text-gray-300">{{ curr }}{{ p.price|floatformat:2 }}</td>
+              <td class="text-right"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {% if p.stock == 0 %}bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300{% elif p.stock <= 5 %}bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300{% else %}bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300{% endif %}">{{ p.stock }}</span></td>
+              <td class="text-right text-gray-400 dark:text-gray-500 text-[11px]">{{ p.created_at|date:"M j" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg></div><p class="empty-state__title">No products yet</p></div>
+      {% endif %}
+    </div>
+
+    {# ============================================ #}
+    {# SECTION: CUSTOMER ANALYTICS                 #}
+    {# ============================================ #}
+
+    <div class="section-title animate-in">
+      <svg width="16" height="16" class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">Customer Analytics</h3>
+      <span class="section-title__line"></span>
+    </div>
+
+    {# Customer KPI Cards #}
+    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="kpi-card kpi-card--gradient-indigo animate-in animate-in--d1">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--indigo">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">New Customers</p>
+            <p class="metric-value text-indigo-700 dark:text-indigo-400">{{ customer_analytics.new_customers }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--gradient-orange animate-in animate-in--d2">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--orange">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Returning Customers</p>
+            <p class="metric-value text-orange-700 dark:text-orange-400">{{ customer_analytics.returning_customers }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--gradient-purple animate-in animate-in--d3">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--purple">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Customer LTV</p>
+            <p class="metric-value text-purple-700 dark:text-purple-400">{{ curr }}{{ customer_analytics.customer_lifetime_value|floatformat:2 }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card animate-in animate-in--d4">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--emerald">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Total Customers</p>
+            <p class="metric-value text-emerald-700 dark:text-emerald-400">{{ s.total_customers }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Top Customers Table #}
+    <div class="table-card animate-in">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="metric-label">Top Customers</p>
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">Top Customers by Revenue</h3>
+        </div>
+      </div>
+      {% if customer_analytics.top_customers %}
+      <div class="overflow-x-auto">
+        <div class="table-wrapper">
+        <table class="analytics-table" role="table" aria-label="Top customers">
+          <thead><tr><th>#</th><th>Customer</th><th>Email</th><th class="text-right">Orders</th><th class="text-right">Total Spent</th></tr></thead>
+          <tbody>
+            {% for c in customer_analytics.top_customers %}
+            <tr>
+              <td class="text-gray-400 dark:text-gray-500 text-center w-8">{{ forloop.counter }}</td>
+              <td><span class="font-medium text-gray-900 dark:text-white">{{ c.username }}</span></td>
+              <td class="text-gray-500 dark:text-gray-400 text-[13px]">{{ c.email }}</td>
+              <td class="text-right"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">{{ c.order_count }}</span></td>
+              <td class="text-right font-semibold text-gray-900 dark:text-white">{{ curr }}{{ c.total_spent|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197"/></svg></div><p class="empty-state__title">No customer data yet</p></div>
+      {% endif %}
+    </div>
+
+    {# Most Active Customers #}
+    <div class="table-card animate-in">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="metric-label">Activity</p>
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">Most Active Customers</h3>
+        </div>
+      </div>
+      {% if customer_analytics.most_active %}
+      <div class="overflow-x-auto">
+        <div class="table-wrapper">
+        <table class="analytics-table" role="table" aria-label="Most active customers">
+          <thead><tr><th>#</th><th>Customer</th><th class="text-right">Orders</th><th class="text-right">Total Spent</th></tr></thead>
+          <tbody>
+            {% for c in customer_analytics.most_active %}
+            <tr>
+              <td class="text-gray-400 dark:text-gray-500 text-center w-8">{{ forloop.counter }}</td>
+              <td><span class="font-medium text-gray-900 dark:text-white">{{ c.username }}</span></td>
+              <td class="text-right"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">{{ c.order_count }}</span></td>
+              <td class="text-right font-semibold text-gray-900 dark:text-white">{{ curr }}{{ c.total_spent|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div><p class="empty-state__title">No activity data yet</p></div>
+      {% endif %}
+    </div>
+
+    {# ============================================ #}
+    {# SECTION: EMAIL ANALYTICS                    #}
+    {# ============================================ #}
+
+    <div class="section-title animate-in">
+      <svg width="16" height="16" class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">Email Analytics</h3>
+      <span class="section-title__line"></span>
+    </div>
+
+    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="kpi-card animate-in animate-in--d1">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--blue">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Emails Sent</p>
+            <p class="metric-value text-blue-700 dark:text-blue-400">{{ email_analytics.total_sent }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card animate-in animate-in--d2">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--rose">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Failed</p>
+            <p class="metric-value text-rose-700 dark:text-rose-400">{{ email_analytics.failed }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--gradient-emerald animate-in animate-in--d3">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--emerald">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Delivery Rate</p>
+            <p class="metric-value text-emerald-700 dark:text-emerald-400">{{ email_analytics.success_rate }}%</p>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card animate-in animate-in--d4">
+        <div class="kpi-card__inner">
+          <div class="kpi-card__icon kpi-card__icon--purple">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="kpi-card__body">
+            <p class="metric-label">Avg Send Time</p>
+            <p class="metric-value metric-value--sm text-purple-700 dark:text-purple-400">{{ email_analytics.average_send_time }}s</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ============================================ #}
+    {# SECTION: RECENT ACTIVITY + QUICK ACTIONS    #}
+    {# ============================================ #}
+
+    <div class="grid gap-4 lg:grid-cols-3">
+
+      {# Recent Activity Timeline #}
+      <div class="lg:col-span-2 space-y-4">
+        <div class="chart-card animate-in">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <p class="metric-label">Live</p>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">Recent Activity</h3>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="relative flex w-2 h-2">
+                <span class="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                <span class="relative inline-flex w-2 h-2 rounded-full bg-emerald-500"></span>
+              </span>
+              <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">Live</span>
+            </div>
+          </div>
+          <div class="timeline max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
+            {% for order in recent_activity.orders|slice:":5" %}
+            <div class="timeline__item">
+              <div class="timeline__dot timeline__dot--emerald" aria-hidden="true">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">New Order <span class="text-gray-400 font-normal">#{{ order.id }}</span></p>
+                  <p class="text-[11px] text-gray-400 dark:text-gray-500 truncate">{{ order.customer_name|default:order.user.username }} · {{ curr }}{{ order.total_price|floatformat:2 }}</p>
+                </div>
+                <span class="timeline__time">{{ order.created_at|timesince }} ago</span>
+              </div>
+            </div>
+            {% endfor %}
+            {% for w in recent_activity.wishlist|slice:":3" %}
+            <div class="timeline__item">
+              <div class="timeline__dot timeline__dot--rose" aria-hidden="true">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Wishlist Added</p>
+                  <p class="text-[11px] text-gray-400 dark:text-gray-500 truncate">{{ w.user.username }} · {{ w.product.name|truncatechars:30 }}</p>
+                </div>
+                <span class="timeline__time">{{ w.created_at|timesince }} ago</span>
+              </div>
+            </div>
+            {% endfor %}
+            {% for c in recent_activity.customers|slice:":3" %}
+            <div class="timeline__item">
+              <div class="timeline__dot timeline__dot--blue" aria-hidden="true">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">New Customer</p>
+                  <p class="text-[11px] text-gray-400 dark:text-gray-500 truncate">{{ c.username }} · {{ c.email }}</p>
+                </div>
+                <span class="timeline__time">{{ c.date_joined|timesince }} ago</span>
+              </div>
+            </div>
+            {% endfor %}
+            {% for p in recent_activity.payments|slice:":3" %}
+            <div class="timeline__item">
+              <div class="timeline__dot timeline__dot--emerald" aria-hidden="true">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Payment Received</p>
+                  <p class="text-[11px] text-gray-400 dark:text-gray-500 truncate">{{ p.user__username }} · {{ curr }}{{ p.total_price|floatformat:2 }}</p>
+                </div>
+                <span class="timeline__time">{{ p.created_at|timesince }} ago</span>
+              </div>
+            </div>
+            {% endfor %}
+            {% for e in recent_activity.emails|slice:":3" %}
+            <div class="timeline__item">
+              <div class="timeline__dot timeline__dot--gray" aria-hidden="true">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">Email {{ e.status|title }}</p>
+                  <p class="text-[11px] text-gray-400 dark:text-gray-500 truncate">{{ e.subject|truncatechars:35 }} · {{ e.recipient }}</p>
+                </div>
+                <span class="timeline__time">{{ e.created_at|timesince }} ago</span>
+              </div>
+            </div>
+            {% empty %}
+            <div class="empty-state py-6"><div class="empty-state__icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div><p class="empty-state__title">No recent activity</p></div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      {# Right Sidebar: Quick Actions + Stats #}
+      <div class="space-y-4">
+        {# Quick Actions #}
+        <div class="chart-card animate-in animate-in--d3">
+          <p class="metric-label mb-4">Quick Actions</p>
+          <div class="grid grid-cols-2 gap-2">
+            <a href="/admin/products/product/add/" class="quick-action" aria-label="Add new product">
+              <svg width="16" height="16" class="quick-action__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              <span>Add Product</span>
+            </a>
+            <a href="/admin/products/category/add/" class="quick-action" aria-label="Create new category">
+              <svg width="16" height="16" class="quick-action__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+              <span>New Category</span>
+            </a>
+            <a href="/admin/orders/coupon/add/" class="quick-action" aria-label="Create new coupon">
+              <svg width="16" height="16" class="quick-action__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+              <span>New Coupon</span>
+            </a>
+            <a href="/admin/orders/order/" class="quick-action" aria-label="View all orders">
+              <svg width="16" height="16" class="quick-action__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+              <span>View Orders</span>
+            </a>
+            <a href="/admin/accounts/user/" class="quick-action" aria-label="View customers">
+              <svg width="16" height="16" class="quick-action__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <span>Customers</span>
+            </a>
+            <a href="/admin/products/product/" class="quick-action" aria-label="Manage inventory">
+              <svg width="16" height="16" class="quick-action__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+              <span>Inventory</span>
+            </a>
+            <a href="/admin/accounts/emaillog/" class="quick-action" aria-label="Send newsletter">
+              <svg width="16" height="16" class="quick-action__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <span>Newsletter</span>
+            </a>
+            <a href="/admin/" class="quick-action" aria-label="View reports">
+              <svg width="16" height="16" class="quick-action__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <span>Reports</span>
+            </a>
+          </div>
+        </div>
+
+        {# Mini Summary Card #}
+        <div class="chart-card animate-in animate-in--d4">
+          <p class="metric-label mb-4">Store Health</p>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Revenue Today</span>
+              <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ curr }}{{ s.today_revenue|floatformat:2 }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Orders Today</span>
+              <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ s.orders_today }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Conversion Rate</span>
+              <span class="inline-flex items-center gap-1 text-sm font-semibold {% if s.conversion_rate > 3 %}text-emerald-600 dark:text-emerald-400{% else %}text-gray-900 dark:text-white{% endif %}">{{ s.conversion_rate }}%</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Low Stock Items</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {% if s.low_stock_products > 0 %}bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300{% else %}bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300{% endif %}">{{ s.low_stock_products }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Pending Orders</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {% if s.pending_orders > 0 %}bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300{% else %}bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300{% endif %}">{{ s.pending_orders }}</span>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Total Revenue</span>
+              <span class="text-sm font-bold text-gray-900 dark:text-white">{{ curr }}{{ s.total_revenue|floatformat:2 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endwith %}
+
+{# ============================================ #}
+{# DATA: JSON for Charts                       #}
+{# ============================================ #}
+
+{{ sales_charts.revenue|json_script:"revenue-chart-data" }}
+{{ sales_charts.orders|json_script:"orders-chart-data" }}
+{{ sales_charts.aov|json_script:"aov-chart-data" }}
+{{ order_status|json_script:"order-status-data" }}
+{{ customer_analytics.growth_chart|json_script:"customer-chart-data" }}
+{{ wishlist_analytics.growth_chart|json_script:"wishlist-chart-data" }}
+{{ cart_analytics.growth_chart|json_script:"cart-chart-data" }}
+
+{% if product_analytics_extended.top_categories %}
+{{ product_analytics_extended.top_categories|json_script:"category-chart-data" }}
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-const orderChartData = JSON.parse(document.getElementById("order-chart-data").textContent);
-const revenueChartData = JSON.parse(document.getElementById("revenue-chart-data").textContent);
-const statusChartData = JSON.parse(document.getElementById("status-chart-data").textContent);
-const userChartData = JSON.parse(document.getElementById("user-chart-data").textContent);
+(function() {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const textColor = isDark ? '#9ca3af' : '#6b7280';
+    const gridColor = isDark ? '#1f2937' : '#f3f4f6';
+    const tooltipBg = isDark ? '#1f2937' : '#ffffff';
+    const tooltipBorder = isDark ? '#374151' : '#e5e7eb';
+    const cardBg = isDark ? '#111827' : '#ffffff';
 
-const chartFont = { family: "Inter" };
-Chart.defaults.font.family = chartFont.family;
-Chart.defaults.color = "#4b5563";
+    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+    Chart.defaults.color = textColor;
+    Chart.defaults.animation.duration = 800;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+    Chart.defaults.responsive = true;
+    Chart.defaults.maintainAspectRatio = false;
 
-new Chart(document.getElementById("ordersChart"), {
-    type: "line",
-    data: {
-        labels: orderChartData.labels,
-        datasets: [{
-            label: "Orders",
-            data: orderChartData.values,
-            borderColor: "#111111",
-            backgroundColor: "rgba(17, 17, 17, 0.08)",
-            fill: true,
-            borderWidth: 2,
-            tension: 0.35,
-            pointRadius: 3,
-            pointHoverRadius: 5
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: { beginAtZero: true, ticks: { precision: 0 } },
-            x: { grid: { display: false } }
-        }
+    function createGradient(ctx, color) {
+        var gradient = ctx.createLinearGradient(0, 0, 0, 320);
+        gradient.addColorStop(0, color.replace('0.08', '0.25'));
+        gradient.addColorStop(0.5, color.replace('0.08', '0.10'));
+        gradient.addColorStop(1, color.replace('0.08', '0.02'));
+        return gradient;
     }
-});
 
-new Chart(document.getElementById("revenueChart"), {
-    type: "line",
-    data: {
-        labels: revenueChartData.labels,
-        datasets: [{
-            label: "Revenue",
-            data: revenueChartData.values,
-            borderColor: "#8b5e3c",
-            backgroundColor: "rgba(139, 94, 60, 0.10)",
-            fill: true,
-            borderWidth: 2,
-            tension: 0.35,
-            pointRadius: 3,
-            pointHoverRadius: 5
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: { beginAtZero: true },
-            x: { grid: { display: false } }
-        }
+    function sharedLineOpts(extra) {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 800,
+                easing: 'easeOutQuart'
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: tooltipBg,
+                    titleColor: isDark ? '#f3f4f6' : '#111827',
+                    bodyColor: textColor,
+                    borderColor: tooltipBorder,
+                    borderWidth: 1,
+                    cornerRadius: 10,
+                    padding: 12,
+                    titleFont: { size: 12, weight: '600' },
+                    bodyFont: { size: 12 },
+                    displayColors: false,
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: gridColor, drawBorder: false },
+                    ticks: { font: { size: 10 }, padding: 8, maxTicksLimit: 6 }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 10 }, maxTicksLimit: 8, padding: 8 }
+                }
+            },
+            ...extra,
+        };
     }
-});
 
-new Chart(document.getElementById("usersChart"), {
-    type: "line",
-    data: {
-        labels: userChartData.labels,
-        datasets: [{
-            label: "New users",
-            data: userChartData.values,
-            borderColor: "#0f766e",
-            backgroundColor: "rgba(15, 118, 110, 0.10)",
-            fill: true,
-            borderWidth: 2,
-            tension: 0.35,
-            pointRadius: 3,
-            pointHoverRadius: 5
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: { beginAtZero: true, ticks: { precision: 0 } },
-            x: { grid: { display: false } }
-        }
+    function makeLine(ctx, dataId, color) {
+        var raw = JSON.parse(document.getElementById(dataId).textContent);
+        var canvas = ctx.canvas;
+        var gradient = createGradient(canvas.getContext('2d'), color);
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: raw.labels,
+                datasets: [{
+                    data: raw.values,
+                    borderColor: color,
+                    backgroundColor: gradient,
+                    fill: true,
+                    borderWidth: 2.5,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: color,
+                    pointHoverBorderColor: tooltipBg,
+                    pointHoverBorderWidth: 3,
+                    pointHitRadius: 10,
+                }]
+            },
+            options: sharedLineOpts()
+        });
     }
-});
 
-new Chart(document.getElementById("statusChart"), {
-    type: "pie",
-    data: {
-        labels: statusChartData.labels,
-        datasets: [{
-            data: statusChartData.values,
-            backgroundColor: ["#facc15", "#16a34a", "#2563eb", "#9333ea", "#059669", "#dc2626"],
-            borderColor: "#ffffff",
-            borderWidth: 2
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "bottom",
-                labels: { usePointStyle: true, boxWidth: 10, padding: 16 }
+    makeLine(document.getElementById('revenueChart'), 'revenue-chart-data', 'rgba(5,150,105,1)');
+    makeLine(document.getElementById('ordersChart'), 'orders-chart-data', 'rgba(59,130,246,1)');
+    makeLine(document.getElementById('aovChart'), 'aov-chart-data', 'rgba(124,58,237,1)');
+    makeLine(document.getElementById('customerChart'), 'customer-chart-data', 'rgba(99,102,241,1)');
+    makeLine(document.getElementById('wishlistChart'), 'wishlist-chart-data', 'rgba(236,72,153,1)');
+    makeLine(document.getElementById('cartChart'), 'cart-chart-data', 'rgba(6,182,212,1)');
+
+    // Order Status Doughnut
+    var statusRaw = JSON.parse(document.getElementById('order-status-data').textContent);
+    var statusLabels = Object.keys(statusRaw).filter(function(k) { return k !== 'failed'; }).map(function(k) { return k.charAt(0).toUpperCase() + k.slice(1); });
+    var statusValues = Object.keys(statusRaw).filter(function(k) { return k !== 'failed'; }).map(function(k) { return statusRaw[k]; });
+    var statusColors = ['#f59e0b','#3b82f6','#8b5cf6','#6366f1','#059669','#ef4444'];
+
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusValues,
+                backgroundColor: statusColors,
+                borderColor: isDark ? '#111827' : '#ffffff',
+                borderWidth: 3,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            animation: {
+                animateRotate: true,
+                duration: 1000,
+                easing: 'easeOutQuart'
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        boxWidth: 8,
+                        padding: 16,
+                        font: { size: 10, weight: '500' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: tooltipBg,
+                    titleColor: isDark ? '#f3f4f6' : '#111827',
+                    bodyColor: textColor,
+                    borderColor: tooltipBorder,
+                    borderWidth: 1,
+                    cornerRadius: 10,
+                    padding: 12,
+                    callbacks: {
+                        label: function(ctx) {
+                            var total = ctx.dataset.data.reduce(function(a,b) { return a + b; }, 0);
+                            var pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                            return ' ' + ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+                        }
+                    }
+                }
             }
         }
+    });
+
+    // Top Categories Bar Chart
+    var categoryDataEl = document.getElementById('category-chart-data');
+    if (categoryDataEl) {
+        var catRaw = JSON.parse(categoryDataEl.textContent);
+        var catLabels = catRaw.map(function(c) { return c.product__category__name || 'Uncategorized'; });
+        var catValues = catRaw.map(function(c) { return parseFloat(c.total_revenue) || 0; });
+
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'bar',
+            data: {
+                labels: catLabels,
+                datasets: [{
+                    data: catValues,
+                    backgroundColor: [
+                        'rgba(5,150,105,0.75)', 'rgba(59,130,246,0.75)', 'rgba(139,92,246,0.75)',
+                        'rgba(245,158,11,0.75)', 'rgba(244,63,94,0.75)', 'rgba(99,102,241,0.75)',
+                        'rgba(6,182,212,0.75)', 'rgba(251,146,60,0.75)', 'rgba(20,184,166,0.75)', 'rgba(236,72,153,0.75)'
+                    ],
+                    borderColor: isDark ? '#111827' : '#ffffff',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                    barPercentage: 0.7,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                animation: {
+                    duration: 800,
+                    easing: 'easeOutQuart'
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: tooltipBg,
+                        titleColor: isDark ? '#f3f4f6' : '#111827',
+                        bodyColor: textColor,
+                        borderColor: tooltipBorder,
+                        borderWidth: 1,
+                        cornerRadius: 10,
+                        padding: 12,
+                        callbacks: {
+                            label: function(ctx) { return ' ' + ctx.parsed.x.toFixed(2); }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: gridColor, drawBorder: false },
+                        ticks: { font: { size: 10 }, padding: 8 }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11, weight: '500' }, padding: 8 }
+                    }
+                }
+            }
+        });
     }
-});
+})();
 </script>
 {% endblock %}

@@ -1,0 +1,112 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static log %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}">
+<style>
+  .analytics-dashboard-card {
+    background: var(--django-admin-bg, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: box-shadow 0.2s;
+  }
+  .analytics-dashboard-card:hover {
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .analytics-dashboard-card .info h3 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .analytics-dashboard-card .info p {
+    margin: 0;
+    color: #666;
+    font-size: 13px;
+  }
+  .analytics-dashboard-card .cta {
+    background: #000;
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  .analytics-dashboard-card .cta:hover {
+    background: #333;
+  }
+  @media (prefers-color-scheme: dark) {
+    .analytics-dashboard-card {
+      background: #1a1a2e;
+      border-color: #333;
+    }
+    .analytics-dashboard-card .info p {
+      color: #999;
+    }
+    .analytics-dashboard-card .cta {
+      background: #333;
+    }
+    .analytics-dashboard-card .cta:hover {
+      background: #555;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="app-list">
+  <div class="analytics-dashboard-card">
+    <div class="info">
+      <h3>Analytics Dashboard</h3>
+      <p>Revenue, orders, products, customers, wishlist &amp; cart insights</p>
+    </div>
+    <a href="{% url 'analytics_dashboard' %}" class="cta">Open Dashboard &rarr;</a>
+  </div>
+  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<div id="content-related">
+    <div class="module" id="recent-actions-module">
+        <h2>{% translate 'Recent actions' %}</h2>
+        <h3>{% translate 'My actions' %}</h3>
+            {% get_admin_log 10 as admin_log for_user user %}
+            {% if not admin_log %}
+            <p>{% translate 'None available' %}</p>
+            {% else %}
+            <ul class="actionlist">
+            {% for entry in admin_log %}
+            <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+                <span class="visually-hidden">{% if entry.is_addition %}{% translate 'Added:' %}{% elif entry.is_change %}{% translate 'Changed:' %}{% elif entry.is_deletion %}{% translate 'Deleted:' %}{% endif %}</span>
+                {% if entry.is_deletion or not entry.get_admin_url %}
+                    {{ entry.object_repr }}
+                {% else %}
+                    <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                {% endif %}
+                <br>
+                {% if entry.content_type %}
+                    <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+                {% else %}
+                    <span class="mini quiet">{% translate 'Unknown content' %}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+            </ul>
+            {% endif %}
+    </div>
+</div>
+{% endblock %}
