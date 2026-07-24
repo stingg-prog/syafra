@@ -634,9 +634,17 @@ def product_detail(request, pk):
         )
     )
 
-    related = Product.objects.filter(
+    same_category = Product.objects.filter(
         category=product.category, stock__gt=0
-    ).exclude(pk=product.pk)[:4]
+    ).exclude(pk=product.pk)
+
+    if same_category.count() < 6:
+        extra = Product.objects.filter(stock__gt=0)\
+            .exclude(pk=product.pk)\
+            .exclude(pk__in=list(same_category.values_list("pk", flat=True)))
+        related = list(same_category) + list(extra[:6 - same_category.count()])
+    else:
+        related = same_category[:6]
 
     payment_settings = PaymentSettings.get_settings()
     currency = payment_settings.currency_symbol if payment_settings else '₹'
