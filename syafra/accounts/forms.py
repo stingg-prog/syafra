@@ -1,8 +1,6 @@
 from django import forms
-from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth.forms import PasswordResetForm as BasePasswordResetForm
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 from django.conf import settings
@@ -92,11 +90,3 @@ class RegisterForm(forms.Form):
         return user
 
 
-class PasswordResetForm(forms.Form):
-    email = forms.EmailField()
-
-    def clean_email(self):
-        email = self.cleaned_data["email"]
-        if not User.objects.filter(email=email).exists():
-            raise forms.ValidationError("No account with this email.")
-        return email

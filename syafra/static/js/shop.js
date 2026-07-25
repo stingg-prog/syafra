@@ -315,14 +315,9 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ---- Search ---- */
     if (searchInput) {
         function submitSearch() {
-            var hidden = form.querySelector('input[name="search"]');
-            if (!hidden) {
-                hidden = document.createElement('input');
-                hidden.type = 'hidden';
-                hidden.name = 'search';
-                form.appendChild(hidden);
-            }
-            hidden.value = searchInput.value;
+            var existing = form.querySelector('input[name="search"]');
+            if (existing) existing.remove();
+            searchInput.name = 'q';
             submitForm();
         }
 

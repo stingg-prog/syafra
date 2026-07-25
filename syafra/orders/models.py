@@ -358,6 +358,24 @@ class WhatsAppSettings(models.Model):
         blank=True,
         default='Hi, I am interested in your products. Please share more details.'
     )
+    account_sid = models.CharField(max_length=100, blank=True, default='', help_text='Twilio Account SID')
+    auth_token = models.CharField(max_length=100, blank=True, default='', help_text='Twilio Auth Token')
+    order_created_template = models.TextField(
+        blank=True, default='',
+        help_text='WhatsApp template for new orders. Placeholders: {name}, {order_id}, {total}'
+    )
+    processing_template = models.TextField(
+        blank=True, default='',
+        help_text='WhatsApp template for processing orders. Placeholders: {name}, {order_id}, {total}'
+    )
+    shipped_template = models.TextField(
+        blank=True, default='',
+        help_text='WhatsApp template for shipped orders. Placeholders: {name}, {order_id}, {total}'
+    )
+    delivered_template = models.TextField(
+        blank=True, default='',
+        help_text='WhatsApp template for delivered orders. Placeholders: {name}, {order_id}, {total}'
+    )
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
 

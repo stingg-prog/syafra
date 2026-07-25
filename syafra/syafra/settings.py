@@ -493,7 +493,7 @@ RAZORPAY_KEY_ID = (os.getenv("RAZORPAY_KEY_ID", "") or "").strip()
 RAZORPAY_KEY_SECRET = (os.getenv("RAZORPAY_KEY_SECRET", "") or "").strip()
 RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET")
 
-if os.getenv("RENDER") and not RAZORPAY_WEBHOOK_SECRET:
+if not DEBUG and not RAZORPAY_WEBHOOK_SECRET:
     raise ImproperlyConfigured(
         "RAZORPAY_WEBHOOK_SECRET must be set in production"
     )

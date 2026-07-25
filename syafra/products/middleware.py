@@ -1,6 +1,10 @@
+from django.core.cache import cache
 from django.http import HttpResponseForbidden, HttpResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+
+_MAINTENANCE_CACHE_KEY = 'maintenance_mode_status'
+_MAINTENANCE_CACHE_TTL = 60
 
 
 class MaintenanceModeMiddleware:
@@ -19,10 +23,17 @@ class MaintenanceModeMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        from .models import WebsiteSettings
-        website_settings = WebsiteSettings.get_settings()
+        settings_data = cache.get(_MAINTENANCE_CACHE_KEY)
+        if settings_data is None:
+            from .models import WebsiteSettings
+            ws = WebsiteSettings.get_settings()
+            settings_data = {
+                'maintenance_mode': ws.maintenance_mode,
+                'maintenance_message': ws.maintenance_message,
+            }
+            cache.set(_MAINTENANCE_CACHE_KEY, settings_data, _MAINTENANCE_CACHE_TTL)
 
-        if website_settings.maintenance_mode:
+        if settings_data['maintenance_mode']:
             if request.user.is_staff or request.user.is_superuser:
                 return self.get_response(request)
 
@@ -32,7 +43,7 @@ class MaintenanceModeMiddleware:
                     return self.get_response(request)
 
             return render(request, 'maintenance.html', {
-                'message': website_settings.maintenance_message,
+                'message': settings_data['maintenance_message'],
             }, status=503)
 
         return self.get_response(request)

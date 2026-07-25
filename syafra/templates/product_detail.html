@@ -340,7 +340,7 @@
 <script>
     ShareSheet.init({
         title: '{{ product.name|escapejs }}',
-        url: '{{ product_url }}',
+        url: '{{ product_url|escapejs }}',
         price: '{{ currency }}{{ product.price|floatformat:0 }}',
         shareText: '{{ share_text|escapejs }}'
     });

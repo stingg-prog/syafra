@@ -381,58 +381,84 @@ function updateFreeShippingProgress(cartTotal) {
     }
 }
 
+var pendingCartRequests = {};
+
 function updateQuantity(itemId, newQuantity) {
     if (newQuantity < 1) {
         removeFromCart(itemId);
         return;
     }
 
-    fetch(`/cart/update/${itemId}/`, {
+    if (pendingCartRequests[itemId]) return;
+    pendingCartRequests[itemId] = true;
+
+    var qtyEl = document.getElementById('quantity-' + itemId);
+    if (qtyEl) qtyEl.style.opacity = '0.5';
+
+    fetch('/cart/update/' + itemId + '/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': getCookie('csrftoken')
         },
-        body: `quantity=${newQuantity}`
+        body: 'quantity=' + newQuantity
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        pendingCartRequests[itemId] = false;
+        if (qtyEl) qtyEl.style.opacity = '1';
         if (data.success) {
-            document.getElementById(`quantity-${itemId}`).textContent = newQuantity;
-            document.getElementById(`subtotal-${itemId}`).textContent = `${currencySymbol}${data.item_subtotal.toFixed(2)}`;
-            document.getElementById('cart-subtotal').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
-            document.getElementById('cart-total').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
+            document.getElementById('quantity-' + itemId).textContent = newQuantity;
+            document.getElementById('subtotal-' + itemId).textContent = currencySymbol + data.item_subtotal.toFixed(2);
+            document.getElementById('cart-subtotal').textContent = currencySymbol + data.cart_total.toFixed(2);
+            document.getElementById('cart-total').textContent = currencySymbol + data.cart_total.toFixed(2);
             updateFreeShippingProgress(data.cart_total);
 
             if (data.item_removed) {
-                const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+                var itemElement = document.querySelector('[data-item-id="' + itemId + '"]');
                 if (itemElement) itemElement.remove();
             }
+        } else {
+            showToast(data.error || 'Unable to update quantity.', 'error');
         }
+    })
+    .catch(function() {
+        pendingCartRequests[itemId] = false;
+        if (qtyEl) qtyEl.style.opacity = '1';
+        showToast('Network error. Please try again.', 'error');
     });
 }
 
 function removeFromCart(itemId) {
-    fetch(`/cart/remove/${itemId}/`, {
+    var itemElement = document.querySelector('[data-item-id="' + itemId + '"]');
+    if (itemElement) itemElement.style.opacity = '0.5';
+
+    fetch('/cart/remove/' + itemId + '/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCookie('csrftoken')
         }
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
         if (data.success) {
-            const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
             if (itemElement) itemElement.remove();
 
-            document.getElementById('cart-subtotal').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
-            document.getElementById('cart-total').textContent = `${currencySymbol}${data.cart_total.toFixed(2)}`;
+            document.getElementById('cart-subtotal').textContent = currencySymbol + data.cart_total.toFixed(2);
+            document.getElementById('cart-total').textContent = currencySymbol + data.cart_total.toFixed(2);
             updateFreeShippingProgress(data.cart_total);
 
             if (data.cart_count === 0) {
                 location.reload();
             }
+        } else {
+            if (itemElement) itemElement.style.opacity = '1';
+            showToast(data.error || 'Unable to remove item.', 'error');
         }
+    })
+    .catch(function() {
+        if (itemElement) itemElement.style.opacity = '1';
+        showToast('Network error. Please try again.', 'error');
     });
 }
 </script>

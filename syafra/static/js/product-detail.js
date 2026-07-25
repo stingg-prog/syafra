@@ -5,6 +5,21 @@
 var selectedSize = '';
 var currentQty = 1;
 
+/* ---- CSRF Token ---- */
+function getCookie(name) {
+    var cookieValue = '';
+    if (!document.cookie) return cookieValue;
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i += 1) {
+        var cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+        }
+    }
+    return cookieValue;
+}
+
 /* ---- Gallery ---- */
 
 function changeImage(thumbnail, imageUrl) {

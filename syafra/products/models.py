@@ -44,6 +44,7 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        ordering = ['-created_at']
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(price__gte=0),
@@ -613,8 +614,14 @@ class ThemeSettings(models.Model):
         self.pk = 1
         super().save(*args, **kwargs)
 
+    def reset_to_defaults(self):
+        defaults = {f.name: f.default for f in self._meta.fields if f.name != 'pk' and f.has_default()}
+        for attr, value in defaults.items():
+            setattr(self, attr, value)
+        self.save()
+
     def delete(self, *args, **kwargs):
-        pass
+        self.reset_to_defaults()
 
     @classmethod
     def get_settings(cls):
@@ -705,8 +712,14 @@ class WebsiteSettings(models.Model):
         self.pk = 1
         super().save(*args, **kwargs)
 
+    def reset_to_defaults(self):
+        defaults = {f.name: f.default for f in self._meta.fields if f.name != 'pk' and f.has_default()}
+        for attr, value in defaults.items():
+            setattr(self, attr, value)
+        self.save()
+
     def delete(self, *args, **kwargs):
-        pass
+        self.reset_to_defaults()
 
     @classmethod
     def get_settings(cls):

@@ -17,7 +17,7 @@ cloudinary==1.44.1
 colorama==0.4.6
 dj-database-url==3.1.2
 Django==5.2.15
-resend
+resend==2.34.0
 django-celery-beat==2.8.1
 django-cloudinary-storage==0.3.0
 frozenlist==1.8.0
@@ -25,7 +25,6 @@ gunicorn==25.3.0
 idna==3.11
 kombu==5.6.2
 multidict==6.7.1
-mysqlclient==2.2.8
 packaging==26.0
 pillow==12.1.1
 prompt_toolkit==3.0.52

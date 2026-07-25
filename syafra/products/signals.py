@@ -52,6 +52,6 @@ def clear_homepage_sections_cache(sender, **kwargs):
 @receiver([post_save, post_delete], sender=ThemeSettings)
 @receiver([post_save, post_delete], sender=WebsiteSettings)
 def clear_theme_website_cache(sender, **kwargs):
-    cache.delete('theme_settings_v1')
+    cache.delete('syafra_theme_settings')
     cache.delete('website_settings_v1')
     invalidate_homepage_cache()

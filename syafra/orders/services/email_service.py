@@ -222,7 +222,6 @@ def send_order_email(order, event_type):
     """
     Send an immediate, idempotent customer email for a specific order event.
     """
-    print("EMAIL TRIGGERED")
     event_type = _normalize_order_event_type(event_type)
     config = _order_event_config(event_type)
     if config is None:

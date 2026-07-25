@@ -71,8 +71,11 @@ def password_reset_request(request):
             email = form.cleaned_data["email"]
 
             with transaction.atomic():
-                user = User.objects.get(email=email)
-                transaction.on_commit(lambda u=user, r=request: _send_password_reset_on_commit(u, r))
+                try:
+                    user = User.objects.get(email=email)
+                    transaction.on_commit(lambda u=user, r=request: _send_password_reset_on_commit(u, r))
+                except User.DoesNotExist:
+                    pass
 
             messages.success(request, "Password reset email sent.")
             return redirect("accounts:login")
@@ -91,7 +94,7 @@ def password_reset_confirm(request, uidb64, token):
     try:
         uid = urlsafe_base64_decode(uidb64).decode()
         user = User.objects.get(pk=uid)
-    except:
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
 
     if user and default_token_generator.check_token(user, token):
@@ -109,6 +112,14 @@ def password_reset_confirm(request, uidb64, token):
         return render(request, "accounts/password_reset_confirm.html", {"form": form})
 
     return render(request, "accounts/password_reset_invalid.html")
+
+
+def password_reset_done(request):
+    return render(request, "registration/password_reset_done.html")
+
+
+def password_reset_complete(request):
+    return render(request, "registration/password_reset_complete.html")
 
 
 def _find_user_by_identifier(identifier):
@@ -219,7 +230,7 @@ def login_view(request):
 
     if request.method == 'POST':
         username = (request.POST.get('username') or request.POST.get('email') or '').strip()
-        password = request.POST.get('password', '').strip()
+        password = request.POST.get('password', '')
 
         if not username or not password:
             messages.error(request, 'Please fill in all fields.')
@@ -297,8 +308,7 @@ def resend_verification(request, uidb64=None):
                 user = User.objects.get(email__iexact=email)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
             except User.DoesNotExist:
-                messages.error(request, 'No account found with that email address.')
-                return render(request, 'accounts/resend_verification.html')
+                pass
         else:
             messages.error(request, 'Please enter your email address.')
             return render(request, 'accounts/resend_verification.html')

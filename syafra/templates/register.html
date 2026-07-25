@@ -25,6 +25,14 @@
                 {% endfor %}
             {% endif %}
 
+            {% if messages %}
+                {% for message in messages %}
+                <div class="account-message account-message--{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+
             <form method="POST" novalidate>
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ next }}">

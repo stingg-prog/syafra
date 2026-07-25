@@ -574,6 +574,9 @@ def checkout(request):
                 OrderItem.objects.bulk_create(order_items)
                 locked_cart.items.filter(pk__in=locked_item_ids).delete()
 
+                if hasattr(request, 'session') and request.user.is_authenticated:
+                    request.session.pop(f'cart_count_{request.user.id}', None)
+
                 logger.info(
                     _format_log_message(
                         "Order created, email deferred until after payment",
@@ -1005,6 +1008,7 @@ def verify_payment(request):
 payment_success = verify_payment
 
 
+@staff_member_required
 def razorpay_webhook_health(request):
     secret_configured = bool(getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '') or '')
     from .models import Order
@@ -1027,6 +1031,7 @@ def razorpay_webhook_health(request):
     })
 
 
+@staff_member_required
 def razorpay_webhook_test(request):
     """Simple test endpoint to verify Render can reach Django."""
     from .models import Order
@@ -1064,6 +1069,7 @@ def order_success(request, order_id):
         return redirect('orders:order_status', order_id=order.id)
     if order.status != 'paid':
         order.status = 'paid'
+        order.save(update_fields=['status'])
 
     items = order.items.select_related('product').all()
 
@@ -1732,30 +1738,29 @@ def upi_payment_verify(request):
             payment, created = _upsert_payment_record(
                 order,
                 provider='upi',
-                status='paid',
+                status='created',
                 amount=order.total_price,
                 currency=payment_settings.currency if payment_settings else 'INR',
                 receipt=f'upi_order_{order.id}',
                 razorpay_payment_id=f'UPI-{transaction_id}',
             )
-            payment.status = 'paid'
-            payment.verified_at = timezone.now()
-            payment.failure_reason = ''
-            payment.save(update_fields=['status', 'verified_at', 'failure_reason', 'updated_at'])
-            order, _processed = confirm_order_payment(order, payment_reference=f'UPI-{transaction_id}')
+            payment.failure_reason = f'UPI transaction submitted: {_redact_reference(transaction_id)}'
+            payment.save(update_fields=['failure_reason', 'updated_at'])
             logger.info(
                 _format_log_message(
-                    "UPI payment verified successfully",
+                    "UPI payment recorded, pending admin verification",
                     request,
                     order_id=order.id,
                     transaction_id=_redact_reference(transaction_id),
-                    processed=_processed,
                 )
             )
     except Exception as exc:
-        logger.exception(_format_log_message("UPI order confirmation failed", request, order_id=order.id, error=exc))
-        messages.error(request, 'Payment was verified but order finalization failed. Please contact support.')
+        logger.exception(_format_log_message("UPI payment record failed", request, order_id=order.id, error=exc))
+        messages.error(request, 'Failed to record payment details. Please contact support.')
         return redirect('cart:cart_view')
 
-    messages.success(request, 'Payment verified! Your order is now marked as paid.')
-    return redirect('orders:order_success', order_id=order.id)
+    messages.success(
+        request,
+        'Your UPI transaction has been recorded. Our team will verify it shortly and confirm your order.'
+    )
+    return redirect('orders:order_status', order_id=order.id)

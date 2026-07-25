@@ -12,6 +12,15 @@
 {% endblock %}
 
 {% block inner_header %}
+{% if messages %}
+<div class="container" style="margin-top: 1rem;">
+    {% for message in messages %}
+    <div class="account-message account-message--{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 {% if total_count > 0 %}
 <header class="page-header page-header--bordered">
     <h1 class="page-header__title">My Wishlist</h1>

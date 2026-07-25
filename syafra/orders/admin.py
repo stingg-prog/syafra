@@ -3,6 +3,7 @@ import logging
 from django.contrib import admin
 from django.contrib import messages
 from django.db import transaction
+from django.utils import timezone
 from django.utils.html import format_html
 
 from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES, Payment, PaymentSettings, WhatsAppSettings
@@ -18,6 +19,14 @@ class WhatsAppSettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         ('WhatsApp Number', {
             'fields': ('whatsapp_number', 'enquiry_whatsapp', 'default_message')
+        }),
+        ('Twilio Credentials', {
+            'fields': ('account_sid', 'auth_token'),
+            'classes': ('collapse',),
+        }),
+        ('Message Templates', {
+            'fields': ('order_created_template', 'processing_template', 'shipped_template', 'delivered_template'),
+            'classes': ('collapse',),
         }),
         ('Settings', {
             'fields': ('is_active',)
@@ -109,12 +118,11 @@ class OrderAdmin(admin.ModelAdmin):
         'razorpay_order_id',
         'razorpay_payment_id'
     )
-    list_editable = ('payment_status',)
     list_per_page = 25
     date_hierarchy = 'created_at'
     readonly_fields = ('created_at', 'razorpay_order_id', 'razorpay_payment_id', 'stock_reduced', 'payment_confirmed_at')
     raw_id_fields = ('user',)
-    actions = ('mark_as_paid', 'mark_as_packed', 'mark_as_shipped', 'mark_as_delivered')
+    actions = ('mark_as_paid', 'mark_as_packed', 'mark_as_shipped', 'mark_as_delivered', 'approve_upi_payment')
     list_select_related = ('user',)
     
     inlines = [OrderItemInline, PaymentInline]
@@ -310,6 +318,39 @@ class OrderAdmin(admin.ModelAdmin):
         if skipped:
             self.message_user(request, f"{skipped} unpaid order(s) were skipped.", level=messages.WARNING)
     mark_as_delivered.short_description = 'Mark selected orders as Delivered'
+
+    def approve_upi_payment(self, request, queryset):
+        updated = 0
+        skipped = 0
+        for order in queryset:
+            if order.payment_status == 'paid':
+                skipped += 1
+                continue
+            upi_payment = order.payments.filter(provider='upi').order_by('-created_at').first()
+            if not upi_payment:
+                self.message_user(
+                    request,
+                    f"Order #{order.id}: No UPI payment record found. Customer must submit a UPI transaction first.",
+                    level=messages.WARNING,
+                )
+                skipped += 1
+                continue
+            try:
+                order._admin_old_status = order.status
+                order._admin_old_payment_status = order.payment_status
+                upi_payment.status = 'paid'
+                upi_payment.verified_at = timezone.now()
+                upi_payment.failure_reason = ''
+                upi_payment.save(update_fields=['status', 'verified_at', 'failure_reason', 'updated_at'])
+                confirm_order_payment(order, payment_reference=upi_payment.razorpay_payment_id or '', save=True)
+                updated += 1
+            except Exception as exc:
+                self.message_user(request, f"Order #{order.id} approval failed: {exc}", level=messages.WARNING)
+        if updated:
+            self.message_user(request, f"{updated} UPI order(s) approved and marked as Paid.", level=messages.SUCCESS)
+        if skipped:
+            self.message_user(request, f"{skipped} order(s) were skipped.", level=messages.INFO)
+    approve_upi_payment.short_description = 'Approve UPI payment for selected orders'
 
     def get_ordering(self, request):
         return ['-created_at']

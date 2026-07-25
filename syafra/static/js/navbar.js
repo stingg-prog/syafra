@@ -67,12 +67,14 @@
 
         function openMenu() {
             menu.classList.add('is-open');
+            menu.setAttribute('aria-hidden', 'false');
             btn.setAttribute('aria-expanded', 'true');
             document.body.classList.add('menu-open');
         }
 
         function closeMenu() {
             menu.classList.remove('is-open');
+            menu.setAttribute('aria-hidden', 'true');
             btn.setAttribute('aria-expanded', 'false');
             document.body.classList.remove('menu-open');
         }

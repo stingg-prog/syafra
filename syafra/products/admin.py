@@ -445,7 +445,7 @@ class ThemeSettingsAdmin(admin.ModelAdmin):
         context['theme_reset_url'] = reverse('products:theme_reset')
         context['backup_create_url'] = reverse('products:backup_create')
         context['backup_list_url'] = reverse('products:backup_list')
-        context['preview_url'] = reverse('products:admin_preview', args=['themesettings', 1]) if obj else reverse('products:admin_preview', args=['themesettings', 1])
+        context['preview_url'] = reverse('products:admin_preview', args=['themesettings', 1])
         return super().render_change_form(request, context, add, change, form_url, obj)
 
 

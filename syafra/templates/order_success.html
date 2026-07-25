@@ -23,6 +23,15 @@
 
 {% block content %}{{ block.super }}{% endblock %}
 {% block inner_header %}
+{% if messages %}
+<div class="container" style="margin-top: 1rem;">
+    {% for message in messages %}
+    <div class="account-message account-message--{% if message.tags == 'error' %}error{% else %}{{ message.tags }}{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 <header class="page-header" style="--header-padding-top: 1rem; --header-padding-bottom: 0.5rem; --header-margin-bottom: 1rem;">
     <h1 class="page-header__title">Order Confirmed</h1>
     <p class="page-header__subtitle page-header__subtitle--uppercase">Thank you for your purchase</p>

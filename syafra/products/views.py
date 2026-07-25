@@ -11,9 +11,10 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.contrib.admin.views.decorators import staff_member_required
-from django.views.decorators.csrf import csrf_exempt
 import json
 import re
+
+from django.db import ProgrammingError, OperationalError
 
 from .models import (
     Product, ProductSize, Category, InstagramFeedItem, Testimonial,
@@ -98,42 +99,57 @@ def home(request):
 
         elif st == 'instagram_feed':
             max_items = section.config.get('max_items', 6)
-            data['posts'] = list(
-                InstagramFeedItem.objects.filter(is_active=True)
-                .exclude(image='').exclude(image__isnull=True)[:max_items]
-            )
+            try:
+                data['posts'] = list(
+                    InstagramFeedItem.objects.filter(is_active=True)
+                    .exclude(image='').exclude(image__isnull=True)[:max_items]
+                )
+            except (ProgrammingError, OperationalError):
+                data['posts'] = []
 
         elif st == 'brands':
             brand_ids = section.config.get('brand_ids', '')
-            from cms.models import Brand
-            qs = Brand.objects.filter(is_active=True).order_by('display_order')
-            if brand_ids:
-                ids = [int(x.strip()) for x in brand_ids.split(',') if x.strip().isdigit()]
-                if ids:
-                    qs = qs.filter(id__in=ids)
-            data['brands'] = list(qs)
+            try:
+                from cms.models import Brand
+                qs = Brand.objects.filter(is_active=True).order_by('display_order')
+                if brand_ids:
+                    ids = [int(x.strip()) for x in brand_ids.split(',') if x.strip().isdigit()]
+                    if ids:
+                        qs = qs.filter(id__in=ids)
+                data['brands'] = list(qs)
+            except (ProgrammingError, OperationalError):
+                data['brands'] = []
 
         elif st == 'collections':
-            from cms.models import Collection
-            data['collections'] = list(
-                Collection.objects.filter(is_active=True)
-                .prefetch_related('collection_products__product')
-                .order_by('display_order')[:8]
-            )
+            try:
+                from cms.models import Collection
+                data['collections'] = list(
+                    Collection.objects.filter(is_active=True)
+                    .prefetch_related('collection_products__product')
+                    .order_by('display_order')[:8]
+                )
+            except (ProgrammingError, OperationalError):
+                data['collections'] = []
 
         elif st == 'lookbook':
-            from cms.models import Lookbook
-            data['lookbooks'] = list(
-                Lookbook.objects.filter(is_published=True).order_by('display_order', '-created_at')[:6]
-            )
+            try:
+                from cms.models import Lookbook
+                data['lookbooks'] = list(
+                    Lookbook.objects.filter(is_published=True).order_by('display_order', '-created_at')[:6]
+                )
+            except (ProgrammingError, OperationalError):
+                data['lookbooks'] = []
 
         elif st == 'faq_section':
-            from cms.models import FAQItem, FAQCategory
-            cat_id = section.config.get('faq_category_id', '')
-            qs = FAQItem.objects.filter(is_active=True).order_by('display_order')
-            if cat_id:
-                qs = qs.filter(category_id=int(cat_id))
-            data['faq_items'] = list(qs)
+            try:
+                from cms.models import FAQItem, FAQCategory
+                cat_id = section.config.get('faq_category_id', '')
+                qs = FAQItem.objects.filter(is_active=True).order_by('display_order')
+                if cat_id:
+                    qs = qs.filter(category_id=int(cat_id))
+                data['faq_items'] = list(qs)
+            except (ProgrammingError, OperationalError):
+                data['faq_items'] = []
 
         elif st in ('recently_viewed', 'recommended_products'):
             limit = section.config.get('max_products', 8)
@@ -302,7 +318,10 @@ def section_preview(request, section_id):
         data['testimonials'] = list(Testimonial.objects.filter(is_active=True)[:max_items])
     elif st == 'instagram_feed':
         max_items = section.config.get('max_items', 6)
-        data['posts'] = list(InstagramFeedItem.objects.filter(is_active=True).exclude(image='').exclude(image__isnull=True)[:max_items])
+        try:
+            data['posts'] = list(InstagramFeedItem.objects.filter(is_active=True).exclude(image='').exclude(image__isnull=True)[:max_items])
+        except (ProgrammingError, OperationalError):
+            data['posts'] = []
     elif st == 'brands':
         from cms.models import Brand
         data['brands'] = list(Brand.objects.filter(is_active=True).order_by('display_order'))
@@ -342,7 +361,6 @@ def theme_export(request):
     return response
 
 
-@csrf_exempt
 @staff_member_required
 def theme_import(request):
     if request.method == 'POST':
@@ -485,8 +503,10 @@ def shop(request):
     theme = _get_theme()
     per_page = theme.products_per_page if theme else 12
 
+    payment_settings = PaymentSettings.get_settings()
+    currency = payment_settings.currency_symbol if payment_settings else '₹'
+
     products = Product.objects.all()
-    products = products.filter(stock__gt=0)
 
     if category_slug:
         try:
@@ -576,9 +596,9 @@ def shop(request):
     if selected_size:
         active_filters.append({'label': f'Size: {selected_size}', 'url': f'?{_url_remove_param(request, "size")}'})
     if min_price:
-        active_filters.append({'label': f'Min: ₹{min_price}', 'url': f'?{_url_remove_param(request, "min_price")}'})
+        active_filters.append({'label': f'Min: {currency}{min_price}', 'url': f'?{_url_remove_param(request, "min_price")}'})
     if max_price:
-        active_filters.append({'label': f'Max: ₹{max_price}', 'url': f'?{_url_remove_param(request, "max_price")}'})
+        active_filters.append({'label': f'Max: {currency}{max_price}', 'url': f'?{_url_remove_param(request, "max_price")}'})
     if search_query:
         active_filters.append({'label': f'Search: {search_query}', 'url': f'?{_url_remove_param(request, "q")}'})
 
@@ -588,9 +608,6 @@ def shop(request):
         if category_slug:
             suggested_qs = suggested_qs.filter(category__slug=category_slug)
         suggested_products = list(suggested_qs.order_by('-is_featured', '-created_at')[:4])
-
-    payment_settings = PaymentSettings.get_settings()
-    currency = payment_settings.currency_symbol if payment_settings else '₹'
 
     context = {
         'products': product_page,

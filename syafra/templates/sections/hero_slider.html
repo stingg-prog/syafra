@@ -60,7 +60,7 @@
                      style="--hero-pos-x: {{ slide.image_position_x }}%; --hero-pos-y: {{ slide.image_position_y }}%;"
                      fetchpriority="{% if forloop.first %}high{% else %}low{% endif %}"
                      decoding="async"
-                     loading="{% if forloop.first %}eager{% else %}low{% endif %}">
+                     loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
                 {% endif %}
                 <div class="hero-overlay"></div>
             </div>
