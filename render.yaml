@@ -13,7 +13,7 @@
 #   - ALLOWED_HOSTS correct (env)
 #   - CSRF_TRUSTED_ORIGINS set (env, https://...)
 #   - DOMAIN=your-app.onrender.com (password reset & email links)
-#   - SendGrid/SMTP configured; do NOT set ALLOW_CONSOLE_EMAIL_IN_PRODUCTION for real production
+#   - Resend email configured; do NOT set ALLOW_CONSOLE_EMAIL_IN_PRODUCTION for real production
 #   - Web service Root Directory: syafra (if repo root is parent of this folder)
 
 services:
