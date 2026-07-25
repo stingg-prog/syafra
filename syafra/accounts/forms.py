@@ -2,10 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.template.loader import render_to_string
-from django.conf import settings
 import logging
-from accounts.utils.email import send_email as send_syafra_email
 
 User = get_user_model()
 logger = logging.getLogger('syafra.email')

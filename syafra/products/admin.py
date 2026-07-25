@@ -1,9 +1,7 @@
-import json
 from django.contrib import admin, messages
 from django.urls import reverse
-from django.utils.html import format_html, mark_safe
+from django.utils.html import format_html
 from django.utils import timezone
-from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from .models import (
     Category, Product, ProductSize, ProductImage, InstagramFeedItem, Testimonial,

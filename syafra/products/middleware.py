@@ -1,7 +1,6 @@
 from django.core.cache import cache
-from django.http import HttpResponseForbidden, HttpResponse
+from django.http import HttpResponse
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
 
 _MAINTENANCE_CACHE_KEY = 'maintenance_mode_status'
 _MAINTENANCE_CACHE_TTL = 60

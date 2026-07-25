@@ -24,7 +24,6 @@ from orders.models import Order, PaymentSettings
 from accounts.utils.email import send_email, send_password_reset_email
 
 from .forms import RegisterForm
-from accounts.models import UserProfile
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -84,10 +83,6 @@ def password_reset_request(request):
         form = PasswordResetForm()
 
     return render(request, "accounts/password_reset.html", {"form": form})
-
-
-from django.contrib.auth.forms import SetPasswordForm
-from django.utils.http import urlsafe_base64_decode
 
 
 def password_reset_confirm(request, uidb64, token):

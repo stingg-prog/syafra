@@ -3,7 +3,6 @@ from django.conf import settings
 from django.utils import timezone
 from django.urls import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
-from cloudinary.models import CloudinaryField
 
 
 class Brand(models.Model):
