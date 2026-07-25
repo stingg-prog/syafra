@@ -61,17 +61,17 @@ def get_by_key(d, key):
 
 @register.simple_tag(takes_context=True)
 def render_section_attrs(context, section):
-    from django.utils.html import format_html, mark_safe
+    from django.utils.html import format_html
     attrs = []
     if section.anchor_id:
-        attrs.append(f'id="{section.anchor_id}"')
+        attrs.append(format_html('id="{}"', section.anchor_id))
     classes = ['section-wrapper']
     if section.border_radius:
         classes.append(section.border_radius)
     if section.custom_css_class:
         classes.append(section.custom_css_class)
     if section.animation:
-        attrs.append(f'data-aos="{section.animation}"')
+        attrs.append(format_html('data-aos="{}"', section.animation))
     if section.hide_on_mobile:
         classes.append('hide-mobile')
     if section.hide_on_tablet:
@@ -80,19 +80,19 @@ def render_section_attrs(context, section):
         classes.append('hide-desktop')
     styles = []
     if section.bg_color:
-        styles.append(f'background-color:{section.bg_color}')
+        styles.append(format_html('background-color:{}', section.bg_color))
     if section.margin:
         margin_map = {'m-0': '0', 'mt-4': '1rem 0 0 0', 'mt-8': '2rem 0 0 0', 'mt-16': '4rem 0 0 0',
                       'mb-4': '0 0 1rem 0', 'mb-8': '0 0 2rem 0', 'mb-16': '0 0 4rem 0',
                       'my-4': '1rem 0', 'my-8': '2rem 0', 'my-16': '4rem 0'}
         margin_css = margin_map.get(section.margin)
         if margin_css:
-            styles.append(f'margin:{margin_css}')
+            styles.append(format_html('margin:{}', margin_css))
     if styles:
-        attrs.append(f'style="{"; ".join(styles)}"')
+        attrs.append(format_html('style="{}"', '; '.join(styles)))
     if classes:
-        attrs.append(f'class="{" ".join(classes)}"')
-    return mark_safe(' '.join(attrs))
+        attrs.append(format_html('class="{}"', ' '.join(classes)))
+    return format_html(' ', *attrs) if attrs else ''
 
 
 @register.filter

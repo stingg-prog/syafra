@@ -18,6 +18,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_protect
+from django_ratelimit.decorators import ratelimit
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 
@@ -412,7 +414,13 @@ def analytics_dashboard(request):
 
 
 @login_required
+@csrf_protect
+@ratelimit(key='user', rate='10/m', method=['POST'], block=True)
 def checkout(request):
+    if getattr(request, 'limited', False):
+        messages.error(request, 'Too many checkout attempts. Please try again later.')
+        return redirect('cart:cart_view')
+
     cart = Cart.get_for_user(request.user)
     items = list(cart.items.select_related('product').all())
     cart_total = sum(item.quantity * item.product.price for item in items)
@@ -609,7 +617,7 @@ def checkout(request):
             return render_checkout(form)
         except (DatabaseError, IntegrityError) as exc:
             logger.exception(_format_log_message("Checkout database failure", request, error=exc))
-            messages.error(request, f'Database error: {str(exc)[:100]}. Please try again.')
+            messages.error(request, 'A temporary error occurred. Please try again.')
             if wants_json:
                 return JsonResponse(
                     {
@@ -770,11 +778,22 @@ def checkout(request):
 
 
 @login_required
+@csrf_protect
+@ratelimit(key='user', rate='20/m', method=['POST'], block=True)
 def verify_payment(request):
     """
     Handle Razorpay payment callback.
     Requires authentication and validates order ownership before processing.
     """
+    if getattr(request, 'limited', False):
+        return _payment_response(
+            request,
+            ok=False,
+            redirect_url=reverse('cart:cart_view'),
+            message='Too many requests. Please try again later.',
+            status=429,
+        )
+
     if request.method != 'POST':
         logger.warning(_format_log_message("Payment success accessed via GET, redirecting", request))
         return _payment_response(
@@ -1012,13 +1031,9 @@ payment_success = verify_payment
 def razorpay_webhook_health(request):
     secret_configured = bool(getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '') or '')
     from .models import Order
-    import os
 
     pending_orders = Order.objects.filter(payment_status='pending').count()
     paid_orders = Order.objects.filter(payment_status='paid').count()
-
-    render_app_url = os.getenv('RENDER_EXTERNAL_URL', 'NOTSET')
-    render_service = os.getenv('RENDER_SERVICE', 'NOTSET')
 
     return JsonResponse({
         'status': 'ok',
@@ -1026,8 +1041,6 @@ def razorpay_webhook_health(request):
         'razorpay_key_configured': bool(getattr(settings, 'RAZORPAY_KEY_ID', '')),
         'pending_orders_count': pending_orders,
         'paid_orders_count': paid_orders,
-        'render_app_url': render_app_url,
-        'render_service': render_service,
     })
 
 
@@ -1239,9 +1252,9 @@ def razorpay_webhook(request):
     except razorpay_errors.SignatureVerificationError:
         logger.warning(
             "Razorpay webhook signature verification FAILED | "
-            "received_signature=%s | secret_prefix=%s",
+            "received_signature=%s | secret_configured=%s",
             received_signature[:20],
-            webhook_secret[:4] if webhook_secret else "NOTSET",
+            bool(webhook_secret),
         )
         return HttpResponse(status=400)
     except (ValueError, json.JSONDecodeError) as exc:

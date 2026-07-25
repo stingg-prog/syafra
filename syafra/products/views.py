@@ -8,11 +8,16 @@ from django.http import Http404, JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_protect
+from django_ratelimit.decorators import ratelimit
 from django.contrib.admin.views.decorators import staff_member_required
 import json
 import re
 
 from django.db import ProgrammingError, OperationalError
+
+SHOP_SIDEBAR_CACHE_KEY = 'shop_sidebar_data'
+SHOP_SIDEBAR_CACHE_TIMEOUT = 300
 
 from .models import (
     Product, ProductSize, Category, InstagramFeedItem, Testimonial,
@@ -437,7 +442,16 @@ def backup_delete(request, backup_id):
 
 
 @require_POST
+@csrf_protect
+@ratelimit(key='ip', rate='5/m', method=['POST'], block=True)
 def newsletter_subscribe(request):
+    if getattr(request, 'limited', False):
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': 'Too many requests. Please try again later.'}, status=429)
+        messages.error(request, 'Too many requests. Please try again later.')
+        return redirect('products:home')
+
     email = request.POST.get('email', '').strip().lower()
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
@@ -445,7 +459,7 @@ def newsletter_subscribe(request):
         if is_ajax:
             return JsonResponse({'success': False, 'error': 'Valid email required.'}, status=400)
         messages.error(request, 'Please enter a valid email address.')
-        return redirect(request.META.get('HTTP_REFERER', '/'))
+        return redirect('products:home')
 
     subscriber, created = NewsletterSubscriber.objects.get_or_create(
         email=email,
@@ -466,7 +480,7 @@ def newsletter_subscribe(request):
     if is_ajax:
         return JsonResponse({'success': True, 'message': msg})
     messages.success(request, msg)
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+    return redirect('products:home')
 
 
 SIZE_ORDER = {'XS': 0, 'S': 1, 'M': 2, 'L': 3, 'XL': 4, 'XXL': 5}
@@ -504,7 +518,7 @@ def shop(request):
     payment_settings = PaymentSettings.get_settings()
     currency = payment_settings.currency_symbol if payment_settings else '₹'
 
-    products = Product.objects.all()
+    products = Product.objects.select_related('category').prefetch_related('images').all()
 
     if category_slug:
         try:
@@ -567,19 +581,32 @@ def shop(request):
         product_page = paginator.page(paginator.num_pages)
 
     categories = Category.objects.annotate(product_count=Count('products')).order_by('name')
-    price_range = Product.objects.filter(stock__gt=0).aggregate(
-        min_price=Min('price'), max_price=Max('price')
-    )
 
-    available_brands = list(
-        Product.objects.filter(stock__gt=0)
-        .exclude(brand='').exclude(brand__isnull=True)
-        .values_list('brand', flat=True).distinct().order_by('brand')
-    )
-    raw_sizes = list(
-        ProductSize.objects.filter(stock__gt=0)
-        .values_list('size', flat=True).distinct().order_by()
-    )
+    sidebar = cache.get(SHOP_SIDEBAR_CACHE_KEY)
+    if sidebar is None:
+        price_range = Product.objects.filter(stock__gt=0).aggregate(
+            min_price=Min('price'), max_price=Max('price')
+        )
+        available_brands = list(
+            Product.objects.filter(stock__gt=0)
+            .exclude(brand='').exclude(brand__isnull=True)
+            .values_list('brand', flat=True).distinct().order_by('brand')
+        )
+        raw_sizes = list(
+            ProductSize.objects.filter(stock__gt=0)
+            .values_list('size', flat=True).distinct().order_by()
+        )
+        sidebar = {
+            'price_range': price_range,
+            'available_brands': available_brands,
+            'raw_sizes': raw_sizes,
+        }
+        cache.set(SHOP_SIDEBAR_CACHE_KEY, sidebar, SHOP_SIDEBAR_CACHE_TIMEOUT)
+    else:
+        price_range = sidebar['price_range']
+        available_brands = sidebar['available_brands']
+        raw_sizes = sidebar['raw_sizes']
+
     available_sizes = sorted(raw_sizes, key=lambda s: SIZE_ORDER.get(s, 99))
 
     total_count = paginator.count
@@ -649,12 +676,12 @@ def product_detail(request, pk):
         )
     )
 
-    same_category = Product.objects.filter(
+    same_category = Product.objects.select_related('category').prefetch_related('images').filter(
         category=product.category, stock__gt=0
     ).exclude(pk=product.pk)
 
     if same_category.count() < 6:
-        extra = Product.objects.filter(stock__gt=0)\
+        extra = Product.objects.select_related('category').prefetch_related('images').filter(stock__gt=0)\
             .exclude(pk=product.pk)\
             .exclude(pk__in=list(same_category.values_list("pk", flat=True)))
         related = list(same_category) + list(extra[:6 - same_category.count()])
@@ -695,7 +722,7 @@ def product_detail(request, pk):
 
 def category_detail(request, slug):
     category = get_object_or_404(Category, slug=slug)
-    products_list = Product.objects.filter(category=category, stock__gt=0).order_by('-created_at')
+    products_list = Product.objects.select_related('category').prefetch_related('images').filter(category=category, stock__gt=0).order_by('-created_at')
 
     selected_size = request.GET.get('size')
     if selected_size:
@@ -715,18 +742,32 @@ def category_detail(request, slug):
         products = paginator.page(paginator.num_pages)
 
     categories = Category.objects.annotate(product_count=Count('products')).order_by('name')
-    price_range = Product.objects.filter(stock__gt=0).aggregate(
-        min_price=Min('price'), max_price=Max('price')
-    )
-    available_brands = list(
-        Product.objects.filter(stock__gt=0)
-        .exclude(brand='').exclude(brand__isnull=True)
-        .values_list('brand', flat=True).distinct().order_by('brand')
-    )
-    raw_sizes = list(
-        ProductSize.objects.filter(stock__gt=0)
-        .values_list('size', flat=True).distinct().order_by()
-    )
+
+    sidebar = cache.get(SHOP_SIDEBAR_CACHE_KEY)
+    if sidebar is None:
+        price_range = Product.objects.filter(stock__gt=0).aggregate(
+            min_price=Min('price'), max_price=Max('price')
+        )
+        available_brands = list(
+            Product.objects.filter(stock__gt=0)
+            .exclude(brand='').exclude(brand__isnull=True)
+            .values_list('brand', flat=True).distinct().order_by('brand')
+        )
+        raw_sizes = list(
+            ProductSize.objects.filter(stock__gt=0)
+            .values_list('size', flat=True).distinct().order_by()
+        )
+        sidebar = {
+            'price_range': price_range,
+            'available_brands': available_brands,
+            'raw_sizes': raw_sizes,
+        }
+        cache.set(SHOP_SIDEBAR_CACHE_KEY, sidebar, SHOP_SIDEBAR_CACHE_TIMEOUT)
+    else:
+        price_range = sidebar['price_range']
+        available_brands = sidebar['available_brands']
+        raw_sizes = sidebar['raw_sizes']
+
     available_sizes = sorted(raw_sizes, key=lambda s: SIZE_ORDER.get(s, 99))
     active_filters = []
     if selected_size:
@@ -784,7 +825,13 @@ def content_page(request, slug):
     return render(request, 'pages/content_page.html', context)
 
 
+@csrf_protect
+@ratelimit(key='ip', rate='3/m', method=['POST'], block=True)
 def contact(request):
+    if getattr(request, 'limited', False):
+        messages.error(request, 'Too many requests. Please try again later.')
+        return redirect('products:contact')
+
     page = ContentPage.objects.filter(slug='contact-us', is_active=True).first()
     website = WebsiteSettings.get_settings()
     contact_details = {
@@ -817,7 +864,13 @@ def contact(request):
     })
 
 
+@csrf_protect
+@ratelimit(key='ip', rate='5/m', method=['POST'], block=True)
 def track_order(request):
+    if getattr(request, 'limited', False):
+        messages.error(request, 'Too many requests. Please try again later.')
+        return redirect('products:track_order')
+
     result = None
     from orders.models import Order
     payment_settings = PaymentSettings.get_settings()

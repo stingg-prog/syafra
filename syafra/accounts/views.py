@@ -2,7 +2,7 @@ import logging
 
 from django.contrib.auth import login, logout, authenticate, get_user_model
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import PasswordResetForm
+from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib import messages
 from django.core.exceptions import MultipleObjectsReturned
@@ -18,7 +18,10 @@ from django.utils.http import (
     url_has_allowed_host_and_scheme,
 )
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_protect
 from django.conf import settings
+from django.http import JsonResponse
+from django_ratelimit.decorators import ratelimit
 
 from orders.models import Order, PaymentSettings
 from accounts.utils.email import send_email, send_password_reset_email
@@ -62,7 +65,12 @@ def _send_password_reset_on_commit(user, request):
     return sent
 
 
+@csrf_protect
+@ratelimit(key='ip', rate='3/h', method=['POST'], block=True)
 def password_reset_request(request):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'error': 'Too many requests. Please try again later.'}, status=429)
+
     if request.method == "POST":
         form = PasswordResetForm(request.POST)
 
@@ -85,7 +93,12 @@ def password_reset_request(request):
     return render(request, "accounts/password_reset.html", {"form": form})
 
 
+@csrf_protect
+@ratelimit(key='ip', rate='10/h', method=['POST'], block=True)
 def password_reset_confirm(request, uidb64, token):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'error': 'Too many attempts. Please try again later.'}, status=429)
+
     try:
         uid = urlsafe_base64_decode(uidb64).decode()
         user = User.objects.get(pk=uid)
@@ -217,7 +230,12 @@ def register_view(request):
 
 
 @require_http_methods(['GET', 'POST', 'HEAD', 'OPTIONS'])
+@csrf_protect
+@ratelimit(key='ip', rate='5/m', method=['POST'], block=True)
 def login_view(request):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'error': 'Too many login attempts. Please try again later.'}, status=429)
+
     if request.user.is_authenticated:
         return redirect(resolve_url(settings.LOGIN_REDIRECT_URL))
 
@@ -292,7 +310,12 @@ def verification_sent(request):
 
 
 @require_http_methods(['GET', 'POST', 'HEAD', 'OPTIONS'])
+@csrf_protect
+@ratelimit(key='ip', rate='3/h', method=['POST'], block=True)
 def resend_verification(request, uidb64=None):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'error': 'Too many requests. Please try again later.'}, status=429)
+
     uid = None
     email = ''
 

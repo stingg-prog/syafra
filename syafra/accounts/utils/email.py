@@ -393,10 +393,12 @@ SYAFRA Team
         if not sent:
             return False
 
-        logger.info("Password reset email sent to %s", user.email)
+        masked_email = user.email[:3] + "***" if user.email and len(user.email) > 3 else "***"
+        logger.info("Password reset email sent to %s", masked_email)
         return True
     except Exception as exc:
-        logger.error("Failed to send password reset email to %s: %s", user.email, exc)
+        masked_email = user.email[:3] + "***" if user.email and len(user.email) > 3 else "***"
+        logger.error("Failed to send password reset email to %s: %s", masked_email, exc)
         return False
 
 

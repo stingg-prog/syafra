@@ -8,9 +8,24 @@ from django.dispatch import receiver
 
 from syafra.logging_context import get_correlation_id
 
-from .models import Order, OrderItem
+from .models import Order, OrderItem, WhatsAppSettings, PaymentSettings
 
 logger = logging.getLogger(__name__)
+
+
+@receiver([post_save, post_delete], sender=WhatsAppSettings)
+def clear_whatsapp_cache(sender, **kwargs):
+    from django.core.cache import cache
+    from .models import WHATSAPP_SETTINGS_CACHE_KEY
+    cache.delete(WHATSAPP_SETTINGS_CACHE_KEY)
+
+
+@receiver([post_save, post_delete], sender=PaymentSettings)
+def clear_payment_cache(sender, **kwargs):
+    from django.core.cache import cache
+    from .models import PAYMENT_SETTINGS_CACHE_KEY
+    cache.delete(PAYMENT_SETTINGS_CACHE_KEY)
+    cache.delete(f'{PAYMENT_SETTINGS_CACHE_KEY}_none')
 
 
 def _dispatch_whatsapp_notification(order_pk, status, correlation_id=None):

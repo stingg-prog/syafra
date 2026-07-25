@@ -268,10 +268,10 @@ def send_order_email(order, event_type):
         return False
 
     if not sent:
-        logger.error("Order event email failed | order_id=%s | event_type=%s | recipients=%s", order.id, event_type, ",".join(recipients))
+        logger.error("Order event email failed | order_id=%s | event_type=%s | recipient_count=%d", order.id, event_type, len(recipients))
         return False
 
-    logger.info("Order event email sent | order_id=%s | event_type=%s | recipients=%s", order.id, event_type, ",".join(recipients))
+    logger.info("Order event email sent | order_id=%s | event_type=%s | recipient_count=%d", order.id, event_type, len(recipients))
     return True
 
 
@@ -524,7 +524,7 @@ def send_admin_new_order_alert_email(order):
         if not sent:
             return False
 
-        logger.info("Admin order alert email sent | order_id=%s | recipients=%s", order.id, ",".join(recipients))
+        logger.info("Admin order alert email sent | order_id=%s | recipient_count=%d", order.id, len(recipients))
         return True
     except Exception as exc:
         logger.error("Failed to send admin order alert email | order_id=%s | error=%s", order.id, exc)

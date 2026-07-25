@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static security_filters %}
 
 {% block title %}{{ meta_title }}{% endblock %}
 {% block meta_description %}{{ meta_description }}{% endblock %}
@@ -29,7 +29,7 @@
 {% block inner_content %}
 <div class="max-w-2xl mx-auto">
     {% if page and page.content %}
-    <div class="page-content__body">{{ page.content|safe }}</div>
+    <div class="page-content__body">{{ page.content|sanitize }}</div>
     {% endif %}
 
     {% if contact_details %}

@@ -1,7 +1,14 @@
 from django.db import models
+from django.core.cache import cache
 from django.core.validators import MaxValueValidator
 from django.urls import reverse
 from cloudinary.models import CloudinaryField
+from syafra.validators import validate_image_file
+
+THEME_SETTINGS_CACHE_KEY = 'theme_settings_singleton'
+THEME_SETTINGS_CACHE_TIMEOUT = 300
+WEBSITE_SETTINGS_CACHE_KEY = 'website_settings_singleton'
+WEBSITE_SETTINGS_CACHE_TIMEOUT = 300
 
 
 class Category(models.Model):
@@ -17,6 +24,11 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        if self.image:
+            validate_image_file(self.image)
 
     def get_absolute_url(self):
         return reverse('products:category_detail', kwargs={'slug': self.slug})
@@ -58,6 +70,11 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        if self.image:
+            validate_image_file(self.image)
 
     def get_absolute_url(self):
         return reverse('products:product_detail', kwargs={'pk': self.pk})
@@ -108,6 +125,11 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - Image {self.id}"
+
+    def clean(self):
+        super().clean()
+        if self.image:
+            validate_image_file(self.image)
 
 
 class InstagramFeedItem(models.Model):
@@ -612,6 +634,7 @@ class ThemeSettings(models.Model):
 
     def save(self, *args, **kwargs):
         self.pk = 1
+        cache.delete(THEME_SETTINGS_CACHE_KEY)
         super().save(*args, **kwargs)
 
     def reset_to_defaults(self):
@@ -625,7 +648,11 @@ class ThemeSettings(models.Model):
 
     @classmethod
     def get_settings(cls):
+        cached = cache.get(THEME_SETTINGS_CACHE_KEY)
+        if cached is not None:
+            return cached
         obj, _ = cls.objects.get_or_create(pk=1)
+        cache.set(THEME_SETTINGS_CACHE_KEY, obj, THEME_SETTINGS_CACHE_TIMEOUT)
         return obj
 
     def export_to_dict(self):
@@ -664,8 +691,9 @@ class ThemeSettings(models.Model):
         }
 
     def import_from_dict(self, data):
+        allowed_fields = {f.name for f in self._meta.fields if f.name != 'pk'}
         for key, value in data.items():
-            if hasattr(self, key) and key not in ('pk', 'id', 'preview_mode'):
+            if key in allowed_fields:
                 setattr(self, key, value)
         self.save()
 
@@ -710,6 +738,7 @@ class WebsiteSettings(models.Model):
 
     def save(self, *args, **kwargs):
         self.pk = 1
+        cache.delete(WEBSITE_SETTINGS_CACHE_KEY)
         super().save(*args, **kwargs)
 
     def reset_to_defaults(self):
@@ -723,5 +752,9 @@ class WebsiteSettings(models.Model):
 
     @classmethod
     def get_settings(cls):
+        cached = cache.get(WEBSITE_SETTINGS_CACHE_KEY)
+        if cached is not None:
+            return cached
         obj, _ = cls.objects.get_or_create(pk=1)
+        cache.set(WEBSITE_SETTINGS_CACHE_KEY, obj, WEBSITE_SETTINGS_CACHE_TIMEOUT)
         return obj

@@ -3,6 +3,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.urls import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
+from syafra.validators import validate_image_file, validate_file_upload, validate_safe_url
 
 
 class Brand(models.Model):
@@ -22,6 +23,11 @@ class Brand(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        if self.logo:
+            validate_image_file(self.logo)
 
 
 class ProductLabel(models.Model):
@@ -130,6 +136,11 @@ class SiteNavigation(models.Model):
 
     def __str__(self):
         return f"[{self.get_placement_display()}] {self.label}"
+
+    def clean(self):
+        super().clean()
+        if self.url:
+            validate_safe_url(self.url)
 
 
 class BlogCategory(models.Model):
@@ -332,6 +343,13 @@ class PromotionalPopup(models.Model):
     def __str__(self):
         return f"{self.get_popup_type_display()}: {self.title}"
 
+    def clean(self):
+        super().clean()
+        if self.button_url:
+            validate_safe_url(self.button_url)
+        if self.image:
+            validate_image_file(self.image)
+
 
 class AnnouncementBarConfig(models.Model):
     text = models.CharField(max_length=500, default='Free shipping on orders over ₹999!')
@@ -349,6 +367,11 @@ class AnnouncementBarConfig(models.Model):
 
     def __str__(self):
         return 'Announcement Bar Settings'
+
+    def clean(self):
+        super().clean()
+        if self.link_url:
+            validate_safe_url(self.link_url)
 
     def save(self, *args, **kwargs):
         self.pk = 1
@@ -390,6 +413,15 @@ class PromoBanner(models.Model):
     def __str__(self):
         return self.title
 
+    def clean(self):
+        super().clean()
+        if self.button_url:
+            validate_safe_url(self.button_url)
+        if self.desktop_image:
+            validate_image_file(self.desktop_image)
+        if self.mobile_image:
+            validate_image_file(self.mobile_image)
+
 
 class SEOSettings(models.Model):
     PAGE_TYPE_CHOICES = [
@@ -424,6 +456,13 @@ class SEOSettings(models.Model):
     def __str__(self):
         return f"SEO: {self.get_page_type_display()}"
 
+    def clean(self):
+        super().clean()
+        if self.canonical_url:
+            validate_safe_url(self.canonical_url)
+        if self.og_image:
+            validate_image_file(self.og_image)
+
 
 class Collection(models.Model):
     name = models.CharField(max_length=200)
@@ -441,6 +480,11 @@ class Collection(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        if self.image:
+            validate_image_file(self.image)
 
 
 class CollectionProduct(models.Model):
@@ -499,6 +543,13 @@ class TestimonialExtended(models.Model):
 
     def __str__(self):
         return f"Details: {self.testimonial.name}"
+
+    def clean(self):
+        super().clean()
+        if self.video_url:
+            validate_safe_url(self.video_url)
+        if self.photo:
+            validate_image_file(self.photo)
 
 
 class ThemeBackup(models.Model):

@@ -7,6 +7,7 @@ from .models import (
     HomepageSection, HeroSlide, TrustBarItem, ShopByCategoryItem,
     FooterLink, NewsletterSubscriber, ProductCollection,
     ThemeSettings, WebsiteSettings,
+    THEME_SETTINGS_CACHE_KEY, WEBSITE_SETTINGS_CACHE_KEY,
 )
 
 
@@ -17,6 +18,7 @@ def invalidate_homepage_cache():
 
 def invalidate_catalog_cache():
     cache.delete_many(['all_categories', 'available_sizes'])
+    cache.delete('shop_sidebar_data')
 
 
 @receiver([post_save, post_delete], sender=Product)
@@ -52,6 +54,6 @@ def clear_homepage_sections_cache(sender, **kwargs):
 @receiver([post_save, post_delete], sender=ThemeSettings)
 @receiver([post_save, post_delete], sender=WebsiteSettings)
 def clear_theme_website_cache(sender, **kwargs):
-    cache.delete('syafra_theme_settings')
-    cache.delete('website_settings_v1')
+    cache.delete(THEME_SETTINGS_CACHE_KEY)
+    cache.delete(WEBSITE_SETTINGS_CACHE_KEY)
     invalidate_homepage_cache()

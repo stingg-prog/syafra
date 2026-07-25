@@ -1,8 +1,8 @@
-{% load static %}
+{% load static security_filters %}
 {% with config=section.config %}
 <section class="custom-html-section">
   {% if config.custom_html %}
-  {{ config.custom_html|safe }}
+  {{ config.custom_html|sanitize }}
   {% else %}
   <p class="section-empty">No custom HTML content.</p>
   {% endif %}

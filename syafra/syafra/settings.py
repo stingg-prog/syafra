@@ -142,6 +142,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "cloudinary",
     "cloudinary_storage",
+    "django_ratelimit",
+    "csp",
     "products",
     "cart",
     "orders",
@@ -161,6 +163,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "csp.middleware.CSPMiddleware",
     "products.middleware.MaintenanceModeMiddleware",
 ]
 
@@ -257,6 +260,11 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Strict"
+CSRF_COOKIE_SAMESITE = "Strict"
+
 if DEBUG:
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
@@ -280,7 +288,7 @@ else:
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = _env_int("SECURE_HSTS_SECONDS", 31536000)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = False
+    SECURE_HSTS_PRELOAD = True
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
     PERMISSIONS_POLICY = {
         "geolocation": [],
@@ -301,7 +309,13 @@ if _REDIS_URL and not DEBUG:
             "LOCATION": _REDIS_URL,
             "KEY_PREFIX": "syafra",
             "TIMEOUT": _env_int("CACHE_TIMEOUT", 300),
-        }
+        },
+        "ratelimit": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _REDIS_URL,
+            "KEY_PREFIX": "syafra-rl",
+            "TIMEOUT": 60,
+        },
     }
 else:
     CACHES = {
@@ -310,7 +324,12 @@ else:
             "LOCATION": "syafra-cache",
             "TIMEOUT": 300,
             "OPTIONS": {"MAX_ENTRIES": 1000},
-        }
+        },
+        "ratelimit": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "syafra-ratelimit",
+            "TIMEOUT": 60,
+        },
     }
 
 # -----------------------------------------------------------------------------
@@ -558,3 +577,42 @@ if not DEBUG:
             UserWarning,
             stacklevel=2,
         )
+
+# -----------------------------------------------------------------------------
+# Content Security Policy (django-csp 4.x)
+# -----------------------------------------------------------------------------
+
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ("'self'",),
+        'script-src': ("'self'", "https://checkout.razorpay.com"),
+        'style-src': ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com"),
+        'img-src': ("'self'", "data:", "https://res.cloudinary.com", "https://*.cloudinary.com"),
+        'font-src': ("'self'", "https://fonts.gstatic.com"),
+        'frame-src': ("'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"),
+        'frame-ancestors': ("'none'",),
+        'connect-src': ("'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"),
+        'object-src': ("'none'",),
+        'base-uri': ("'self'",),
+        'form-action': ("'self'",),
+    },
+    'INCLUDE_NONCES_IN': ('script', 'style'),
+}
+
+# -----------------------------------------------------------------------------
+# File upload validation
+# -----------------------------------------------------------------------------
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+
+# -----------------------------------------------------------------------------
+# Rate limiting (django-ratelimit)
+# -----------------------------------------------------------------------------
+
+RATELIMIT_USE_CACHE = "ratelimit"
+RATELIMIT_FAIL_CLOSED = True
+
+# Silence ratelimit cache check when Redis unavailable (local dev / single-worker Render)
+if not _REDIS_URL or DEBUG:
+    SILENCED_SYSTEM_CHECKS = ["django_ratelimit.E003", "django_ratelimit.W001"]

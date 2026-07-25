@@ -189,9 +189,9 @@ var options = {
         });
     },
     "prefill": {
-        "name": "{{ order.customer_name }}",
-        "email": "{{ order.email }}",
-        "contact": "{{ order.phone_number }}"
+        "name": "{{ order.customer_name|escapejs }}",
+        "email": "{{ order.email|escapejs }}",
+        "contact": "{{ order.phone_number|escapejs }}"
     },
     "notes": {
         "order_id": "{{ order.id }}"

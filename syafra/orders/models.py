@@ -1,6 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -13,6 +14,11 @@ _RAZORPAY_PLACEHOLDER_VALUES = {
     'your_razorpay_key_secret',
 }
 PAID_FULFILLMENT_STATUSES = ('paid', 'packed', 'shipped', 'delivered')
+
+PAYMENT_SETTINGS_CACHE_KEY = 'payment_settings_singleton'
+PAYMENT_SETTINGS_CACHE_TIMEOUT = 300
+WHATSAPP_SETTINGS_CACHE_KEY = 'whatsapp_settings_singleton'
+WHATSAPP_SETTINGS_CACHE_TIMEOUT = 300
 
 
 class PaymentSettings(models.Model):
@@ -44,11 +50,6 @@ class PaymentSettings(models.Model):
     def __str__(self):
         return f"Payment Settings (Active: {self.is_active})"
 
-    def save(self, *args, **kwargs):
-        if not self.pk and PaymentSettings.objects.exists():
-            raise ValueError("Only one PaymentSettings instance allowed")
-        return super().save(*args, **kwargs)
-
     @staticmethod
     def sanitize_razorpay_credential(value):
         if not value:
@@ -68,10 +69,14 @@ class PaymentSettings(models.Model):
     @classmethod
     def get_settings(cls):
         """
-        Get PaymentSettings singleton.
+        Get PaymentSettings singleton (cached 5 minutes).
         Returns None if not configured or DB error.
         Env credentials serve as fallback for payment resolution.
         """
+        cached = cache.get(PAYMENT_SETTINGS_CACHE_KEY)
+        if cached is not None or cache.get(f'{PAYMENT_SETTINGS_CACHE_KEY}_none'):
+            return cached
+
         global _PAYMENT_SETTINGS_WARNING_LOGGED
         try:
             settings = cls.objects.first()
@@ -90,14 +95,23 @@ class PaymentSettings(models.Model):
                             'Admin must set up Razorpay keys.'
                         )
                     _PAYMENT_SETTINGS_WARNING_LOGGED = True
+                cache.set(f'{PAYMENT_SETTINGS_CACHE_KEY}_none', True, PAYMENT_SETTINGS_CACHE_TIMEOUT)
             else:
                 _PAYMENT_SETTINGS_WARNING_LOGGED = False
+                cache.set(PAYMENT_SETTINGS_CACHE_KEY, settings, PAYMENT_SETTINGS_CACHE_TIMEOUT)
             return settings
         except Exception:
             import logging
             logger = logging.getLogger('orders')
             logger.exception('Error retrieving PaymentSettings')
             return None
+
+    def save(self, *args, **kwargs):
+        if not self.pk and PaymentSettings.objects.exists():
+            raise ValueError("Only one PaymentSettings instance allowed")
+        cache.delete(PAYMENT_SETTINGS_CACHE_KEY)
+        cache.delete(f'{PAYMENT_SETTINGS_CACHE_KEY}_none')
+        return super().save(*args, **kwargs)
     
     def get_currency_display_symbol(self):
         return self.currency_symbol
@@ -389,11 +403,17 @@ class WhatsAppSettings(models.Model):
     def save(self, *args, **kwargs):
         if not self.pk and WhatsAppSettings.objects.exists():
             raise ValueError("Only one WhatsAppSettings instance allowed")
+        cache.delete(WHATSAPP_SETTINGS_CACHE_KEY)
         return super().save(*args, **kwargs)
 
     @classmethod
     def get_settings(cls):
+        cached = cache.get(WHATSAPP_SETTINGS_CACHE_KEY)
+        if cached is not None:
+            return cached
         try:
-            return cls.objects.first()
+            obj = cls.objects.first()
+            cache.set(WHATSAPP_SETTINGS_CACHE_KEY, obj, WHATSAPP_SETTINGS_CACHE_TIMEOUT)
+            return obj
         except Exception:
             return None

@@ -86,7 +86,8 @@ def send_whatsapp_message(order, status):
             to=f'whatsapp:{phone}'
         )
         
-        logger.info(f"WhatsApp message sent | Order #{order.id} | Status: {status} | Phone: {phone}")
+        masked_phone = phone[:5] + "****" if len(phone) > 5 else "****"
+        logger.info(f"WhatsApp message sent | Order #{order.id} | Status: {status} | Phone: {masked_phone}")
         return True
         
     except ImportError:
@@ -124,12 +125,12 @@ def _send_order_email(order, subject, message, recipient_list, *, email_type='ge
             metadata={'flow': 'legacy_order_email'},
         )
         if not sent:
-            logger.error('Order email FAILED | Subject: %s | Recipients: %s', subject, recipient_list)
+            logger.error('Order email FAILED | Subject: %s | Recipients: %d', subject, len(recipient_list))
             return False
-        logger.info('Order email sent | Subject: %s | Recipients: %s', subject, recipient_list)
+        logger.info('Order email sent | Subject: %s | Recipients: %d', subject, len(recipient_list))
         return True
     except Exception as e:
-        logger.error('Order email FAILED | Subject: %s | Recipients: %s | Error: %s', subject, recipient_list, e)
+        logger.error('Order email FAILED | Subject: %s | Recipients: %d | Error: %s', subject, len(recipient_list), e)
         return False
 
 

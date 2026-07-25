@@ -54,13 +54,16 @@
                     {% endif %}
                 </picture>
                 {% else %}
-                <img src="{% static 'images/syafra-hero-fallback.png' %}"
-                     alt="{{ slide.title|default:'SYAFRA' }}"
-                     class="hero-image{% if forloop.first %} ken-burns{% endif %}"
-                     style="--hero-pos-x: {{ slide.image_position_x }}%; --hero-pos-y: {{ slide.image_position_y }}%;"
-                     fetchpriority="{% if forloop.first %}high{% else %}low{% endif %}"
-                     decoding="async"
-                     loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
+                <picture>
+                    <source srcset="{% static 'images/syafra-hero-fallback.webp' %}" type="image/webp">
+                    <img src="{% static 'images/syafra-hero-fallback.png' %}"
+                         alt="{{ slide.title|default:'SYAFRA' }}"
+                         class="hero-image{% if forloop.first %} ken-burns{% endif %}"
+                         style="--hero-pos-x: {{ slide.image_position_x }}%; --hero-pos-y: {{ slide.image_position_y }}%;"
+                         fetchpriority="{% if forloop.first %}high{% else %}low{% endif %}"
+                         decoding="async"
+                         loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
+                </picture>
                 {% endif %}
                 <div class="hero-overlay"></div>
             </div>

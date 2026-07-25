@@ -3,6 +3,8 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_protect
+from django_ratelimit.decorators import ratelimit
 
 from orders.models import PaymentSettings
 from products.models import Product
@@ -55,7 +57,12 @@ def wishlist_page(request):
 
 @require_POST
 @login_required
+@csrf_protect
+@ratelimit(key='user', rate='30/m', method=['POST'], block=True)
 def add_to_wishlist(request, product_id):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'success': False, 'error': 'Too many requests.'}, status=429)
+
     product = get_object_or_404(Product, pk=product_id)
     _, created = Wishlist.objects.get_or_create(
         user=request.user,
@@ -72,7 +79,12 @@ def add_to_wishlist(request, product_id):
 
 @require_POST
 @login_required
+@csrf_protect
+@ratelimit(key='user', rate='30/m', method=['POST'], block=True)
 def remove_from_wishlist(request, product_id):
+    if getattr(request, 'limited', False):
+        return JsonResponse({'success': False, 'error': 'Too many requests.'}, status=429)
+
     product = get_object_or_404(Product, pk=product_id)
     deleted, _ = Wishlist.objects.filter(
         user=request.user,

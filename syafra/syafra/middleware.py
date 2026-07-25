@@ -1,9 +1,25 @@
 """
 Middleware for request-scoped correlation ids.
 """
+import re
 from uuid import uuid4
 
 from .logging_context import reset_correlation_id, set_correlation_id
+
+_MAX_CORRELATION_ID_LENGTH = 64
+_VALID_CORRELATION_ID_RE = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+
+
+def _is_valid_correlation_id(value: str) -> bool:
+    if len(value) > _MAX_CORRELATION_ID_LENGTH:
+        return False
+    try:
+        from uuid import UUID
+        UUID(value)
+        return True
+    except ValueError:
+        pass
+    return bool(_VALID_CORRELATION_ID_RE.match(value))
 
 
 class RequestCorrelationIdMiddleware:
@@ -19,7 +35,7 @@ class RequestCorrelationIdMiddleware:
             correlation_id = (request.META.get(header_name) or '').strip()
             if correlation_id:
                 break
-        if not correlation_id:
+        if not correlation_id or not _is_valid_correlation_id(correlation_id):
             correlation_id = uuid4().hex
 
         request.correlation_id = correlation_id

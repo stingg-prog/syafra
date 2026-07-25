@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static security_filters %}
 
 {% block title %}{{ meta_title }}{% endblock %}
 {% block meta_description %}{{ meta_description }}{% endblock %}
@@ -24,6 +24,6 @@
 
 {% block inner_content %}
 {% if page.content %}
-<div class="cms-content">{{ page.content|safe }}</div>
+<div class="cms-content">{{ page.content|sanitize }}</div>
 {% endif %}
 {% endblock %}
