@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 from django.urls import reverse
-from django.utils.html import format_html
+from django.utils.html import format_html, mark_safe
 from django.utils import timezone
 from django.shortcuts import redirect
 from .models import (
