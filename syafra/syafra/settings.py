@@ -144,6 +144,7 @@ INSTALLED_APPS = [
     "cloudinary_storage",
     "django_ratelimit",
     "csp",
+    "syafra",
     "products",
     "cart",
     "orders",
