@@ -262,7 +262,7 @@ X_FRAME_OPTIONS = "DENY"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Strict"
 CSRF_COOKIE_SAMESITE = "Strict"
 
@@ -586,13 +586,13 @@ if not DEBUG:
 CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {
         'default-src': ("'self'",),
-        'script-src': ("'self'", "https://checkout.razorpay.com"),
+        'script-src': ("'self'", "'unsafe-inline'", "https://checkout.razorpay.com", "https://cdn.razorpay.com"),
         'style-src': ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com"),
-        'img-src': ("'self'", "data:", "https://res.cloudinary.com", "https://*.cloudinary.com"),
+        'img-src': ("'self'", "data:", "https://res.cloudinary.com", "https://*.cloudinary.com", "https://*.razorpay.com"),
         'font-src': ("'self'", "https://fonts.gstatic.com"),
         'frame-src': ("'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"),
         'frame-ancestors': ("'none'",),
-        'connect-src': ("'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"),
+        'connect-src': ("'self'", "https://api.razorpay.com", "https://checkout.razorpay.com", "wss://api.razorpay.com", "wss://checkout.razorpay.com"),
         'object-src': ("'none'",),
         'base-uri': ("'self'",),
         'form-action': ("'self'",),
