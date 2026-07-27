@@ -26,7 +26,7 @@
     border: 1px solid var(--color-gray-100);
     border-radius: 2px;
     padding: 2.5rem 2.5rem 2rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 0 0 1px rgba(0, 0, 0, 0.01);
 }
 
 .auth-card__title {
@@ -96,6 +96,7 @@
 .auth-field__input:focus {
     border-color: var(--color-black);
     box-shadow: 0 0 0 1px var(--color-black);
+    background: var(--color-white);
 }
 
 .auth-field__input--error {
@@ -140,12 +141,19 @@
     border-radius: 2px;
     cursor: pointer;
     transition: background 0.3s var(--ease-out-expo),
-                transform 0.3s var(--ease-out-expo);
+                transform 0.2s var(--ease-out-expo),
+                box-shadow 0.3s var(--ease-out-expo);
 }
 
 .auth-btn:hover {
     background: #1a1a1a;
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.auth-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
 }
 
 .auth-btn:active {
@@ -375,13 +383,15 @@
     background: var(--color-white);
     border: 1px solid var(--color-gray-100);
     border-radius: 2px;
-    transition: border-color 0.3s var(--ease-out-expo),
-                background 0.3s var(--ease-out-expo);
+    transition: border-color 0.25s var(--ease-out-expo),
+                background 0.25s var(--ease-out-expo),
+                box-shadow 0.25s var(--ease-out-expo);
 }
 
 .profile-actions__link:hover {
-    border-color: var(--color-black);
+    border-color: var(--color-gray-300);
     background: var(--color-gray-50);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
 }
 
 .profile-actions__link svg {
@@ -435,12 +445,14 @@
     text-decoration: none;
     color: inherit;
     transition: border-color 0.3s var(--ease-out-expo),
-                box-shadow 0.3s var(--ease-out-expo);
+                box-shadow 0.3s var(--ease-out-expo),
+                transform 0.3s var(--ease-out-expo);
 }
 
 .order-card:hover {
-    border-color: var(--color-black);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    border-color: var(--color-gray-300);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    transform: translateY(-1px);
 }
 
 .order-card__header {
@@ -697,6 +709,11 @@
     border-radius: 2px;
     padding: var(--space-8);
     margin-bottom: var(--space-6);
+    transition: box-shadow 0.3s var(--ease-out-expo);
+}
+
+.detail-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 .detail-card__title {

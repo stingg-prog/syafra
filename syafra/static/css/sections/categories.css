@@ -51,6 +51,11 @@
     text-decoration: none;
     aspect-ratio: 16 / 5;
     min-height: 250px;
+    transition: box-shadow 0.4s var(--ease-out-expo);
+}
+
+.category-card:hover {
+    box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.12);
 }
 
 .category-card__image {

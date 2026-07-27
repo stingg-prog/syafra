@@ -25,3 +25,33 @@
 .text-balance {
     text-wrap: balance;
 }
+
+.text-pretty {
+    text-wrap: pretty;
+}
+
+/* ---- Subtle underline for editorial links ---- */
+.editorial-link {
+    position: relative;
+    display: inline;
+}
+
+.editorial-link::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.3;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.4s var(--ease-luxury), opacity 0.3s ease;
+}
+
+.editorial-link:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+    opacity: 1;
+}

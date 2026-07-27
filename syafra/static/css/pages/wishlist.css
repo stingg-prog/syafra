@@ -62,11 +62,16 @@
     border: 1px solid var(--color-black);
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s var(--ease-out-expo);
+    transition: all 0.25s var(--ease-out-expo);
 }
 
 .wishlist-cart-btn:hover {
     background: var(--color-gray-800);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.wishlist-cart-btn:active {
+    transform: scale(0.98);
 }
 
 .wishlist-cart-btn:focus-visible {

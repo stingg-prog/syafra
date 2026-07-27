@@ -6,7 +6,7 @@
 .btn-primary {
     position: relative;
     overflow: hidden;
-    transition: all 0.4s var(--ease-out-expo);
+    transition: all 0.35s var(--ease-out-expo);
 }
 
 .btn-primary::before {
@@ -16,12 +16,28 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-    transition: left 0.5s;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    transition: left 0.6s var(--ease-luxury);
 }
 
 .btn-primary:hover::before {
     left: 100%;
+}
+
+.btn-primary:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+.btn-primary:disabled,
+.btn-primary[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none !important;
 }
 
 /* ---- Outline Button ---- */
@@ -32,6 +48,15 @@
 .btn-outline:hover {
     background: var(--color-white);
     color: var(--color-black);
+}
+
+.btn-outline:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.btn-outline:active {
+    transform: scale(0.98);
 }
 
 /* ---- Text Button ---- */
@@ -71,6 +96,11 @@
     transform-origin: left;
 }
 
+.btn-text:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
 .btn-text svg {
     width: 14px;
     height: 14px;
@@ -96,12 +126,22 @@
     background: transparent;
     border: 1px solid var(--color-black);
     cursor: pointer;
-    transition: all 0.4s var(--ease-out-expo);
+    transition: all 0.35s var(--ease-luxury);
 }
 
 .btn-section-cta:hover {
     background: var(--color-black);
     color: var(--color-white);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-section-cta:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.btn-section-cta:active {
+    transform: scale(0.98);
 }
 
 .btn-section-cta svg {
@@ -114,8 +154,40 @@
     transform: translateX(3px);
 }
 
+/* ---- Icon Button (for wishlist, share, etc.) ---- */
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    transition: all 0.25s var(--ease-out-expo);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.btn-icon:hover {
+    background: var(--color-gray-100);
+}
+
+.btn-icon:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.btn-icon:active {
+    transform: scale(0.92);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .btn-primary::before, .btn-text::after, .btn-text svg, .btn-section-cta svg {
         transition: none !important;
+    }
+    .btn-primary:active, .btn-outline:active, .btn-section-cta:active, .btn-icon:active {
+        transform: none !important;
     }
 }

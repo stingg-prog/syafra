@@ -2,8 +2,8 @@
     background: linear-gradient(180deg, #181818 0%, #111111 55%, #0D0D0D 100%);
     color: #fff;
     padding-top: 72px;
-    padding-bottom: 52px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 48px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .footer-grid {
@@ -15,7 +15,7 @@
 
 .footer-brand-logo {
     font-family: var(--font-family);
-    font-size: 38px;
+    font-size: 36px;
     font-weight: 700;
     letter-spacing: 0.42em;
     text-transform: uppercase;
@@ -24,6 +24,11 @@
     line-height: 1;
     text-decoration: none;
     display: inline-block;
+    transition: color 0.3s ease;
+}
+
+.footer-brand-logo:hover {
+    color: #D6C4A3;
 }
 
 .footer-brand-logo img {
@@ -33,9 +38,9 @@
 }
 
 .footer-brand-desc {
-    font-size: 15px;
-    color: #A8A8A8;
-    line-height: 1.8;
+    font-size: 14px;
+    color: #999;
+    line-height: 1.75;
     margin-top: 18px;
     max-width: 260px;
     font-weight: 400;
@@ -81,12 +86,12 @@
 }
 
 .footer-col-title {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: #fff;
-    margin: 0 0 26px 0;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 28px 0;
 }
 
 .footer-col-links {
@@ -98,12 +103,12 @@
 }
 
 .footer-col-links a {
-    font-size: 15px;
-    color: #A8A8A8;
+    font-size: 14px;
+    color: #999;
     text-decoration: none;
-    transition: color 300ms ease, transform 300ms ease;
+    transition: color 0.3s var(--ease-out-expo), transform 0.3s var(--ease-out-expo);
     display: inline-block;
-    line-height: 2;
+    line-height: 2.1;
 }
 
 .footer-col-links a:hover {
@@ -145,10 +150,11 @@
 
 .footer-copyright {
     text-align: center;
-    font-size: 14px;
-    color: #8E8E8E;
+    font-size: 13px;
+    color: #777;
     margin-top: 18px;
     line-height: 1.8;
+    letter-spacing: 0.02em;
 }
 
 .footer-copyright a {

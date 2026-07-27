@@ -142,6 +142,7 @@
 .contact-form__field textarea:focus {
   outline: none;
   border-color: var(--color-black);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.04);
 }
 
 .contact-form__field textarea {
@@ -172,11 +173,16 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: background 0.25s var(--ease-out-expo), transform 0.2s var(--ease-out-expo), box-shadow 0.25s var(--ease-out-expo);
 }
 
 .contact-form__submit:hover {
-  opacity: 0.85;
+  background: var(--color-gray-800);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.contact-form__submit:active {
+  transform: scale(0.98);
 }
 
 /* ── Track Order ────────────────────────────────────────── */

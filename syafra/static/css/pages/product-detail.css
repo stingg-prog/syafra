@@ -85,8 +85,8 @@
     height: 100%;
     object-fit: contain;
     object-position: center;
-    background: var(--color-white);
-    transition: transform 0.8s var(--ease-out-expo);
+    background: var(--color-gray-50);
+    transition: transform 0.8s var(--ease-luxury);
 }
 
 @media (hover: hover) {
@@ -141,10 +141,10 @@
     justify-content: center;
     border: none;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     cursor: pointer;
     transition: transform 0.25s var(--ease-out-expo), background 0.3s var(--ease-out-expo), color 0.3s var(--ease-out-expo);
     pointer-events: auto;
@@ -153,7 +153,8 @@
 }
 
 .pdp-gallery__action:hover {
-    transform: scale(1.05);
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .pdp-gallery__action svg {
@@ -412,6 +413,7 @@
     background: var(--color-black);
     color: var(--color-white);
     border-color: var(--color-black);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .pdp-size__btn:disabled {
@@ -525,7 +527,7 @@
     text-transform: uppercase;
     cursor: pointer;
     border: none;
-    transition: all 0.35s var(--ease-out-expo);
+    transition: all 0.3s var(--ease-luxury);
     position: relative;
     overflow: hidden;
 }
@@ -537,6 +539,16 @@
 
 .pdp-btn--primary:hover:not(:disabled) {
     background: var(--color-gray-900);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.pdp-btn--primary:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.pdp-btn--primary:active:not(:disabled) {
+    transform: scale(0.98);
 }
 
 .pdp-btn--primary:disabled {

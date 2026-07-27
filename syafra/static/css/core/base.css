@@ -15,20 +15,24 @@ html {
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
 }
 
 body {
     font-family: var(--font-family);
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-base, 1rem);
     font-weight: var(--font-weight-normal);
-    line-height: 1.6;
+    line-height: var(--leading-body);
     color: var(--color-black);
     background-color: var(--color-white);
+    overflow-x: hidden;
 }
 
 a {
     text-decoration: none;
     color: inherit;
+    transition: color 0.2s ease;
 }
 
 img {
@@ -52,4 +56,34 @@ button {
 input, textarea, select {
     font: inherit;
     color: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+    opacity: 1;
+}
+
+/* Scrollbar refinement */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-gray-300);
+    border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-gray-400);
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-gray-300) transparent;
 }

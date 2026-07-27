@@ -31,7 +31,7 @@
 
 /* ---- Scrolled State: Shadow Depth ---- */
 .site-nav.nav--scrolled {
-    box-shadow: 0 1px 0 rgba(201, 169, 110, 0.1);
+    box-shadow: var(--shadow-nav);
 }
 
 /* ---- Left: Navigation Links ---- */

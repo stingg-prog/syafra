@@ -27,17 +27,17 @@
 .testimonial-card {
     background: #fff;
     border: 1px solid #ECECEC;
-    border-radius: 10px;
-    padding: 24px;
+    border-radius: 8px;
+    padding: 28px;
     display: flex;
     flex-direction: column;
-    transition: transform 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
+    transition: transform 0.35s var(--ease-out-expo), border-color 0.35s ease, box-shadow 0.35s var(--ease-out-expo);
 }
 
 .testimonial-card:hover {
-    transform: translateY(-6px);
-    border-color: #D6C4A3;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+    transform: translateY(-4px);
+    border-color: rgba(214, 196, 163, 0.4);
+    box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.06);
 }
 
 .testimonial-stars {

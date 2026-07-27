@@ -1,12 +1,35 @@
 /* ============================================
-   SYAFRA Cards
+   SYAFRA Cards — Luxury System
    ============================================ */
 
 .card {
     transition: transform var(--transition-base), box-shadow var(--transition-base);
+    will-change: transform;
 }
 
 .card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     box-shadow: var(--shadow-card-hover);
+}
+
+.card:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* ---- Glass Card ---- */
+.card--glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ---- Elevated Card ---- */
+.card--elevated {
+    box-shadow: var(--shadow-elevated);
+}
+
+.card--elevated:hover {
+    box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.14);
 }

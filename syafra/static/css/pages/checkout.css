@@ -354,7 +354,7 @@
     font-weight: var(--font-weight-semibold);
     border: none;
     cursor: pointer;
-    transition: background var(--transition-fast), transform var(--transition-fast);
+    transition: background 0.3s var(--ease-out-expo), transform 0.2s var(--ease-out-expo), box-shadow 0.3s var(--ease-out-expo);
     margin-top: var(--space-8);
     position: relative;
     overflow: hidden;
@@ -362,6 +362,7 @@
 
 .checkout-submit:hover:not(:disabled) {
     background: var(--color-gray-800);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .checkout-submit:active:not(:disabled) {
