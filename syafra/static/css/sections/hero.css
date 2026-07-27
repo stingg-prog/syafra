@@ -43,7 +43,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: var(--space-8) clamp(2rem, 5vw, 6rem) 0;
+    padding: var(--space-8) clamp(2rem, 5vw, 6rem) var(--space-16);
     padding-left: clamp(3rem, 6vw, 8rem);
     max-width: 640px;
 }
@@ -86,11 +86,11 @@
     z-index: 1;
     font-family: var(--font-family);
     font-size: clamp(0.9375rem, 1.1vw, 1.125rem);
-    line-height: 1.7;
-    color: rgba(255, 255, 255, 0.55);
-    margin-top: var(--space-8);
+    line-height: 1.75;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: var(--space-6);
     margin-bottom: var(--space-10);
-    max-width: 420px;
+    max-width: 400px;
     opacity: 0;
     transform: translateY(20px);
     transition: all 0.8s var(--ease-luxury) 0.2s;
@@ -140,7 +140,9 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(135deg, rgba(5,5,5,0.35) 0%, rgba(5,5,5,0.1) 40%, transparent 60%);
+    background:
+        linear-gradient(135deg, rgba(5,5,5,0.55) 0%, rgba(5,5,5,0.2) 35%, transparent 55%),
+        linear-gradient(to right, rgba(5,5,5,0.4) 0%, transparent 50%);
 }
 
 /* ---- Scroll Indicator ---- */
@@ -179,7 +181,7 @@
     width: 100%;
     height: 50%;
     background: var(--color-accent);
-    animation: scrollPulse 2.4s var(--ease-out-expo) infinite;
+    animation: scrollPulse 2s var(--ease-out-expo) infinite;
 }
 
 @keyframes scrollPulse {
@@ -305,29 +307,36 @@
     align-items: center;
     justify-content: center;
     height: 60px;
-    padding: 18px 44px;
+    padding: 18px 48px;
     font-size: 0.6875rem;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     font-weight: 500;
     text-decoration: none;
-    transition: all 0.3s var(--ease-luxury);
+    transition: all 0.28s var(--ease-luxury);
     cursor: pointer;
     border-radius: 0;
+    position: relative;
+    overflow: hidden;
 }
 
 .hero-btn-primary {
     background: var(--color-white);
     color: var(--color-black);
     border: none;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 }
 
 .hero-btn-primary:hover {
     background: var(--color-white);
     color: var(--color-black);
     transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 12px 40px -4px rgba(0, 0, 0, 0.35);
+}
+
+.hero-btn-primary:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .hero-btn-primary:focus-visible {
@@ -338,7 +347,7 @@
 .hero-btn-secondary {
     background: transparent;
     color: var(--color-white);
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     position: relative;
     overflow: hidden;
 }
@@ -350,7 +359,7 @@
     background: var(--color-white);
     transform: scaleX(0);
     transform-origin: right;
-    transition: transform 0.3s var(--ease-luxury);
+    transition: transform 0.28s var(--ease-luxury);
     z-index: 0;
 }
 
@@ -358,6 +367,12 @@
     border-color: var(--color-white);
     color: var(--color-black);
     transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.hero-btn-secondary:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: none;
 }
 
 .hero-btn-secondary:focus-visible {

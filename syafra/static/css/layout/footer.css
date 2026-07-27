@@ -1,8 +1,8 @@
 .site-footer {
-    background: linear-gradient(180deg, #181818 0%, #111111 55%, #0D0D0D 100%);
+    background: linear-gradient(180deg, #161616 0%, #111111 55%, #0D0D0D 100%);
     color: #fff;
-    padding-top: 72px;
-    padding-bottom: 48px;
+    padding-top: 80px;
+    padding-bottom: 56px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -38,12 +38,13 @@
 }
 
 .footer-brand-desc {
-    font-size: 14px;
-    color: #999;
-    line-height: 1.75;
-    margin-top: 18px;
+    font-size: 13px;
+    color: #888;
+    line-height: 1.8;
+    margin-top: 20px;
     max-width: 260px;
     font-weight: 400;
+    letter-spacing: 0.01em;
 }
 
 .footer-social {
@@ -68,7 +69,7 @@
 
 .footer-social a {
     color: #A8A8A8;
-    transition: color 300ms ease, transform 300ms ease;
+    transition: color 0.25s ease, transform 0.25s var(--ease-luxury);
     display: flex;
     align-items: center;
     text-decoration: none;
@@ -88,9 +89,9 @@
 .footer-col-title {
     font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.92);
     margin: 0 0 28px 0;
 }
 
@@ -106,9 +107,10 @@
     font-size: 14px;
     color: #999;
     text-decoration: none;
-    transition: color 0.3s var(--ease-out-expo), transform 0.3s var(--ease-out-expo);
+    transition: color 0.25s var(--ease-out-expo), transform 0.25s var(--ease-out-expo);
     display: inline-block;
-    line-height: 2.1;
+    line-height: 2.2;
+    letter-spacing: 0.01em;
 }
 
 .footer-col-links a:hover {
@@ -117,9 +119,9 @@
 }
 
 .footer-divider {
-    margin-top: 56px;
-    margin-bottom: 36px;
-    border-top: 1px solid rgba(255, 255, 255, 0.10);
+    margin-top: 60px;
+    margin-bottom: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .footer-payments {
@@ -139,8 +141,8 @@
 .footer-payments span svg {
     height: 22px;
     width: auto;
-    opacity: 0.7;
-    transition: opacity 300ms ease, transform 300ms ease;
+    opacity: 0.6;
+    transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .footer-payments span:hover svg {

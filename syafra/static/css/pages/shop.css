@@ -638,7 +638,7 @@
     color: var(--color-black);
     background: var(--color-gray-50);
     outline: none;
-    transition: border-color 0.25s var(--ease-out-expo), background 0.25s var(--ease-out-expo), box-shadow 0.25s var(--ease-out-expo);
+    transition: border-color 0.22s var(--ease-out-expo), background 0.22s var(--ease-out-expo), box-shadow 0.22s var(--ease-out-expo);
 }
 
 .shop-searchbar__input::placeholder {
@@ -771,7 +771,7 @@
     font-size: var(--type-caption);
     color: var(--color-gray-400);
     text-decoration: none;
-    transition: all 0.2s var(--ease-out-expo);
+    transition: all 0.22s var(--ease-out-expo);
     border: 1px solid transparent;
     border-radius: 4px;
 }

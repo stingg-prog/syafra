@@ -71,6 +71,12 @@
     font-size: 10px;
 }
 
+/* ---- Discount Badge ---- */
+.badge-discount {
+    background: #DC2626;
+    color: var(--color-white);
+}
+
 /* ---- Reduced Motion ---- */
 @media (prefers-reduced-motion: reduce) {
     .badge-new-arrival {

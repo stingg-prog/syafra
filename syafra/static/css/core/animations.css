@@ -4,11 +4,11 @@
 
 /* ---- Fade In ---- */
 .fade-in {
-    animation: fadeIn 0.8s var(--ease-out-expo) both;
+    animation: fadeIn 0.6s var(--ease-luxury) both;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -16,12 +16,12 @@
 .reveal {
     opacity: 1;
     transform: none;
-    transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+    transition: opacity 0.5s var(--ease-luxury), transform 0.5s var(--ease-luxury);
 }
 
 html.js-enabled .reveal {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(24px);
 }
 
 html.js-enabled .reveal.revealed {
@@ -30,16 +30,16 @@ html.js-enabled .reveal.revealed {
 }
 
 /* ---- Stagger Delays ---- */
-.stagger-1 { transition-delay: 0.08s; }
-.stagger-2 { transition-delay: 0.16s; }
-.stagger-3 { transition-delay: 0.24s; }
-.stagger-4 { transition-delay: 0.32s; }
-.stagger-5 { transition-delay: 0.40s; }
-.stagger-6 { transition-delay: 0.48s; }
+.stagger-1 { transition-delay: 0.06s; }
+.stagger-2 { transition-delay: 0.12s; }
+.stagger-3 { transition-delay: 0.18s; }
+.stagger-4 { transition-delay: 0.24s; }
+.stagger-5 { transition-delay: 0.30s; }
+.stagger-6 { transition-delay: 0.36s; }
 
 /* ---- Hero Animations ---- */
 .hero-animate {
-    transition: all 0.8s var(--ease-luxury);
+    transition: all 0.6s var(--ease-luxury);
 }
 
 .hero-animate.active {
@@ -47,10 +47,10 @@ html.js-enabled .reveal.revealed {
     transform: translateY(0);
 }
 
-.delay-200 { transition-delay: 0.2s; }
-.delay-300 { transition-delay: 0.3s; }
-.delay-400 { transition-delay: 0.4s; }
-.delay-700 { transition-delay: 0.7s; }
+.delay-200 { transition-delay: 0.15s; }
+.delay-300 { transition-delay: 0.22s; }
+.delay-400 { transition-delay: 0.30s; }
+.delay-700 { transition-delay: 0.5s; }
 
 /* ---- Loading Bar ---- */
 @keyframes loading {

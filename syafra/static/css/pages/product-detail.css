@@ -141,20 +141,20 @@
     justify-content: center;
     border: none;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     cursor: pointer;
-    transition: transform 0.25s var(--ease-out-expo), background 0.3s var(--ease-out-expo), color 0.3s var(--ease-out-expo);
+    transition: transform 0.22s var(--ease-out-expo), background 0.22s var(--ease-out-expo), color 0.22s var(--ease-out-expo);
     pointer-events: auto;
     color: var(--color-black);
     -webkit-tap-highlight-color: transparent;
 }
 
 .pdp-gallery__action:hover {
-    transform: scale(1.08);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: scale(1.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .pdp-gallery__action svg {
@@ -401,7 +401,7 @@
     color: var(--color-gray-700);
     letter-spacing: var(--letter-spacing-wide);
     cursor: pointer;
-    transition: all 0.25s var(--ease-out-expo);
+    transition: all 0.22s var(--ease-out-expo);
 }
 
 .pdp-size__btn:hover:not(:disabled) {
@@ -523,11 +523,11 @@
     font-family: var(--font-family);
     font-size: var(--type-overline);
     font-weight: 600;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     cursor: pointer;
     border: none;
-    transition: all 0.3s var(--ease-luxury);
+    transition: all 0.28s var(--ease-luxury);
     position: relative;
     overflow: hidden;
 }
@@ -539,7 +539,7 @@
 
 .pdp-btn--primary:hover:not(:disabled) {
     background: var(--color-gray-900);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
 }
 
 .pdp-btn--primary:focus-visible {
@@ -548,7 +548,7 @@
 }
 
 .pdp-btn--primary:active:not(:disabled) {
-    transform: scale(0.98);
+    transform: scale(0.97);
 }
 
 .pdp-btn--primary:disabled {

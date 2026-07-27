@@ -95,7 +95,7 @@
     color: var(--color-black);
     border: 1px solid var(--color-accent);
     cursor: pointer;
-    transition: all 0.3s var(--ease-luxury);
+    transition: all 0.25s var(--ease-luxury);
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
@@ -106,6 +106,7 @@
     background: var(--color-accent-hover);
     border-color: var(--color-accent-hover);
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(201, 169, 110, 0.25);
 }
 
 .newsletter-btn:active {

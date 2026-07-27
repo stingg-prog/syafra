@@ -28,16 +28,16 @@
     background: #fff;
     border: 1px solid #ECECEC;
     border-radius: 8px;
-    padding: 28px;
+    padding: 32px;
     display: flex;
     flex-direction: column;
-    transition: transform 0.35s var(--ease-out-expo), border-color 0.35s ease, box-shadow 0.35s var(--ease-out-expo);
+    transition: transform 0.28s var(--ease-luxury), border-color 0.28s ease, box-shadow 0.28s var(--ease-luxury);
 }
 
 .testimonial-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-6px);
     border-color: rgba(214, 196, 163, 0.4);
-    box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.08);
 }
 
 .testimonial-stars {

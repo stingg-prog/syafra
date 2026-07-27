@@ -4,6 +4,7 @@ from django.core.validators import MaxValueValidator
 from django.urls import reverse
 from cloudinary.models import CloudinaryField
 from syafra.validators import validate_image_file
+from products.utils.hooks import normalize_before_save
 
 THEME_SETTINGS_CACHE_KEY = 'theme_settings_singleton'
 THEME_SETTINGS_CACHE_TIMEOUT = 300
@@ -55,6 +56,12 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Normalization tracking — prevents re-processing already normalized images
+    image_hash = models.CharField(max_length=64, blank=True, default='',
+                                  help_text='SHA-256 hash of the original uploaded image')
+    image_norm_version = models.PositiveIntegerField(default=0,
+                                                     help_text='Normalization algorithm version used')
+
     class Meta:
         ordering = ['-created_at']
         constraints = [
@@ -75,6 +82,10 @@ class Product(models.Model):
         super().clean()
         if self.image:
             validate_image_file(self.image)
+
+    def save(self, *args, **kwargs):
+        normalize_before_save(self, 'image')
+        super().save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse('products:product_detail', kwargs={'pk': self.pk})
@@ -118,6 +129,12 @@ class ProductImage(models.Model):
     image = models.ImageField(upload_to='products/gallery/')
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Normalization tracking
+    image_hash = models.CharField(max_length=64, blank=True, default='',
+                                  help_text='SHA-256 hash of the original uploaded image')
+    image_norm_version = models.PositiveIntegerField(default=0,
+                                                     help_text='Normalization algorithm version used')
+
     class Meta:
         verbose_name = 'Product Image'
         verbose_name_plural = 'Product Images'
@@ -130,6 +147,10 @@ class ProductImage(models.Model):
         super().clean()
         if self.image:
             validate_image_file(self.image)
+
+    def save(self, *args, **kwargs):
+        normalize_before_save(self, 'image')
+        super().save(*args, **kwargs)
 
 
 class InstagramFeedItem(models.Model):

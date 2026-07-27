@@ -88,11 +88,11 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.4s var(--ease-luxury);
+    transition: transform 0.5s var(--ease-luxury);
 }
 
 .instagram-card:hover img {
-    transform: scale(1.05);
+    transform: scale(1.06);
 }
 
 .instagram-overlay {
@@ -103,7 +103,7 @@
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.35s var(--ease-out-expo), background 0.35s var(--ease-out-expo);
+    transition: opacity 0.28s var(--ease-out-expo), background 0.28s var(--ease-out-expo);
     border-radius: 6px;
 }
 

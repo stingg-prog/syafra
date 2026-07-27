@@ -51,11 +51,12 @@
     text-decoration: none;
     aspect-ratio: 16 / 5;
     min-height: 250px;
-    transition: box-shadow 0.4s var(--ease-out-expo);
+    transition: box-shadow 0.35s var(--ease-luxury), transform 0.35s var(--ease-luxury);
 }
 
 .category-card:hover {
-    box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
 }
 
 .category-card__image {
@@ -141,7 +142,7 @@
     color: var(--color-white);
     border: 1px solid rgba(255, 255, 255, 0.4);
     padding: 0.625rem 1.5rem;
-    transition: all 0.4s var(--ease-luxury);
+    transition: all 0.3s var(--ease-luxury);
 }
 
 .category-card:hover .category-card__cta {
