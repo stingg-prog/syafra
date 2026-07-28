@@ -941,8 +941,10 @@
     }
 
     .product-grid {
-        column-gap: 0.75rem;
-        row-gap: 1.25rem;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        column-gap: 0.5rem;
+        row-gap: 1rem;
         padding: 1.5rem 0;
     }
 

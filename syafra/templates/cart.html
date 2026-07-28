@@ -313,6 +313,19 @@
                             <span class="product-card__brand">{{ product.brand }}</span>
                             {% endif %}
                             <h3 class="product-card__name">{{ product.name }}</h3>
+                            <div class="product-card__meta">
+                                {% if product.condition == 'new' %}
+                                <span>New</span>
+                                {% elif product.condition == 'refurbished' %}
+                                <span>Refurb</span>
+                                {% endif %}
+                                {% if product.stock <= 5 and product.stock > 0 %}
+                                <span>Low Stock</span>
+                                {% endif %}
+                                {% if product.has_sizes %}
+                                <span>{{ product.get_available_sizes|first }}</span>
+                                {% endif %}
+                            </div>
                             <div class="product-card__price">
                                 <span class="product-card__price-current">{{ currency }}{{ product.price|floatformat:0 }}</span>
                             </div>

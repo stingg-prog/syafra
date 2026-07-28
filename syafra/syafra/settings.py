@@ -587,9 +587,9 @@ CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {
         'default-src': ("'self'",),
         'script-src': ("'self'", "'unsafe-inline'", "https://checkout.razorpay.com", "https://cdn.razorpay.com"),
-        'style-src': ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com"),
+        'style-src': ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"),
         'img-src': ("'self'", "data:", "https://res.cloudinary.com", "https://*.cloudinary.com", "https://*.razorpay.com"),
-        'font-src': ("'self'", "https://fonts.gstatic.com"),
+        'font-src': ("'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"),
         'frame-src': ("'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"),
         'frame-ancestors': ("'none'",),
         'connect-src': ("'self'", "https://api.razorpay.com", "https://checkout.razorpay.com", "wss://api.razorpay.com", "wss://checkout.razorpay.com"),

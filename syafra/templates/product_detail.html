@@ -241,6 +241,19 @@
                 <div class="product-card__info">
                     <span class="product-card__brand">{{ related.brand }}</span>
                     <h3 class="product-card__name">{{ related.name }}</h3>
+                    <div class="product-card__meta">
+                        {% if related.condition == 'new' %}
+                        <span>New</span>
+                        {% elif related.condition == 'refurbished' %}
+                        <span>Refurb</span>
+                        {% endif %}
+                        {% if related.stock <= 5 and related.stock > 0 %}
+                        <span>Low Stock</span>
+                        {% endif %}
+                        {% if related.has_sizes %}
+                        <span>{{ related.get_available_sizes|first }}</span>
+                        {% endif %}
+                    </div>
                     <div class="product-card__price">
                         <span class="product-card__price-current">{{ currency }}{{ related.price|floatformat:0 }}</span>
                     </div>

@@ -281,8 +281,10 @@
     }
 
     .wishlist-page__grid {
+        display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 0.75rem;
+        column-gap: 0.5rem;
+        row-gap: 1rem;
     }
 
     .wishlist-page__pagination {

@@ -13,10 +13,39 @@
       <a href="{% url 'products:product_detail' product.pk %}">
         <div class="product-card-image">
           {% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy">{% endif %}
+          <div class="product-card__badges">
+            {% if product.condition == 'new' %}
+            <span class="badge badge-new">New</span>
+            {% elif product.condition == 'refurbished' %}
+            <span class="badge badge-refurb">Refurb</span>
+            {% endif %}
+            {% if product.stock <= 5 and product.stock > 0 %}
+            <span class="badge badge-low-stock">Low Stock</span>
+            {% endif %}
+          </div>
+          {% include 'components/wishlist_heart.html' %}
         </div>
         <div class="product-card-info">
+          {% if product.brand %}
+          <span class="product-card-brand">{{ product.brand }}</span>
+          {% endif %}
           <h3 class="product-card-name">{{ product.name }}</h3>
-          <span class="product-card-price">{{ currency }}{{ product.price|floatformat:2 }}</span>
+          <div class="product-card__meta">
+            {% if product.condition == 'new' %}
+            <span>New</span>
+            {% elif product.condition == 'refurbished' %}
+            <span>Refurb</span>
+            {% endif %}
+            {% if product.stock <= 5 and product.stock > 0 %}
+            <span>Low Stock</span>
+            {% endif %}
+            {% if product.has_sizes %}
+            <span>{{ product.get_available_sizes|first }}</span>
+            {% endif %}
+          </div>
+          <div class="product-card-price">
+            <span class="sale-price">{{ currency }}{{ product.price|floatformat:2 }}</span>
+          </div>
         </div>
       </a>
     </article>
