@@ -4,11 +4,7 @@ from django.core.validators import MaxValueValidator
 from django.urls import reverse
 from cloudinary.models import CloudinaryField
 from syafra.validators import validate_image_file
-try:
-    from products.utils.hooks import normalize_before_save
-except Exception:
-    def normalize_before_save(*args, **kwargs):
-        pass
+from products.utils.hooks import normalize_before_save
 
 THEME_SETTINGS_CACHE_KEY = 'theme_settings_singleton'
 THEME_SETTINGS_CACHE_TIMEOUT = 300
@@ -88,7 +84,7 @@ class Product(models.Model):
             validate_image_file(self.image)
 
     def save(self, *args, **kwargs):
-        normalize_before_save(self, 'image')
+        #normalize_before_save(self, 'image')
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -153,7 +149,7 @@ class ProductImage(models.Model):
             validate_image_file(self.image)
 
     def save(self, *args, **kwargs):
-        normalize_before_save(self, 'image')
+        #normalize_before_save(self, 'image')
         super().save(*args, **kwargs)
 
 
