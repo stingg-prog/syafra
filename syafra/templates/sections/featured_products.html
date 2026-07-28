@@ -26,9 +26,7 @@
           {% include 'components/wishlist_heart.html' %}
         </div>
         <div class="product-card-info">
-          {% if product.brand %}
-          <span class="product-card-brand">{{ product.brand }}</span>
-          {% endif %}
+          <span class="product-card-brand">{{ product.brand|default:'' }}</span>
           <h3 class="product-card-name">{{ product.name }}</h3>
           <div class="product-card__meta">
             {% if product.condition == 'new' %}
