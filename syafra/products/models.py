@@ -84,7 +84,7 @@ class Product(models.Model):
             validate_image_file(self.image)
 
     def save(self, *args, **kwargs):
-        #normalize_before_save(self, 'image')
+        normalize_before_save(self, 'image')
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -149,7 +149,7 @@ class ProductImage(models.Model):
             validate_image_file(self.image)
 
     def save(self, *args, **kwargs):
-        #normalize_before_save(self, 'image')
+        normalize_before_save(self, 'image')
         super().save(*args, **kwargs)
 
 

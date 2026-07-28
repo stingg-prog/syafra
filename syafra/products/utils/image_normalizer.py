@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ──────────────────────────────────────────────────────────
 CANVAS_SIZE = 2000
-FIT_SIZE = 1800           # garment fits inside this (90% of canvas)
-MARGIN_PX = 100           # margin on each side = (2000 - 1800) / 2
+FIT_SIZE = 1760           # garment fits inside this (88% of canvas → 12% padding)
+MARGIN_PX = 120           # margin on each side = (2000 - 1760) / 2
 JPEG_QUALITY = 92
 PNG_COMPRESS = 6
 
