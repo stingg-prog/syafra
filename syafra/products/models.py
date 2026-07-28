@@ -4,7 +4,11 @@ from django.core.validators import MaxValueValidator
 from django.urls import reverse
 from cloudinary.models import CloudinaryField
 from syafra.validators import validate_image_file
-from products.utils.hooks import normalize_before_save
+try:
+    from products.utils.hooks import normalize_before_save
+except Exception:
+    def normalize_before_save(*args, **kwargs):
+        pass
 
 THEME_SETTINGS_CACHE_KEY = 'theme_settings_singleton'
 THEME_SETTINGS_CACHE_TIMEOUT = 300
