@@ -20,6 +20,7 @@ Duplicate Detection:
 """
 
 import hashlib
+import importlib
 import io
 import logging
 import os
@@ -185,8 +186,9 @@ def _remove_background(img):
     except ImportError:
         logger.warning("rembg not installed — using threshold fallback")
         return _threshold_fallback(img)
-    except Exception as exc:
-        logger.warning("rembg failed (%s) — using threshold fallback", exc)
+
+    except BaseException as exc:
+        logger.warning("rembg unavailable (%s) — using threshold fallback", exc)
         return _threshold_fallback(img)
 
 
