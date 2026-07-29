@@ -2,9 +2,14 @@
 {% with cat_data=section_data|get_by_key:section.id %}
 {% with items=cat_data.category_items %}
 {% if items %}
-<section class="categories-section">
+<section
+    class="categories-section"
+    {% if section.bg_color %}
+    style="background-color: {{ section.bg_color }};"
+    {% endif %}
+>
     <div class="categories-container">
-        <div class="categories-heading reveal">
+        <div class="categories-heading">
             <h2 class="categories-heading__title">{{ section.title|default:'Shop by Category' }}</h2>
         </div>
 
