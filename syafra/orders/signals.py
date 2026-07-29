@@ -9,6 +9,7 @@ from django.dispatch import receiver
 from syafra.logging_context import get_correlation_id
 
 from .models import Order, OrderItem, WhatsAppSettings, PaymentSettings
+from .utils import calculate_delivery_charge
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ def _send_email_on_commit(order_pk, email_type, status_override, correlation_id)
 def update_order_total(sender, instance, **kwargs):
     try:
         order = instance.order
-        total = order.items.aggregate(
+        result = order.items.aggregate(
             total=Coalesce(
                 Sum(
                     F("price") * F("quantity"),
@@ -123,9 +124,18 @@ def update_order_total(sender, instance, **kwargs):
                 ),
                 Value(0),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
-            )
-        )["total"]
-        Order.objects.filter(pk=order.pk).update(total_price=total)
-        logger.debug("Order total updated | Order #%s | New total: %s", order.id, total)
+            ),
+            qty=Coalesce(
+                Sum("quantity", output_field=DecimalField(max_digits=10, decimal_places=0)),
+                Value(0),
+                output_field=DecimalField(max_digits=10, decimal_places=0),
+            ),
+        )
+        items_total = result["total"]
+        total_qty = int(result["qty"])
+        delivery_charge = calculate_delivery_charge(total_qty)
+        final_total = items_total + delivery_charge
+        Order.objects.filter(pk=order.pk).update(total_price=final_total, delivery_charge=delivery_charge)
+        logger.debug("Order total updated | Order #%s | Items: %s | Delivery: %s | Total: %s", order.id, items_total, delivery_charge, final_total)
     except Exception as exc:
         logger.error("Error updating order total for item %s: %s", instance.id, exc)

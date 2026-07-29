@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from .models import Cart, CartItem
 from products.models import Product, ProductSize
 from orders.models import PaymentSettings
+from orders.utils import calculate_delivery_charge
 
 # Single reusable constant for free shipping threshold (no DB field exists)
 FREE_SHIPPING_THRESHOLD = 999
@@ -18,6 +19,9 @@ def cart_view(request):
     # select_related('product__category') avoids extra query for item.product.category
     items = list(cart.items.select_related('product__category').all())
     total = sum(item.quantity * item.product.price for item in items)
+    total_quantity = sum(item.quantity for item in items)
+    delivery_charge = calculate_delivery_charge(total_quantity)
+    grand_total = total + delivery_charge
 
     payment_settings = PaymentSettings.get_settings()
     if payment_settings:
@@ -107,6 +111,8 @@ def cart_view(request):
         'cart': cart,
         'items': items,
         'total': total,
+        'delivery_charge': delivery_charge,
+        'grand_total': grand_total,
         'currency': currency,
         'payment_settings': payment_settings,
         'checkout_available': checkout_available,
@@ -226,7 +232,8 @@ def remove_from_cart(request, item_id):
         'success': True,
         'message': 'Item removed from cart',
         'cart_count': cart_count,
-        'cart_total': float(cart_total)
+        'cart_total': float(cart_total),
+        'delivery_charge': float(calculate_delivery_charge(sum(item.quantity for item in cart.items.select_related('product').all()) if cart.items.exists() else 0))
     })
 
 
@@ -259,6 +266,7 @@ def update_cart_item(request, item_id):
             'message': 'Item removed from cart',
             'cart_count': cart_count,
             'cart_total': float(cart_total),
+            'delivery_charge': float(calculate_delivery_charge(sum(item.quantity for item in cart.items.select_related('product').all()) if cart.items.exists() else 0)),
             'item_removed': True
         })
 
@@ -284,10 +292,11 @@ def update_cart_item(request, item_id):
     if session_key in request.session:
         del request.session[session_key]
 
-    return JsonResponse({
-        'success': True,
-        'message': 'Cart updated',
-        'cart_count': cart_count,
-        'cart_total': float(cart_total),
-        'item_subtotal': float(cart_item.subtotal)
-    })
+        return JsonResponse({
+            'success': True,
+            'message': 'Cart updated',
+            'cart_count': cart_count,
+            'cart_total': float(cart_total),
+            'delivery_charge': float(calculate_delivery_charge(sum(item.quantity for item in cart.items.select_related('product').all()))),
+            'item_subtotal': float(cart_item.subtotal)
+        })

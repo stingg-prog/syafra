@@ -10,7 +10,8 @@
         <p style="margin-bottom: 12px;">Hello {{ customer_name }},</p>
         <p style="margin-bottom: 18px;">We have successfully received your payment for order <strong>#{{ order.id }}</strong>.</p>
         <p style="margin-bottom: 8px;"><strong>Payment ID:</strong> {{ razorpay_payment_id }}</p>
-        <p style="margin-bottom: 18px;">Order total: <strong>{{ currency }}{{ total_price|floatformat:2 }}</strong></p>
+        <p style="margin-bottom: 4px;">Subtotal: <strong>{{ currency }}{{ order.subtotal|floatformat:2 }}</strong></p>
+        <p style="margin-bottom: 18px;">Total (incl. Delivery Charge): <strong>{{ currency }}{{ total_price|floatformat:2 }}</strong></p>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px;">
             <thead>
                 <tr>

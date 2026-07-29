@@ -27,8 +27,10 @@
                 {% endfor %}
             </tbody>
         </table>
-        <div style="margin-bottom: 18px; font-size: 16px; font-weight: 600;">
-            Total: {{ currency }}{{ order.total_price|floatformat:2 }}
+        <div style="margin-bottom: 18px;">
+            <div style="font-size: 14px; margin-bottom: 4px;">Subtotal: {{ currency }}{{ order.subtotal|floatformat:2 }}</div>
+            <div style="font-size: 14px; margin-bottom: 4px;">Delivery Charge: {{ currency }}{{ order.delivery_charge|floatformat:2 }}</div>
+            <div style="font-size: 16px; font-weight: 600;">Total: {{ currency }}{{ order.total_price|floatformat:2 }}</div>
         </div>
         <p style="margin-bottom: 18px;">Shipping Address:</p>
         <div style="padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; margin-bottom: 18px; white-space: pre-wrap;">{{ order.shipping_address }}</div>

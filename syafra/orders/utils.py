@@ -1,10 +1,17 @@
 import re
 import logging
+from decimal import Decimal
 
 from accounts.utils.email import send_email
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+
+def calculate_delivery_charge(total_quantity):
+    if not total_quantity or total_quantity <= 0:
+        return Decimal('0.00')
+    return Decimal('60.00') + max(total_quantity - 1, 0) * Decimal('20.00')
 
 
 class WhatsAppSendError(Exception):

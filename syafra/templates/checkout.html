@@ -198,6 +198,10 @@
                         <span class="checkout-summary__row-value">{{ currency }}{{ total|floatformat:2 }}</span>
                     </div>
                     <div class="checkout-summary__row">
+                        <span>Delivery Charge</span>
+                        <span class="checkout-summary__row-value">{{ currency }}{{ delivery_charge|floatformat:2 }}</span>
+                    </div>
+                    <div class="checkout-summary__row">
                         <span>Shipping</span>
                         <span class="checkout-summary__row-value">Free</span>
                     </div>
@@ -205,7 +209,7 @@
 
                 <div class="checkout-summary__total">
                     <span class="checkout-summary__total-label">Total</span>
-                    <span class="checkout-summary__total-value">{{ currency }}{{ total|floatformat:2 }}</span>
+                    <span class="checkout-summary__total-value">{{ currency }}{{ grand_total|floatformat:2 }}</span>
                 </div>
 
                 <a href="{% url 'cart:cart_view' %}" class="checkout-summary__back">

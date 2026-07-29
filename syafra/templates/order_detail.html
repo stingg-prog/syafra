@@ -117,7 +117,11 @@
                 <div class="order-summary">
                     <div class="order-summary__row">
                         <span class="order-summary__label">Subtotal ({{ items|length }} item{% if items|length != 1 %}s{% endif %})</span>
-                        <span class="order-summary__value">{{ currency }}{{ order.total_price|floatformat:2 }}</span>
+                        <span class="order-summary__value">{{ currency }}{{ order.subtotal|floatformat:2 }}</span>
+                    </div>
+                    <div class="order-summary__row">
+                        <span class="order-summary__label">Delivery Charge</span>
+                        <span class="order-summary__value">{{ currency }}{{ order.delivery_charge|floatformat:2 }}</span>
                     </div>
                     <div class="order-summary__row">
                         <span class="order-summary__label">Shipping</span>

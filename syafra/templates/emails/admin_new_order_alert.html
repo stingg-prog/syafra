@@ -32,6 +32,14 @@
                     <td style="padding: 8px; border-bottom: 1px solid #f3f4f6; text-align: right;">{{ order.razorpay_payment_id|default:"Pending" }}</td>
                 </tr>
                 <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #f3f4f6; color: #6b7280;">Subtotal</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f3f4f6; text-align: right;"><strong>{{ currency }}{{ order.subtotal|floatformat:2 }}</strong></td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #f3f4f6; color: #6b7280;">Delivery Charge</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f3f4f6; text-align: right;"><strong>{{ currency }}{{ order.delivery_charge|floatformat:2 }}</strong></td>
+                </tr>
+                <tr>
                     <td style="padding: 8px; border-bottom: 1px solid #f3f4f6; color: #6b7280;">Total</td>
                     <td style="padding: 8px; border-bottom: 1px solid #f3f4f6; text-align: right;"><strong>{{ currency }}{{ order.total_price|floatformat:2 }}</strong></td>
                 </tr>

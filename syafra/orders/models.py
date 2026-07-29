@@ -164,6 +164,7 @@ class Order(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    delivery_charge = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending', db_index=True)
     razorpay_order_id = models.CharField(max_length=100, blank=True, default='', db_index=True)
@@ -258,6 +259,10 @@ class Order(models.Model):
     @property
     def total_amount(self):
         return int((Decimal(str(self.total_price)) * Decimal('100')).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+
+    @property
+    def subtotal(self):
+        return self.total_price - self.delivery_charge
 
     @property
     def razorpay_signature(self):

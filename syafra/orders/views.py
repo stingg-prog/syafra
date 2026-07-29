@@ -30,6 +30,7 @@ from .models import Order, OrderItem, PAID_FULFILLMENT_STATUSES, Payment, Paymen
 from .services.analytics_service import get_analytics_dashboard_data
 from .services.email_service import send_order_email
 from .services.order_service import confirm_order_payment, lock_inventory_rows
+from .utils import calculate_delivery_charge
 
 logger = logging.getLogger(__name__)
 
@@ -102,11 +103,13 @@ def _is_payment_retry_expired(order, now=None):
     return order.payment_retry_reserved_at < now - _get_payment_retry_timeout()
 
 
-def _checkout_context(*, cart, items, total, currency, payment_settings, payment_notice, form, available_methods, upi_enabled):
+def _checkout_context(*, cart, items, total, delivery_charge, currency, payment_settings, payment_notice, form, available_methods, upi_enabled):
     return {
         'cart': cart,
         'items': items,
         'total': total,
+        'delivery_charge': delivery_charge,
+        'grand_total': total + delivery_charge,
         'currency': currency,
         'payment_settings': payment_settings,
         'payment_notice': payment_notice,
@@ -424,6 +427,8 @@ def checkout(request):
     cart = Cart.get_for_user(request.user)
     items = list(cart.items.select_related('product').all())
     cart_total = sum(item.quantity * item.product.price for item in items)
+    total_quantity = sum(item.quantity for item in items)
+    delivery_charge = calculate_delivery_charge(total_quantity)
     if not items:
         messages.error(request, 'Your cart is empty.')
         return redirect('cart:cart_view')
@@ -456,6 +461,7 @@ def checkout(request):
                 cart=cart,
                 items=items,
                 total=cart_total,
+                delivery_charge=delivery_charge,
                 currency=currency,
                 payment_settings=payment_settings,
                 payment_notice=payment_notice,
@@ -520,12 +526,15 @@ def checkout(request):
                     raise ValueError('Your cart is empty.')
 
                 locked_cart_total = sum(item.quantity * item.product.price for item in locked_items)
+                locked_quantity = sum(item.quantity for item in locked_items)
+                locked_delivery_charge = calculate_delivery_charge(locked_quantity)
                 if locked_cart_total <= 0:
                     raise ValueError('Invalid order total. Please refresh your cart.')
 
                 order = Order.objects.create(
                     user=request.user,
-                    total_price=locked_cart_total,
+                    total_price=locked_cart_total + locked_delivery_charge,
+                    delivery_charge=locked_delivery_charge,
                     customer_name=customer_name,
                     email=email,
                     phone_number=phone_number,

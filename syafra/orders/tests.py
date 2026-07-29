@@ -303,7 +303,7 @@ class CheckoutViewTest(TestCase):
         self.assertTrue(data['ok'])
         self.assertIsInstance(data['order_id'], int)
         self.assertGreater(data['order_id'], 0)
-        self.assertEqual(data['amount'], 20000)
+        self.assertEqual(data['amount'], 28000)
         self.assertEqual(data['currency'], 'INR')
         self.assertEqual(data['razorpay_key'], 'test_key')
         self.assertEqual(data['razorpay_order_id'], 'order_ajax_123')
@@ -316,6 +316,8 @@ class CheckoutViewTest(TestCase):
         order = Order.objects.get(user=self.user)
         self.assertEqual(order.razorpay_order_id, 'order_ajax_123')
         self.assertEqual(order.payment_status, 'pending')
+        self.assertEqual(order.total_price, 280.00)
+        self.assertEqual(order.delivery_charge, 80.00)
 
     def test_checkout_persists_cart_items_as_order_items(self):
         second_product = Product.objects.create(
@@ -1172,9 +1174,9 @@ class RazorpayPaymentFlowTest(TestCase):
                 HTTP_X_REQUESTED_WITH='XMLHttpRequest',
             )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['amount'], 30000)
+        self.assertEqual(response.json()['amount'], 38000)
         order = Order.objects.get(user=self.user)
-        self.assertEqual(order.total_price, 300.00)
+        self.assertEqual(order.total_price, 380.00)
         item = order.items.first()
         self.assertEqual(item.price, 150.00)
         self.assertEqual(item.quantity, 2)

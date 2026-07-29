@@ -120,7 +120,7 @@ class OrderAdmin(admin.ModelAdmin):
     )
     list_per_page = 25
     date_hierarchy = 'created_at'
-    readonly_fields = ('created_at', 'razorpay_order_id', 'razorpay_payment_id', 'stock_reduced', 'payment_confirmed_at')
+    readonly_fields = ('created_at', 'razorpay_order_id', 'razorpay_payment_id', 'stock_reduced', 'payment_confirmed_at', 'delivery_charge')
     raw_id_fields = ('user',)
     actions = ('mark_as_paid', 'mark_as_packed', 'mark_as_shipped', 'mark_as_delivered', 'approve_upi_payment')
     list_select_related = ('user',)
@@ -129,7 +129,7 @@ class OrderAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Order Information', {
-            'fields': ('user', 'total_price', 'status', 'payment_status', 'stock_reduced', 'created_at')
+            'fields': ('user', 'total_price', 'delivery_charge', 'status', 'payment_status', 'stock_reduced', 'created_at')
         }),
         ('Payment Information', {
             'fields': ('razorpay_order_id', 'razorpay_payment_id', 'payment_confirmed_at')

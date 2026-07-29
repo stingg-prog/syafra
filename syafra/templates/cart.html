@@ -146,16 +146,20 @@
 
                 <h2 class="cart-summary__title">Order Summary</h2>
 
-                <div class="cart-summary__rows">
-                    <div class="cart-summary__row">
-                        <span>Subtotal</span>
-                        <span class="cart-summary__row-value" id="cart-subtotal" aria-live="polite">{{ currency }}{{ total|floatformat:2 }}</span>
+                    <div class="cart-summary__rows">
+                        <div class="cart-summary__row">
+                            <span>Subtotal</span>
+                            <span class="cart-summary__row-value" id="cart-subtotal" aria-live="polite">{{ currency }}{{ total|floatformat:2 }}</span>
+                        </div>
+                        <div class="cart-summary__row">
+                            <span>Delivery Charge</span>
+                            <span class="cart-summary__row-value" id="cart-delivery-charge" aria-live="polite">{{ currency }}{{ delivery_charge|floatformat:2 }}</span>
+                        </div>
+                        <div class="cart-summary__row">
+                            <span>Shipping</span>
+                            <span class="cart-summary__row-value">Calculated at checkout</span>
+                        </div>
                     </div>
-                    <div class="cart-summary__row">
-                        <span>Shipping</span>
-                        <span class="cart-summary__row-value">Calculated at checkout</span>
-                    </div>
-                </div>
 
                 <div class="cart-summary__delivery">
                     <span>Estimated Delivery</span>
@@ -169,7 +173,7 @@
 
                 <div class="cart-summary__total">
                     <span class="cart-summary__total-label">Total</span>
-                    <span id="cart-total" class="cart-summary__total-value" aria-live="polite">{{ currency }}{{ total|floatformat:2 }}</span>
+                    <span id="cart-total" class="cart-summary__total-value" aria-live="polite">{{ currency }}{{ grand_total|floatformat:2 }}</span>
                 </div>
 
                 {% if savings %}
@@ -422,7 +426,8 @@ function updateQuantity(itemId, newQuantity) {
             document.getElementById('quantity-' + itemId).textContent = newQuantity;
             document.getElementById('subtotal-' + itemId).textContent = currencySymbol + data.item_subtotal.toFixed(2);
             document.getElementById('cart-subtotal').textContent = currencySymbol + data.cart_total.toFixed(2);
-            document.getElementById('cart-total').textContent = currencySymbol + data.cart_total.toFixed(2);
+            document.getElementById('cart-delivery-charge').textContent = currencySymbol + data.delivery_charge.toFixed(2);
+            document.getElementById('cart-total').textContent = currencySymbol + (data.cart_total + data.delivery_charge).toFixed(2);
             updateFreeShippingProgress(data.cart_total);
 
             if (data.item_removed) {
@@ -456,7 +461,8 @@ function removeFromCart(itemId) {
             if (itemElement) itemElement.remove();
 
             document.getElementById('cart-subtotal').textContent = currencySymbol + data.cart_total.toFixed(2);
-            document.getElementById('cart-total').textContent = currencySymbol + data.cart_total.toFixed(2);
+            document.getElementById('cart-delivery-charge').textContent = currencySymbol + data.delivery_charge.toFixed(2);
+            document.getElementById('cart-total').textContent = currencySymbol + (data.cart_total + data.delivery_charge).toFixed(2);
             updateFreeShippingProgress(data.cart_total);
 
             if (data.cart_count === 0) {
