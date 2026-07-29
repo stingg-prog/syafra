@@ -757,10 +757,10 @@
 
     .product-card__image .wishlist-btn.is-wishlisted,
     .product-card-image .wishlist-btn.is-wishlisted {
-        background: var(--color-black);
-        border-color: var(--color-black);
-        color: var(--color-white);
-    }
+    background: var(--color-white);
+    border-color: var(--color-black);
+    color: var(--color-black);
+}
 
     .product-card__image .wishlist-btn svg,
     .product-card-image .wishlist-btn svg {
