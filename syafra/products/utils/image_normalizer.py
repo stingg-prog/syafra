@@ -174,15 +174,29 @@ def normalize_product_image(file_obj):
 # ── Background Removal ─────────────────────────────────────────────────────
 
 def _remove_background(img):
-    """
-    Return alpha mask identifying foreground.
-    Uses rembg for AI-based removal, falls back to threshold.
-    """
+    """Return alpha mask identifying foreground."""
+    return _threshold_fallback(img)
+
     try:
         from rembg import remove
-        rgb = img.convert('RGB')
+        rgb = img.convert("RGB")
+
+        # Downscale large images before AI processing
+        MAX_EDGE = 768
+        original_size = rgb.size
+
+        if max(rgb.size) > MAX_EDGE:
+            rgb.thumbnail((MAX_EDGE, MAX_EDGE), Image.LANCZOS)
+
         rgba = remove(rgb)
-        return rgba.split()[3]
+        alpha = rgba.split()[3]
+
+        # Resize alpha mask back to original size
+        if alpha.size != original_size:
+            alpha = alpha.resize(original_size, Image.LANCZOS)
+
+        return alpha
+
     except ImportError:
         logger.warning("rembg not installed — using threshold fallback")
         return _threshold_fallback(img)
