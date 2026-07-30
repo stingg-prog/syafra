@@ -3,8 +3,7 @@
    ============================================ */
 
 .promo-banner {
-    width: calc(100% - (2 * clamp(1.5rem, 3vw, 3rem)));
-    margin-inline: auto;
+    width: 100%;
     margin-bottom: clamp(56px, 6vw, 88px);
     box-sizing: border-box;
     position: relative;
@@ -27,9 +26,7 @@
 
 @media (min-width: 1024px) {
     .promo-banner__inner {
-        height: 320px;
-        min-height: 0;
-        max-height: 320px;
+        min-height: 520px;
     }
 }
 
@@ -42,11 +39,14 @@
 .promo-banner__content {
     position: relative;
     z-index: 2;
-    padding: 0.75rem clamp(1.5rem, 3vw, 3rem);
+    padding-block: 0.75rem;
+    padding-right: clamp(1.5rem, 3vw, 3rem);
+    padding-left: clamp(48px, 6vw, 96px);
     display: flex;
     flex-direction: column;
     justify-content: center;
     height: 100%;
+    max-width: 520px;
     box-sizing: border-box;
 }
 
@@ -138,7 +138,10 @@
 
 @media (max-width: 767px) {
     .promo-banner__content {
-        padding: clamp(2rem, 4vw, 3rem);
+        padding-block: clamp(2rem, 4vw, 3rem);
+        padding-right: clamp(1.5rem, 3vw, 3rem);
+        padding-left: clamp(48px, 6vw, 96px);
+        max-width: none;
     }
     .promo-banner__headline {
         font-size: clamp(1.5rem, 6vw, 2rem);
