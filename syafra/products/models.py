@@ -260,7 +260,7 @@ class HomepageSection(models.Model):
         ('shop_by_category', 'Shop By Category'),
         ('featured_products', 'Featured Products'),
         ('new_arrivals', 'New Arrivals'),
-        ('trending_products', 'Trending Products'),
+        ('trending_now', 'Trending Now'),
         ('best_sellers', 'Best Sellers'),
         ('collections', 'Collections'),
         ('brands', 'Brands'),

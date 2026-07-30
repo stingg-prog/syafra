@@ -72,7 +72,7 @@ def home(request):
             data['transition_type'] = section.config.get('transition_type', '')
 
         elif st in ('product_collection', 'womens_tops', 'trending_now', 'best_sellers',
-                    'featured_products', 'new_arrivals', 'trending_products', 'jackets',
+                    'featured_products', 'new_arrivals', 'jackets',
                     'flash_sale'):
             if section.collection:
                 limit = section.config.get('max_products', 12)
@@ -165,7 +165,7 @@ def home(request):
 
     _COLLECTION_TYPES = frozenset({
         'product_collection', 'womens_tops', 'trending_now', 'best_sellers',
-        'featured_products', 'new_arrivals', 'trending_products', 'jackets',
+        'featured_products', 'new_arrivals', 'jackets',
         'flash_sale', 'recently_viewed', 'recommended_products',
     })
     hide_ids = {s.id for s in sections
@@ -307,7 +307,7 @@ def section_preview(request, section_id):
         data['secondary_cta_url'] = section.config.get('secondary_cta_url', '')
         data['autoplay'] = False
     elif st in ('product_collection', 'womens_tops', 'trending_now', 'best_sellers',
-                'featured_products', 'new_arrivals', 'trending_products', 'jackets', 'flash_sale'):
+                'featured_products', 'new_arrivals', 'jackets', 'flash_sale'):
         if section.collection:
             data['products'] = list(section.collection.products.filter(stock__gt=0).select_related('category')[:12])
         else:

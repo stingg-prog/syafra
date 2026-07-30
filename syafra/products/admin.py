@@ -182,7 +182,7 @@ class HomepageSectionAdmin(admin.ModelAdmin):
             pass
         elif section_type == 'shop_by_category':
             pass
-        elif section_type in ('product_collection', 'womens_tops', 'jackets', 'trending_products', 'trending_now', 'best_sellers', 'featured_products', 'new_arrivals'):
+        elif section_type in ('product_collection', 'womens_tops', 'jackets', 'trending_now', 'best_sellers', 'featured_products', 'new_arrivals'):
             base.append(('Collection', {
                 'fields': ('collection',),
                 'description': 'Select a Product Collection to display products from.',

@@ -214,12 +214,17 @@ class Command(BaseCommand):
             self.stdout.write("Created: Women's Tops collection section")
 
         # Section 5c: Trending Now (Product Collection)
-        trending_collection, _ = ProductCollection.objects.get_or_create(
-            name='Trending Now',
+        # Use the existing TRENDING collection — do not create a separate one
+        trending_collection, trending_col_created = ProductCollection.objects.get_or_create(
+            name='TRENDING',
             defaults={
                 'description': 'Currently trending vintage pieces',
             }
         )
+        # Clean up any empty "Trending Now" collection left from before the rename
+        for c in ProductCollection.objects.filter(name__iexact='Trending Now'):
+            if c.products.count() == 0:
+                c.delete()
         trending_section, created = HomepageSection.objects.get_or_create(
             section_type='trending_now',
             defaults={
@@ -235,7 +240,10 @@ class Command(BaseCommand):
                 },
             }
         )
-        if created:
+        if not created and trending_section.collection != trending_collection:
+            trending_section.collection = trending_collection
+            trending_section.save()
+        if created or trending_col_created:
             self.stdout.write('Created: Trending Now collection section')
 
         # Section 5d: Best Sellers (Product Collection)
