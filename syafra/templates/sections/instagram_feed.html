@@ -1,7 +1,7 @@
 {% load static cloudinary_filters %}
 {% with ig_data=section_data|get_by_key:section.id %}
 {% with posts=ig_data.posts %}
-<section class="instagram-section">
+<section class="instagram-section"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
     <div class="collection-container">
         <div class="instagram-header reveal">
             <span class="instagram-overline">Instagram</span>

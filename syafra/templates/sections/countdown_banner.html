@@ -1,6 +1,6 @@
 {% load static %}
 {% with config=section.config %}
-<section class="countdown-banner" data-end="{{ config.countdown_end|default:'' }}" style="{% if config.bg_color %}background-color:{{ config.bg_color }};{% endif %}">
+<section class="countdown-banner" data-end="{{ config.countdown_end|default:'' }}" style="{% if section.bg_color %}background-color:{{ section.bg_color }};{% endif %}">
   <div class="countdown-content">
     {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
     <h2 class="countdown-title">{{ section.title|default:'Limited Time Offer' }}</h2>

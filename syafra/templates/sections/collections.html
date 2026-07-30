@@ -1,6 +1,6 @@
 {% load static cloudinary_filters %}
 {% with data=section_data|get_by_key:section.id collections=data.collections %}
-<section class="collections-grid-section">
+<section class="collections-grid-section"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
   <div class="section-header">
     {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
     <h2 class="section-title">{{ section.title|default:'Collections' }}</h2>

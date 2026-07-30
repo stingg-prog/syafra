@@ -1,5 +1,5 @@
 {% load static cloudinary_filters %}
-<section id="hero" class="hero">
+<section id="hero" class="hero"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
     {% with slides_data=section_data|get_by_key:section.id %}
     {% with slides=slides_data.slides %}
     {% if slides %}

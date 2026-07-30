@@ -1,5 +1,5 @@
 {% load static cloudinary_filters %}
-<section class="collection-section" data-section-type="{{ section.section_type }}">
+<section class="collection-section" data-section-type="{{ section.section_type }}"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
     <div class="collection-container">
         <div class="collection-compact-header">
             <h2 class="collection-compact-header__title">{{ section.title|default:"BEST SELLERS" }}</h2>

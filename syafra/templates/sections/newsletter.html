@@ -1,5 +1,5 @@
 {% load static %}
-<section class="newsletter-section">
+<section class="newsletter-section"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
     <div class="newsletter-inner reveal">
         <span class="newsletter-overline">Newsletter</span>
         <h2 class="newsletter-title">Stay in the Loop</h2>

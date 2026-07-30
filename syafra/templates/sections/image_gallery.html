@@ -1,7 +1,7 @@
 {% load static cloudinary_filters %}
 {% with config=section.config %}
 {% with images=config.gallery_images %}
-<section class="image-gallery-section">
+<section class="image-gallery-section"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
   <div class="section-header">
     {% if section.overline %}<span class="section-overline">{{ section.overline }}</span>{% endif %}
     <h2 class="section-title">{{ section.title|default:'Gallery' }}</h2>

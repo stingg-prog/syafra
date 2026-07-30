@@ -1,6 +1,6 @@
 {% load static cloudinary_filters %}
 {% with config=section.config data=section_data|get_by_key:section.id products=data.products %}
-<section class="flash-sale-section" style="{% if config.bg_color %}background-color:{{ config.bg_color }};{% endif %}">
+<section class="flash-sale-section" style="{% if section.bg_color %}background-color:{{ section.bg_color }};{% endif %}">
   <div class="section-header">
     {% if section.overline %}<span class="section-overline flash-sale-overline">⚡ {{ section.overline }}</span>{% endif %}
     <h2 class="section-title flash-sale-title">{{ section.title|default:'Flash Sale' }}</h2>

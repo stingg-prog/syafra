@@ -1,6 +1,6 @@
 {% load static %}
 {% with config=section.config %}
-<section class="video-banner" style="{% if config.bg_color %}background-color:{{ config.bg_color }};{% endif %}">
+<section class="video-banner" style="{% if section.bg_color %}background-color:{{ section.bg_color }};{% endif %}">
   {% if config.video_url %}
   <video class="video-banner-video" autoplay{% if config.video_muted %} muted{% endif %}{% if config.video_loop %} loop{% endif %} playsinline>
     <source src="{{ config.video_url }}" type="video/mp4">

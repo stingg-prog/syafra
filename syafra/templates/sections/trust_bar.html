@@ -1,5 +1,5 @@
 {% load static %}
-<section class="trust-bar">
+<section class="trust-bar"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
     <div class="trust-grid">
         {% for item in section.trust_items.filter %}
         {% if item.is_active %}

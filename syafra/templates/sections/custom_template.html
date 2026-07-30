@@ -3,7 +3,7 @@
 {% if config.custom_template_name %}
 {% include config.custom_template_name %}
 {% else %}
-<section class="custom-template-section">
+<section class="custom-template-section"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
   <p class="section-empty">No template specified. Set a template name in section settings.</p>
 </section>
 {% endif %}

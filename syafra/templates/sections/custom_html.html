@@ -1,6 +1,6 @@
 {% load static security_filters %}
 {% with config=section.config %}
-<section class="custom-html-section">
+<section class="custom-html-section"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
   {% if config.custom_html %}
   {{ config.custom_html|sanitize }}
   {% else %}

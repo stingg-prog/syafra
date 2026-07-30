@@ -1,6 +1,6 @@
 {% load static %}
 {% with config=section.config %}
-<section class="hero-banner" style="{% if config.bg_color %}background-color:{{ config.bg_color }};{% endif %}">
+<section class="hero-banner" style="{% if section.bg_color %}background-color:{{ section.bg_color }};{% endif %}">
   <div class="hero-banner-content">
     {% if section.overline %}<span class="hero-banner-overline">{{ section.overline }}</span>{% endif %}
     {% if section.title %}<h2 class="hero-banner-title">{{ section.title }}</h2>{% endif %}

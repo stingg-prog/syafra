@@ -2,7 +2,7 @@
 {% with reviews_data=section_data|get_by_key:section.id %}
 {% with testimonials=reviews_data.testimonials %}
 {% if testimonials %}
-<section class="testimonials-section">
+<section class="testimonials-section"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
     <div class="collection-container">
         {% if section.title %}
         <h2 class="testimonials-title">{{ section.title }}</h2>

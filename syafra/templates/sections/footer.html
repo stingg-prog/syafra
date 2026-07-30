@@ -1,6 +1,6 @@
 {% load static %}
 {% with website=website theme=theme %}
-<footer class="site-footer">
+<footer class="site-footer"{% if section.bg_color %} style="background-color: {{ section.bg_color }};"{% endif %}>
     <div class="collection-container">
         <div class="footer-grid">
             <div class="footer-col footer-col-brand">
