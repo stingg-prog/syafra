@@ -18,7 +18,7 @@
                 backdrop-filter 0.4s var(--ease-luxury),
                 box-shadow 0.4s var(--ease-luxury),
                 border-color 0.4s var(--ease-luxury);
-    background: rgba(0, 0, 0, 0.82);
+    background: var(--color-primary);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     backdrop-filter: blur(24px) saturate(180%);
     color: var(--color-white);
