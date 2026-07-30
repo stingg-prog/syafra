@@ -67,16 +67,6 @@
                              height="750">
                         {% endif %}
 
-                        <div class="product-card__badges">
-                            {% if product.condition == 'new' %}
-                            <span class="badge badge-new">New</span>
-                            {% elif product.condition == 'refurbished' %}
-                            <span class="badge badge-refurb">Refurb</span>
-                            {% endif %}
-                            {% if product.stock <= 5 and product.stock > 0 %}
-                            <span class="badge badge-low-stock">Low Stock</span>
-                            {% endif %}
-                        </div>
                         {% include 'components/wishlist_heart.html' %}
                     </div>
 
