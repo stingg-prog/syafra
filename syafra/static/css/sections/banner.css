@@ -4,7 +4,6 @@
 
 .promo-banner {
     width: 100%;
-    margin-bottom: clamp(56px, 6vw, 88px);
     box-sizing: border-box;
     position: relative;
     overflow: hidden;

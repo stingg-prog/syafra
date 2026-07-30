@@ -1,8 +1,8 @@
 .site-footer {
     background: linear-gradient(180deg, #161616 0%, #111111 55%, #0D0D0D 100%);
     color: #fff;
-    padding-top: 80px;
-    padding-bottom: 56px;
+    padding-top: var(--section-padding-y);
+    padding-bottom: var(--section-padding-y);
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 

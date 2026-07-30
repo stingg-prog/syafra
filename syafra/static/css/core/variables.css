@@ -91,6 +91,9 @@
     --header-height: var(--navbar-height);
     --header-height-mobile: var(--navbar-height-mobile);
 
+    /* ---- Section Spacing ---- */
+    --section-padding-y: clamp(4rem, 6vw, 6rem);
+
     /* ---- Container Widths ---- */
     --container-sm: 640px;
     --container-md: 768px;

@@ -6,6 +6,7 @@
 @media (max-width: 1023px) {
     :root {
         --container-max: 100%;
+        --section-padding-y: clamp(3rem, 5vw, 4rem);
     }
 }
 
@@ -13,6 +14,7 @@
 @media (max-width: 767px) {
     :root {
         --container-max: 100%;
+        --section-padding-y: clamp(2.5rem, 5vw, 3rem);
     }
 
     html {

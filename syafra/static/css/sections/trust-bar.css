@@ -3,12 +3,11 @@
    ============================================ */
 
 .trust-bar {
-    padding-top: clamp(0.75rem, 1vw, 1rem);
-    padding-bottom: 0;
+    padding-top: var(--section-padding-y);
+    padding-bottom: var(--section-padding-y);
     border-top: 1px solid rgba(255, 255, 255, 0.12);
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     background: #000000;
-    margin-bottom: 0;
 }
 
 .trust-grid {
@@ -99,7 +98,7 @@
 }
 
 @media (max-width: 767px) {
-    .trust-bar { padding-top: 1.25rem; padding-bottom: 0; }
+    .trust-bar { padding-top: var(--section-padding-y); padding-bottom: var(--section-padding-y); }
     .trust-grid {
         grid-template-columns: 1fr;
         gap: 0;

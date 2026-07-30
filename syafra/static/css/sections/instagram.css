@@ -1,7 +1,7 @@
 .instagram-section {
     background: #fff;
-    padding-top: clamp(4rem, 8vw, 8rem);
-    padding-bottom: 60px;
+    padding-top: var(--section-padding-y);
+    padding-bottom: var(--section-padding-y);
 }
 
 .instagram-header {
@@ -173,11 +173,6 @@
 }
 
 @media (max-width: 640px) {
-    .instagram-section {
-        padding-top: 50px;
-        padding-bottom: 40px;
-    }
-
     .instagram-title {
         font-size: 36px;
     }
