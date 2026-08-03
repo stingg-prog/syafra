@@ -3,44 +3,55 @@
    ============================================ */
 
 .trust-bar {
-    padding-top: var(--section-padding-y);
-    padding-bottom: var(--section-padding-y);
+    min-height: var(--navbar-height);
+    display: flex;
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.12);
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     background: #000000;
 }
 
+/* ---- Desktop (>=1024px): 4 equal columns ---- */
 .trust-grid {
+    position: relative;
+    flex: 1;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0;
-    max-width: var(--container-max);
-    margin: 0 auto;
-    padding: 0 clamp(1.5rem, 4vw, 4rem);
+    width: 100%;
+}
+
+.trust-grid::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-origin: content-box;
+    background-clip: content-box;
+    background-image:
+        linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.12), transparent),
+        linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.12), transparent),
+        linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+    background-size: 1px 100%;
+    background-repeat: no-repeat;
+    background-position: 25% 0, 50% 0, 75% 0;
 }
 
 .trust-item {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     align-items: center;
     text-align: center;
-    padding: 0 2rem;
-    position: relative;
+    width: 100%;
+    padding: 0 1rem;
     transition: transform 0.4s var(--ease-luxury);
 }
 
 .trust-item:hover {
     transform: translateY(-2px);
-}
-
-.trust-item:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 10%;
-    height: 80%;
-    width: 1px;
-    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.12), transparent);
 }
 
 .trust-icon {
@@ -54,6 +65,14 @@
 
 .trust-item:hover .trust-icon {
     transform: scale(1.1);
+}
+
+.trust-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
 }
 
 .trust-icon svg {
@@ -82,37 +101,49 @@
     max-width: 200px;
 }
 
+/* ---- Tablet (768px - 1023px): 2 x 2 grid ---- */
 @media (max-width: 1023px) {
+    .trust-bar {
+        min-height: var(--navbar-height-mobile);
+    }
     .trust-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 1.25rem 0;
-    }
-    .trust-item:nth-child(2)::after,
-    .trust-item:nth-child(1)::after,
-    .trust-item:nth-child(3)::after { display: none; }
-    .trust-item:nth-child(1),
-    .trust-item:nth-child(2) {
-        padding-bottom: 1.25rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    }
-}
-
-@media (max-width: 767px) {
-    .trust-bar { padding-top: var(--section-padding-y); padding-bottom: var(--section-padding-y); }
-    .trust-grid {
-        grid-template-columns: 1fr;
         gap: 0;
+    }
+    .trust-item {
         padding: 0 1.25rem;
     }
-    .trust-item::after { display: none !important; }
+    .trust-item:nth-child(1),
+    .trust-item:nth-child(2) {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .trust-item:nth-child(1),
+    .trust-item:nth-child(3) {
+        border-right: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .trust-grid::after { display: none; }
+}
+
+/* ---- Mobile (<=767px): 2 x 2 grid ---- */
+@media (max-width: 767px) {
+    .trust-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0;
+    }
     .trust-item {
-        flex-direction: row;
-        text-align: left;
-        gap: 1rem;
-        padding: 1.125rem 0;
+        flex-direction: column;
+        text-align: center;
+        gap: 0.25rem;
+        padding: 0 0.5rem;
+    }
+    .trust-item:nth-child(1),
+    .trust-item:nth-child(2) {
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .trust-item:last-child { border-bottom: none; }
+    .trust-item:nth-child(1),
+    .trust-item:nth-child(3) {
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
     .trust-icon {
         width: 24px;
         height: 24px;
