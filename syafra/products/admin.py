@@ -107,7 +107,7 @@ class TrustBarItemInline(admin.TabularInline):
 class ShopByCategoryItemInline(admin.TabularInline):
     model = ShopByCategoryItem
     extra = 2
-    fields = ('display_order', 'is_active', 'category', 'headline', 'label', 'desktop_image', 'mobile_image')
+    fields = ('display_order', 'is_active', 'category', 'headline', 'display_title', 'display_description', 'label', 'desktop_image', 'mobile_image')
     ordering = ['display_order']
 
 

@@ -28,10 +28,12 @@
                     {% if item.headline %}
                     <span class="category-card__headline">{{ item.headline }}</span>
                     {% endif %}
-                    <h3 class="category-card__name">{{ item.category.name }}</h3>
-                    {% if item.category.description %}
-                    <p class="category-card__description">{{ item.category.description }}</p>
+                    <h3 class="category-card__name">{{ item.display_title|default:item.category.name }}</h3>
+                    {% with card_description=item.display_description|default:item.category.description %}
+                    {% if card_description %}
+                    <p class="category-card__description">{{ card_description }}</p>
                     {% endif %}
+                    {% endwith %}
                     <span class="category-card__cta">
                         {{ item.label|default:'SHOP NOW' }}
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>

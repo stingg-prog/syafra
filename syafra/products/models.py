@@ -430,6 +430,8 @@ class ShopByCategoryItem(models.Model):
     section = models.ForeignKey(HomepageSection, on_delete=models.CASCADE, related_name='category_items')
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     headline = models.CharField(max_length=100, blank=True, default='')
+    display_title = models.CharField(max_length=120, blank=True, default='')
+    display_description = models.CharField(max_length=200, blank=True, default='')
     label = models.CharField(max_length=50, default='EXPLORE')
     desktop_image = models.ImageField(upload_to='homepage/categories/desktop/', blank=True)
     mobile_image = models.ImageField(upload_to='homepage/categories/mobile/', blank=True)
