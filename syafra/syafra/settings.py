@@ -135,7 +135,7 @@ USE_HTTPS = _env_bool("USE_HTTPS", default=not DEBUG)
 # -----------------------------------------------------------------------------
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    "syafra.admin.SyafraAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",

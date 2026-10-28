@@ -319,13 +319,6 @@ class LegalPageAdmin(admin.ModelAdmin):
     preview_link.short_description = ''
 
 
-@admin.register(models.TestimonialExtended)
-class TestimonialExtendedAdmin(admin.ModelAdmin):
-    list_display = ['testimonial', 'rating', 'is_featured', 'display_order']
-    list_editable = ['rating', 'is_featured', 'display_order']
-    list_filter = ['is_featured', 'rating']
-
-
 @admin.register(models.ThemeBackup)
 class ThemeBackupAdmin(admin.ModelAdmin):
     list_display = ['name', 'created_by', 'created_at']

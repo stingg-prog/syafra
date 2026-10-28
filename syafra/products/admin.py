@@ -10,6 +10,7 @@ from .models import (
     PromotionalBannerConfig, ThemeSettings, WebsiteSettings,
     ContentPage, ContactMessage,
 )
+from cms.models import TestimonialExtended
 
 
 def _admin_preview_link(model_name, object_id, label='Preview'):
@@ -61,12 +62,20 @@ class InstagramFeedItemAdmin(admin.ModelAdmin):
     list_editable = ('is_active', 'display_order')
 
 
+class TestimonialExtendedInline(admin.StackedInline):
+    model = TestimonialExtended
+    extra = 0
+    max_num = 1
+    fields = ('rating', 'photo', 'video_url', 'display_order', 'is_featured')
+
+
 @admin.register(Testimonial)
 class TestimonialAdmin(admin.ModelAdmin):
     list_display = ('name', 'is_active', 'display_order', 'created_at')
     list_filter = ('is_active',)
     search_fields = ('name', 'review')
     list_editable = ('is_active', 'display_order')
+    inlines = [TestimonialExtendedInline]
 
 
 @admin.register(ProductCollection)
