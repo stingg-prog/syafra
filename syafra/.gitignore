@@ -3,6 +3,7 @@
 .env.local
 .env.*
 !.env.example
+.agent_private_media/
 
 # Python
 __pycache__/
@@ -13,6 +14,7 @@ __pycache__/
 venv/
 env/
 .venv/
+.venv-windows*/
 *.egg-info/
 dist/
 build/

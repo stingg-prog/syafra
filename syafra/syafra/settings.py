@@ -17,6 +17,7 @@ import dj_database_url
 try:
     from dotenv import load_dotenv
 
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env.local")
     load_dotenv()
 except ImportError:
     pass
@@ -151,6 +152,7 @@ INSTALLED_APPS = [
     "accounts",
     "wishlist",
     "cms",
+    "syafra_agent",
 ]
 
 # WhiteNoise must sit directly after SecurityMiddleware — https://whitenoise.readthedocs.io/
@@ -225,6 +227,20 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
+SYAFRA_AGENT_PROVIDER = os.getenv("SYAFRA_AGENT_PROVIDER", "gemini").strip().lower()
+SYAFRA_AGENT_OLLAMA_URL = os.getenv("SYAFRA_AGENT_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+SYAFRA_AGENT_OLLAMA_MODEL = os.getenv("SYAFRA_AGENT_OLLAMA_MODEL", "qwen2.5vl:3b")
+SYAFRA_AGENT_OLLAMA_TIMEOUT_SECONDS = int(os.getenv("SYAFRA_AGENT_OLLAMA_TIMEOUT_SECONDS", "300"))
+SYAFRA_AGENT_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+SYAFRA_AGENT_GEMINI_MODEL = os.getenv("SYAFRA_AGENT_GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
+SYAFRA_AGENT_GEMINI_API_URL = os.getenv(
+    "SYAFRA_AGENT_GEMINI_API_URL",
+    "https://generativelanguage.googleapis.com/v1beta/models",
+).rstrip("/")
+SYAFRA_AGENT_PROPOSAL_TTL_MINUTES = 20
+SYAFRA_AGENT_MAX_SESSION_BYTES = 3_700_000
+DATA_UPLOAD_MAX_MEMORY_SIZE = 24 * 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FILES = 10
 
 # -----------------------------------------------------------------------------
 # Static & media
@@ -413,6 +429,11 @@ LOGGING = {
         "django.core.mail": {
             "handlers": ["console"],
             "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+        "numba": {
+            "handlers": ["console"],
+            "level": "WARNING",
             "propagate": False,
         },
         "syafra.email": {

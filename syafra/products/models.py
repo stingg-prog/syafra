@@ -47,6 +47,7 @@ class Product(models.Model):
     brand_ref = models.ForeignKey('cms.Brand', on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='new')
+    material = models.CharField(max_length=120, blank=True, default='')
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='products/', blank=True)

@@ -29,6 +29,7 @@ handler405 = custom_method_not_allowed
 urlpatterns = [
     path('favicon.ico', favicon_redirect),
     path('admin/analytics/', order_views.analytics_dashboard, name='analytics_dashboard'),
+    path('admin/ai-assistant/', include('syafra_agent.urls')),
     path('admin/', admin.site.urls),
     path('password_reset/', RedirectView.as_view(pattern_name='accounts:password_reset', permanent=False)),
     path('password_reset_done/', RedirectView.as_view(pattern_name='accounts:password_reset_done', permanent=False)),

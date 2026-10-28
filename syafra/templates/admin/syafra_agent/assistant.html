@@ -1,0 +1,118 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Syafra AI Assistant{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'syafra_agent/assistant.css' %}">
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  {{ field_definitions|json_script:"syafra-agent-field-definitions" }}
+  <script src="{% static 'syafra_agent/assistant.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<main id="syafra-agent-app"
+      class="syafra-agent"
+      lang="en"
+      data-plan-url="{% url 'syafra_agent:create-preview' %}"
+      data-confirm-url="{% url 'syafra_agent:confirm-preview' %}"
+      data-cancel-url="{% url 'syafra_agent:cancel-preview' %}"
+      data-can-create-category="{% if can_create_category %}true{% else %}false{% endif %}">
+  <header class="agent-header">
+    <div>
+      <p class="agent-eyebrow">SYAFRA STORE WORKSPACE</p>
+      <h1>AI Store Assistant</h1>
+      <p class="agent-subtitle">Manage Syafra products and CMS content, including homepage sections. Read, create, edit, or delete content; review every draft before changes reach the live store.</p>
+    </div>
+    <a class="agent-back-link" href="{% url 'admin:index' %}">Back to Admin</a>
+  </header>
+
+  <div class="agent-disclosure" role="note">
+    <span class="agent-disclosure-mark" aria-hidden="true">i</span>
+          {% if agent_provider == "gemini" %}
+            <p>Ask about current website content or request changes to products, the homepage, pages, and navigation. Python prepares product photos; Cloud Gemini prepares drafts. Photos and website information are sent to Google for analysis and may be used to improve Google's products on the free tier. Nothing is saved until you review and confirm the preview.</p>
+          {% else %}
+            <p>Ask about current website content or request changes to products, the homepage, pages, and navigation. Python prepares product photos; local Ollama prepares change drafts. Nothing is saved until you review and confirm the preview.</p>
+          {% endif %}
+  </div>
+
+  <div class="agent-workspace">
+    <section class="agent-panel agent-chat-panel" aria-labelledby="agent-chat-title">
+      <div class="agent-panel-heading">
+        <div>
+          <p class="agent-eyebrow">YOUR REQUEST</p>
+          <h2 id="agent-chat-title">Tell Syafra what to do</h2>
+        </div>
+        <span class="agent-state"><span class="agent-state-dot"></span> Preview first</span>
+      </div>
+
+      <div id="agent-conversation" class="agent-conversation" aria-live="polite">
+        <div class="agent-message agent-message-assistant">
+          <span class="agent-message-avatar" aria-hidden="true">S</span>
+          <p>Ask Syafra to review current content, add or edit homepage sections and pages, or remove one specific item. You can also create product listings from photos. Enter the price and size stock for each new product; the live website will not change until you confirm the preview.</p>
+        </div>
+      </div>
+
+      <form id="agent-prompt-form" class="agent-prompt-form" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label class="agent-prompt-label" for="agent-prompt">Your instruction</label>
+        <textarea id="agent-prompt" name="prompt" rows="4" maxlength="12000" placeholder="Example: Show homepage sections; add a hero banner after the announcement bar; edit this page; remove homepage section 12. You will see a preview before anything is removed." required></textarea>
+        <div class="agent-upload-row">
+          <label class="agent-upload-control" for="agent-images">
+            <span aria-hidden="true">＋</span>
+            <span>Add product photos</span>
+          </label>
+          <input id="agent-images" name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+          <span id="agent-upload-count" class="agent-upload-count">Up to 10 images</span>
+        </div>
+        <div class="agent-upload-mode">
+          <label for="agent-photo-mode">Photo grouping</label>
+          <select id="agent-photo-mode" name="product_photo_mode">
+            <option value="group_items">Group photos of the same product</option>
+            <option value="one_per_photo">Bulk: one product per photo</option>
+          </select>
+          <small>Up to 10 images per batch. Review each product before confirming.</small>
+        </div>
+        <div id="agent-upload-preview" class="agent-upload-preview" hidden></div>
+        <div class="agent-submit-row">
+          <p>JPEG, PNG, or WebP · Up to 8 MB per image</p>
+          <button id="agent-submit" class="agent-button agent-button-primary" type="submit">
+            <span>Prepare preview</span><span aria-hidden="true">→</span>
+          </button>
+        </div>
+      </form>
+      <p id="agent-live-status" class="agent-live-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="agent-preview-panel" class="agent-panel agent-preview-panel" aria-labelledby="agent-preview-title" hidden>
+      <div class="agent-panel-heading">
+        <div>
+          <p class="agent-eyebrow">REVIEW BEFORE APPLYING</p>
+          <h2 id="agent-preview-title">Change preview</h2>
+        </div>
+        <span id="agent-expiry" class="agent-expiry"></span>
+      </div>
+
+      <div id="agent-preview-reply" class="agent-preview-reply"></div>
+      <div id="agent-preview-actions" class="agent-preview-actions"></div>
+      <div id="agent-visual-preview" class="agent-visual-preview" hidden></div>
+
+      <div class="agent-confirm-area">
+        <label class="agent-review-check">
+          <input id="agent-review-confirmation" type="checkbox">
+          <span>I reviewed the prepared images, entered the price and size details, and approve these changes.</span>
+        </label>
+        <div class="agent-confirm-buttons">
+          <button id="agent-cancel-preview" class="agent-button agent-button-secondary" type="button">Cancel draft</button>
+          <button id="agent-confirm-preview" class="agent-button agent-button-danger" type="button" disabled>Confirm and apply</button>
+        </div>
+        <p id="agent-validation-message" class="agent-validation-message">Review every detail. New products need a name, brand, category, condition, price, and stock for each size.</p>
+      </div>
+    </section>
+  </div>
+</main>
+{% endblock %}

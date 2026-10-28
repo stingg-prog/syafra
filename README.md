@@ -116,6 +116,22 @@ python manage.py migrate
 python manage.py runserver
 ```
 
+## Windows setup for the local Syafra AI Assistant
+
+The assistant uses Ollama on the same Windows machine, so photo analysis runs locally without per-request API charges. Open PowerShell in the `syafra` folder and run:
+
+    powershell -ExecutionPolicy Bypass -File .\setup_agent_windows.ps1
+
+The script finds Ollama in its standard Windows install location or on `PATH`, downloads `qwen2.5vl:3b` if needed, creates a separate Windows virtual environment, installs the project dependencies, and starts the local server with loopback-only host settings. It leaves `.env` files untouched. For a local database, it applies all pending project migrations and offers to create a Django superuser if none exists. For a remote database, it asks you to type `MIGRATE` before applying only the product-material and assistant migrations, which add the material field plus the assistant's proposal and private-image tables. The project `.env` database settings remain in use; when those point to your live database, this local assistant can create approved listings on that site.
+
+Open `http://127.0.0.1:8000/admin/ai-assistant/` and sign in with the existing Django admin account. Upload clothing photos, choose whether to group photos of the same item or create one product per photo, and describe what you want the assistant to do. Python prepares warm beige studio-style photos with angled sunlight. In the preview, enter the approved price and size stock as one `SIZE: quantity` per line; total stock is calculated automatically. The AI drafts the other product details from the photos. Review the photo and every field, optionally make supported prompt-based photo adjustments, then explicitly confirm to add the products and photos to the website. Keep the Windows server running while using the assistant; a Render-hosted Django process cannot reach Ollama on your PC.
+
+The same assistant can answer questions from the current website content and prepare create, edit, or delete drafts for supported CMS records, including homepage sections, hero slides, banners, pages, navigation, FAQs, blogs, and related content. A deletion must name one specific record; the review shows linked records that may be affected. Every website change still requires your explicit confirmation. Arbitrary HTML, executable code, and source-code edits are not available through the assistant.
+
+### Cloud AI for the Syafra assistant
+
+The assistant is implemented in Python and can use Google Gemini for image analysis and draft generation when the Django app runs in the cloud. The Render Blueprint selects `SYAFRA_AGENT_PROVIDER=gemini` and `SYAFRA_AGENT_GEMINI_MODEL=gemini-3.5-flash-lite`; add `GEMINI_API_KEY` as a secret from Google AI Studio in the Render dashboard. Do not put the key in source control or send it in chat. Save and deploy the service after adding the secret. The free Gemini tier is limited and may use submitted prompts, product photos, and website context to improve Google products; review Google's current terms before enabling this provider. The cloud assistant will not use Ollama on your PC. To keep all images local, continue using the Windows Ollama setup above.
+
 ---
 
 # 🌍 Deployment

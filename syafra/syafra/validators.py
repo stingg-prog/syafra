@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlsplit
 from django.core.exceptions import ValidationError
 
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.avif'}
@@ -15,9 +16,24 @@ ALLOWED_URI_SCHEMES = {'http', 'https', 'mailto', 'tel', ''}
 def validate_image_file(file_obj):
     ext = os.path.splitext(file_obj.name)[1].lower()
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
-        raise ValidationError(
-            f'Invalid file extension "{ext}". Allowed: {", ".join(sorted(ALLOWED_IMAGE_EXTENSIONS))}'
+        # Cloudinary can return extensionless public IDs for previously stored
+        # images. Keep accepting those existing references while still
+        # rejecting extensionless local uploads.
+        try:
+            image_url = urlsplit(file_obj.url)
+        except (AttributeError, ValueError):
+            image_url = None
+        is_cloudinary_reference = bool(
+            not ext
+            and image_url
+            and image_url.scheme == 'https'
+            and image_url.hostname == 'res.cloudinary.com'
+            and '/image/upload/' in image_url.path
         )
+        if not is_cloudinary_reference:
+            raise ValidationError(
+                f'Invalid file extension "{ext}". Allowed: {", ".join(sorted(ALLOWED_IMAGE_EXTENSIONS))}'
+            )
     if hasattr(file_obj, 'content_type') and file_obj.content_type:
         if file_obj.content_type not in ALLOWED_IMAGE_MIMES:
             raise ValidationError(

@@ -47,7 +47,7 @@ class ProductImageInline(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'brand', 'category', 'price', 'stock', 'condition', 'created_at')
     list_filter = ('category', 'brand', 'condition')
-    search_fields = ('name', 'brand', 'description')
+    search_fields = ('name', 'brand', 'material', 'description')
     list_editable = ('stock',)
     readonly_fields = ('created_at', 'updated_at')
     inlines = [ProductSizeInline, ProductImageInline]

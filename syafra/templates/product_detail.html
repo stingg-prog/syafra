@@ -95,6 +95,12 @@
                             <span class="pdp-meta__label">Category</span>
                             <span class="pdp-meta__value">{{ product.category.name }}</span>
                         </div>
+                        {% if product.material %}
+                        <div class="pdp-meta__item">
+                            <span class="pdp-meta__label">Material</span>
+                            <span class="pdp-meta__value">{{ product.material }}</span>
+                        </div>
+                        {% endif %}
                         <div class="pdp-meta__item">
                             <span class="pdp-meta__label">Stock</span>
                             <span class="pdp-meta__value
