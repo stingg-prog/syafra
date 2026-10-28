@@ -102,19 +102,25 @@ Render Production Deployment
 
 ```bash
 git clone https://github.com/stingg-prog/syafra.git
-
-cd syafra
+cd syafra/syafra
 
 python -m venv .venv
-
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+# macOS / Linux:
 source .venv/bin/activate
 
 pip install -r requirements.txt
-
 python manage.py migrate
-
 python manage.py runserver
 ```
+
+The repository root contains the Git metadata and project-level tooling. The Django application, `manage.py`, Python dependencies, and its CSS build package are in the inner `syafra/` directory. The project notes and implementation reports are indexed in [`syafra/docs/`](syafra/docs/README.md).
+
+### JavaScript tooling
+
+- The repository-root `package.json` is for optional Playwright-based browser QA tools.
+- `syafra/package.json` is the Django application's Tailwind CSS build toolchain. Run its CSS build scripts from the inner `syafra/` directory.
 
 ## Windows setup for the local Syafra AI Assistant
 
@@ -136,6 +142,8 @@ The assistant is implemented in Python and can use Google Gemini for image analy
 
 # 🌍 Deployment
 
+The repository-root [`render.yaml`](render.yaml) is the single Render Blueprint for the existing `syafra` web service, with the Django app in the inner `syafra/` directory. Applying or syncing a Blueprint can change service configuration; the file does not change the current dashboard settings on its own. The Free plan has an ephemeral filesystem and does not support persistent disks, so keep Cloudinary credentials configured in the Render Dashboard for uploaded media. Secret values are never committed here.
+
 Production deployment uses
 
 - Render
@@ -147,19 +155,22 @@ Production deployment uses
 # 📂 Project Structure
 
 ```
-syafra/
-│
-├── accounts/
-├── products/
-├── orders/
-├── cart/
-├── payments/
-├── templates/
-├── static/
-├── media/
-├── requirements.txt
-├── manage.py
-└── README.md
+syafra/                     # Repository root
+├── README.md
+├── package.json            # Optional Playwright/browser QA tooling
+├── render.yaml             # Canonical Render Blueprint
+└── syafra/                 # Django project root
+    ├── accounts/
+    ├── cart/
+    ├── cms/
+    ├── docs/               # Project guides and implementation reports
+    ├── orders/
+    ├── products/
+    ├── static/
+    ├── templates/
+    ├── manage.py
+    ├── package.json        # Tailwind CSS build tooling
+    └── requirements.txt
 ```
 
 ---

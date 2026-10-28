@@ -1,7 +1,7 @@
 {
   "name": "syafra",
   "version": "1.0.0",
-  "description": "",
+  "description": "Tailwind CSS build tooling for the Syafra Django application.",
   "main": "index.js",
   "scripts": {
     "build:css": "node ./node_modules/@tailwindcss/cli/dist/index.mjs -i ./assets/css/input.css -o ./static/css/output.css",

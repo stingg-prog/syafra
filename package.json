@@ -1,4 +1,6 @@
 {
+  "name": "syafra_store",
+  "description": "Optional Playwright browser QA tooling for the Syafra repository.",
   "dependencies": {
     "playwright": "^1.61.1"
   }

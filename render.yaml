@@ -1,26 +1,62 @@
-# Render Blueprint — https://render.com/docs/blueprint-spec
-# Connect this repo in Render → New → Blueprint (or add these fields manually on a Web Service).
-#
-# Before clicking Deploy, confirm:
-#   - PostgreSQL linked in Render
-#   - DATABASE_URL exists (from linked DB)
-#   - DATABASE_SSL_REQUIRE=true on Render (or omit; default true when DEBUG=False — never use false on Render)
-#   - Pre-deploy: python manage.py migrate --noinput
-#   - After deploy: logs show migration apply / "Applying ... OK" (verify a real DB run on Render)
-#   - Build: pip install -r requirements.txt && python manage.py collectstatic --noinput
-#   - Start: gunicorn syafra.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
-#   - SECRET_KEY strong (env)
-#   - ALLOWED_HOSTS correct (env)
-#   - CSRF_TRUSTED_ORIGINS set (env, https://...)
-#   - DOMAIN=your-app.onrender.com (password reset & email links)
-#   - Resend email configured; do NOT set ALLOW_CONSOLE_EMAIL_IN_PRODUCTION for real production
-#   - Web service Root Directory: syafra (if repo root is parent of this folder)
-
+# Canonical Render Blueprint for the Django app in ./syafra.
+# Secret values are configured in the Render Dashboard, not committed here.
 services:
-    type: web
+  - type: web
     name: syafra
     runtime: python
+    plan: free
     rootDir: syafra
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: gunicorn syafra.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
-    preDeployCommand: python manage.py migrate --noinput
+    buildCommand: bash build.sh
+    startCommand: python manage.py migrate --noinput && python manage.py sync_admin_password && gunicorn syafra.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    healthCheckPath: /
+    envVars:
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL_REQUIRE
+        value: "true"
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: DOMAIN
+        sync: false
+      - key: USE_HTTPS
+        value: "true"
+      - key: SERVE_MEDIA_VIA_DJANGO
+        value: "true"
+      - key: MEDIA_ROOT
+        value: "/var/data/media"
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_BACKEND
+        value: "resend_sdk"
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: ORDER_ALERT_EMAILS
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: WHATSAPP_NUMBER
+        value: "919037626684"
+      - key: WHATSAPP_DEFAULT_MESSAGE
+        value: "Hi, I am interested in your products. Please share more details."
+      - key: LOG_TO_FILE
+        value: "false"
+      - key: SYAFRA_AGENT_PROVIDER
+        value: "gemini"
+      - key: SYAFRA_AGENT_GEMINI_MODEL
+        value: "gemini-3.5-flash-lite"
+      - key: GEMINI_API_KEY
+        sync: false

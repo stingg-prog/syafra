@@ -1,14 +1,16 @@
 # WhatsApp Optimization Implementation Summary
 
+> Historical implementation report. The files it lists are not all present in the current checkout.
+
 ## ✓ Completed Tasks
 
 ### 1. **Celery Task Queue with Redis Broker**
-- ✓ Created [syafra/celery.py](syafra/celery.py) — Celery app configuration
-- ✓ Created [orders/tasks.py](orders/tasks.py) — `send_whatsapp_notification` task with retry logic
+- ✓ Created [syafra/celery.py](../syafra/celery.py) — Celery app configuration
+- ✓ Created [orders/tasks.py](../orders/tasks.py) — `send_whatsapp_notification` task with retry logic
 - ✓ Configured Redis broker and result backend via environment variables
 
 ### 2. **Background Notification Dispatch**
-- ✓ Modified [orders/signals.py](orders/signals.py) — Signals now enqueue tasks instead of blocking
+- ✓ Modified [orders/signals.py](../orders/signals.py) — Signals now enqueue tasks instead of blocking
 - ✓ Added `queue_whatsapp_notification()` helper using `transaction.on_commit()` for safety
 - ✓ All order status changes (created, processing, shipped, delivered) route through Celery
 
@@ -16,7 +18,7 @@
 - ✓ Task configured with `max_retries=5`, `default_retry_delay=60s`
 - ✓ Exponential backoff: 60s → 120s → 240s → 480s → 600s (10 min max)
 - ✓ Retry jitter enabled to prevent thundering herd
-- ✓ Enhanced [orders/utils.py](orders/utils.py) with `WhatsAppSendError` exception handling
+- ✓ Enhanced [orders/utils.py](../orders/utils.py) with `WhatsAppSendError` exception handling
 
 ### 4. **Admin Panel Performance**
 - ✓ HTTP request returns immediately after queuing (< 100ms)
@@ -24,15 +26,15 @@
 - ✓ Admin remains responsive even during high load or Twilio API slowdowns
 
 ### 5. **Deployment Configuration**
-- ✓ Updated [requirements.txt](requirements.txt) — Added `celery>=5.3.0`, `redis>=4.5.0`
-- ✓ Updated [Procfile](Procfile) — Added `worker: celery -A syafra worker --loglevel=info`
-- ✓ Updated [syafra/settings.py](syafra/settings.py) — Celery config (broker, result backend, serializers)
-- ✓ Updated [.env.example](.env.example) — Celery environment variables documented
+- ✓ Updated [requirements.txt](../requirements.txt) — Added `celery>=5.3.0`, `redis>=4.5.0`
+- ✓ Updated [Procfile](../Procfile) — Added `worker: celery -A syafra worker --loglevel=info`
+- ✓ Updated [syafra/settings.py](../syafra/settings.py) — Celery config (broker, result backend, serializers)
+- ✓ Updated [.env.example](../.env.example) — Celery environment variables documented
 
 ### 6. **Documentation & Setup**
 - ✓ [CELERY_OPTIMIZATION.md](CELERY_OPTIMIZATION.md) — Complete guide with setup, monitoring, troubleshooting
-- ✓ [setup_celery_dev.py](setup_celery_dev.py) — Development environment verification script
-- ✓ [syafra/flower_config.py](syafra/flower_config.py) — Optional Flower monitoring configuration
+- ✓ `setup_celery_dev.py` — Development environment verification script (not in the current checkout)
+- ✓ `syafra/flower_config.py` — Optional Flower monitoring configuration (not in the current checkout)
 
 ---
 
@@ -190,20 +192,20 @@ heroku ps:scale worker=1
 ## Files Modified / Created
 
 **Created:**
-- [syafra/celery.py](syafra/celery.py)
-- [orders/tasks.py](orders/tasks.py)
+- [syafra/celery.py](../syafra/celery.py)
+- [orders/tasks.py](../orders/tasks.py)
 - [CELERY_OPTIMIZATION.md](CELERY_OPTIMIZATION.md)
-- [setup_celery_dev.py](setup_celery_dev.py)
-- [syafra/flower_config.py](syafra/flower_config.py)
+- `setup_celery_dev.py` (not in the current checkout)
+- `syafra/flower_config.py` (not in the current checkout)
 
 **Modified:**
-- [orders/signals.py](orders/signals.py)
-- [orders/utils.py](orders/utils.py)
-- [syafra/settings.py](syafra/settings.py)
-- [syafra/__init__.py](syafra/__init__.py)
-- [requirements.txt](requirements.txt)
-- [Procfile](Procfile)
-- [.env.example](.env.example)
+- [orders/signals.py](../orders/signals.py)
+- [orders/utils.py](../orders/utils.py)
+- [syafra/settings.py](../syafra/settings.py)
+- [syafra/__init__.py](../syafra/__init__.py)
+- [requirements.txt](../requirements.txt)
+- [Procfile](../Procfile)
+- [.env.example](../.env.example)
 
 ---
 
